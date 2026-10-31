@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#060806">
+  <meta name="description" content="Entra en Claw con tu correo del instituto y un código de un solo uso.">
+  <title>Entrar en Claw — PickleBrain</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d7ff6b'/%3E%3Cg fill='none' stroke='%230a0f06' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M10.5 24.5c0-6.5 3-11.5 8-14'/%3E%3Cpath d='M16.5 25c0-5 2-9 6.5-11'/%3E%3Cpath d='M22 25.5c0-3 1.2-5.5 3.5-6.8'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #060806;
+      --ink: #f3f5ee;
+      --muted: #98a297;
+      --muted-2: #6f7a6e;
+      --lime: #d7ff6b;
+      --lime-soft: #eaffa8;
+      --mint: #7ef0c0;
+      --line: rgba(255, 255, 255, .09);
+      --line-strong: rgba(255, 255, 255, .16);
+      --danger: #ff9a9a;
+      --font-display: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input { font: inherit; color: inherit; }
+    a { color: inherit; text-decoration: none; }
+    ::selection { background: var(--lime); color: #0a0f06; }
+    :focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; border-radius: 8px; }
+    [hidden] { display: none !important; }
+
+    /* fondo */
+    .fx { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+    .fx::before {
+      content: "";
+      position: absolute;
+      inset: -18%;
+      background:
+        radial-gradient(36rem 36rem at 82% 6%, rgba(215, 255, 107, .16), transparent 62%),
+        radial-gradient(30rem 30rem at 6% 30%, rgba(126, 240, 192, .10), transparent 62%),
+        radial-gradient(42rem 42rem at 40% 112%, rgba(215, 255, 107, .08), transparent 62%);
+      animation: drift 24s ease-in-out infinite alternate;
+    }
+    .fx .grid {
+      position: absolute; inset: 0;
+      background-image: linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: radial-gradient(ellipse 100% 70% at 50% 0%, #000 20%, transparent 75%);
+      -webkit-mask-image: radial-gradient(ellipse 100% 70% at 50% 0%, #000 20%, transparent 75%);
+    }
+    @keyframes drift {
+      from { transform: translate3d(-1%, -1%, 0) scale(1); }
+      to   { transform: translate3d(2%, 2%, 0) scale(1.05); }
+    }
+    @media (prefers-reduced-motion: reduce) { .fx::before { animation: none; } }
+
+    .wrap { position: relative; z-index: 1; width: min(1120px, calc(100% - 48px)); min-height: 100vh; margin: auto; }
+
+    header { display: flex; height: 82px; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 1px solid var(--line); }
+    .brand { display: inline-flex; align-items: center; gap: 11px; font-family: var(--font-display); font-size: 1.06rem; font-weight: 700; letter-spacing: -.02em; }
+    .brand small { color: var(--muted-2); font-family: var(--font-body); font-size: .74rem; font-weight: 500; }
+    .mark {
+      display: grid; width: 38px; height: 38px; flex: 0 0 38px; place-items: center;
+      border-radius: 12px; color: #0a0f06;
+      background: linear-gradient(150deg, var(--lime-soft), var(--lime) 45%, #9bd93f);
+      box-shadow: 0 8px 26px -8px rgba(215, 255, 107, .55), inset 0 1px 0 rgba(255,255,255,.55);
+    }
+    .mark svg { width: 21px; height: 21px; }
+    .back { display: inline-flex; align-items: center; gap: 7px; color: #b3bcaf; font-size: .84rem; transition: color .2s ease; }
+    .back:hover { color: var(--lime); }
+
+    main { display: grid; min-height: calc(100vh - 83px); grid-template-columns: 1.02fr minmax(340px, 452px); align-items: center; gap: 72px; padding: 52px 0; }
+
+    /* columna izquierda */
+    .intro .kicker {
+      display: inline-flex; align-items: center; gap: 9px; margin-bottom: 22px;
+      border: 1px solid rgba(215, 255, 107, .22); border-radius: 999px; padding: 7px 14px 7px 11px;
+      color: #d8e8b6; background: rgba(215, 255, 107, .06);
+      font-size: .72rem; font-weight: 600; letter-spacing: .11em; text-transform: uppercase;
+    }
+    .intro .kicker::before { width: 7px; height: 7px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 16px rgba(215,255,107,.9); content: ""; }
+    h1 {
+      max-width: 540px; margin: 0 0 20px;
+      font-family: var(--font-display);
+      font-size: clamp(2.9rem, 5.6vw, 4.9rem);
+      font-weight: 600; letter-spacing: -.055em; line-height: .98;
+    }
+    h1 em {
+      background: linear-gradient(102deg, var(--lime) 8%, var(--mint) 62%, #fff 106%);
+      -webkit-background-clip: text; background-clip: text; color: transparent; font-style: normal;
+    }
+    .intro p { max-width: 440px; color: #a6b0a4; font-size: .98rem; line-height: 1.75; }
+    .privacy { display: flex; align-items: center; gap: 9px; margin-top: 26px; color: #aab79b; font-size: .78rem; }
+    .privacy span { color: var(--mint); font-size: .6rem; }
+    .intro-points { display: grid; gap: 9px; margin-top: 30px; }
+    .intro-points div { display: flex; align-items: center; gap: 10px; color: #98a294; font-size: .84rem; }
+    .intro-points i { display: grid; width: 20px; height: 20px; flex: 0 0 20px; place-items: center; border-radius: 7px; background: rgba(215,255,107,.1); color: var(--lime); font-size: .62rem; font-style: normal; }
+
+    /* tarjeta */
+    .card {
+      position: relative;
+      border: 1px solid var(--line-strong);
+      border-radius: 26px;
+      padding: 30px;
+      background: linear-gradient(180deg, rgba(20, 24, 19, .96), rgba(9, 12, 9, .98));
+      box-shadow: 0 50px 120px -40px rgba(0, 0, 0, .95), inset 0 1px 0 rgba(255,255,255,.07);
+    }
+    .card::before {
+      position: absolute; inset: -1px; z-index: -1; border-radius: 27px;
+      background: linear-gradient(150deg, rgba(215,255,107,.28), transparent 40%, rgba(126,240,192,.14));
+      opacity: .55; content: "";
+    }
+    .card-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .card-brand .mark { width: 34px; height: 34px; flex-basis: 34px; border-radius: 10px; }
+    .card-brand .mark svg { width: 18px; height: 18px; }
+    .card-brand strong { display: block; font-family: var(--font-display); font-size: .92rem; font-weight: 600; }
+    .card-brand small { display: block; margin-top: 2px; color: var(--muted-2); font-size: .73rem; }
+    h2 { margin: 0 0 8px; font-family: var(--font-display); font-size: 1.42rem; font-weight: 600; letter-spacing: -.035em; }
+    .subtitle { margin: 0 0 20px; color: var(--muted); font-size: .85rem; line-height: 1.6; }
+
+    label { display: grid; gap: 7px; margin-top: 15px; color: #c0c9bb; font-size: .78rem; font-weight: 500; }
+    input {
+      width: 100%; border: 1px solid var(--line-strong); border-radius: 12px;
+      padding: 12px 14px; background: rgba(8, 11, 8, .85); color: var(--ink); font-size: .92rem;
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }
+    input::placeholder { color: #6b7469; }
+    input:focus { border-color: rgba(215, 255, 107, .55); outline: 0; box-shadow: 0 0 0 4px rgba(215, 255, 107, .08); }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .split label { margin-top: 15px; }
+    @media (max-width: 480px) { .split { grid-template-columns: 1fr; gap: 0; } }
+
+    /* código OTP */
+    .otp { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+    .otp input {
+      height: 58px; padding: 0; border-radius: 13px;
+      font-family: var(--font-display); font-size: 1.45rem; font-weight: 600; text-align: center;
+      caret-color: var(--lime);
+    }
+    .otp input:focus { border-color: rgba(215, 255, 107, .7); box-shadow: 0 0 0 4px rgba(215, 255, 107, .12); }
+    .otp input.filled { border-color: rgba(215, 255, 107, .38); background: rgba(215, 255, 107, .07); }
+
+    .primary {
+      display: inline-flex; width: 100%; min-height: 48px; align-items: center; justify-content: center; gap: 9px;
+      margin-top: 22px; border: 0; border-radius: 999px;
+      color: #0a0f06; background: linear-gradient(150deg, var(--lime-soft), var(--lime));
+      font-family: var(--font-display); font-size: .96rem; font-weight: 650;
+      box-shadow: 0 16px 40px -18px rgba(215, 255, 107, .85), inset 0 1px 0 rgba(255,255,255,.55);
+      transition: transform .18s ease, filter .18s ease;
+    }
+    .primary:hover { transform: translateY(-1px); filter: brightness(1.04); }
+    .primary:disabled { cursor: wait; opacity: .62; transform: none; }
+    .secondary {
+      display: inline-flex; width: 100%; min-height: 44px; align-items: center; justify-content: center;
+      margin-top: 10px; border: 1px solid var(--line-strong); border-radius: 999px;
+      color: #c8d0c4; background: transparent; font-size: .86rem;
+      transition: background .18s ease, border-color .18s ease;
+    }
+    .secondary:hover { border-color: rgba(215,255,107,.35); background: rgba(215,255,107,.06); }
+
+    .message { min-height: 1.4em; margin: 14px 0 0; color: #aeb8a9; font-size: .8rem; line-height: 1.5; }
+    .message.error { color: var(--danger); }
+    .footnote { margin: 18px 0 0; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted-2); font-size: .72rem; line-height: 1.6; }
+    .footnote strong { color: #b9c4b2; font-weight: 600; }
+
+    @media (max-width: 860px) {
+      .wrap { width: min(100% - 36px, 500px); }
+      header { height: 68px; }
+      main { min-height: auto; grid-template-columns: 1fr; gap: 28px; padding: 38px 0 56px; }
+      .intro { text-align: center; }
+      .intro .kicker { margin-bottom: 16px; }
+      h1 { margin: 0 auto 16px; font-size: clamp(2.6rem, 12vw, 3.7rem); }
+      .intro p { margin: 0 auto; font-size: .92rem; }
+      .privacy { justify-content: center; margin-top: 16px; }
+      .intro-points { display: none; }
+      .card { padding: 24px; border-radius: 22px; }
+      .card::before { border-radius: 23px; }
+      .otp input { height: 52px; font-size: 1.25rem; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
+  </style>
+</head>
+<body>
+  <div class="fx" aria-hidden="true"><div class="grid"></div></div>
+
+  <div class="wrap">
+    <header>
+      <a class="brand" href="../">
+        <span class="mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M10.5 24.5c0-6.5 3-11.5 8-14"/><path d="M16.5 25c0-5 2-9 6.5-11"/><path d="M22 25.5c0-3 1.2-5.5 3.5-6.8"/></svg>
+        </span>
+        Claw <small>by PickleBrain</small>
+      </a>
+      <a class="back" href="../">← Volver a Claw</a>
+    </header>
+
+    <main>
+      <section class="intro">
+        <div class="kicker">Tu espacio empieza aquí</div>
+        <h1>La nueva forma de <em>organizarse.</em></h1>
+        <p>Entra con tu correo del instituto y conecta con el mismo servidor PickleBrain que usa Claw en WhatsApp.</p>
+        <div class="privacy"><span aria-hidden="true">●</span> Acceso protegido · Código personal de un solo uso</div>
+        <div class="intro-points" aria-hidden="true">
+          <div><i>✓</i> Tus apuntes, en la web y en WhatsApp</div>
+          <div><i>✓</i> Sin contraseña que recordar</div>
+          <div><i>✓</i> Solo correos del instituto</div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="auth-title">
+        <div class="card-brand">
+          <span class="mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M10.5 24.5c0-6.5 3-11.5 8-14"/><path d="M16.5 25c0-5 2-9 6.5-11"/><path d="M22 25.5c0-3 1.2-5.5 3.5-6.8"/></svg>
+          </span>
+          <div><strong>Entrar en Claw</strong><small>Acceso para estudiantes</small></div>
+        </div>
+        <h2 id="auth-title">Conecta con tu espacio</h2>
+        <p id="auth-description" class="subtitle">Regístrate con tus datos y tu correo del instituto. Te enviaremos un código de un solo uso.</p>
+
+        <form id="email-form">
+          <label>Servidor PickleBrain (ngrok)
+            <input id="api-url" type="url" autocomplete="url" value="https://dawn-greeter-grazing.ngrok-free.dev" placeholder="https://dawn-greeter-grazing.ngrok-free.dev" required>
+          </label>
+          <div class="split">
+            <label>Nombre
+              <input id="reg-name" type="text" autocomplete="given-name" maxlength="80" placeholder="Tu nombre" required>
+            </label>
+            <label>Apellidos
+              <input id="reg-surname" type="text" autocomplete="family-name" maxlength="120" placeholder="Tus apellidos">
+            </label>
+          </div>
+          <div class="split">
+            <label>Curso
+              <input id="reg-course" type="text" autocomplete="off" maxlength="40" placeholder="Ej. 2º BACH" required>
+            </label>
+            <label>Grupo
+              <input id="reg-group" type="text" autocomplete="off" maxlength="40" placeholder="Ej. B">
+            </label>
+          </div>
+          <label>Correo institucional
+            <input id="auth-email" type="text" inputmode="email" autocomplete="email" maxlength="254" placeholder="tu-correo@alu.edu.gva.es" required>
+          </label>
+          <button id="send-code" class="primary" type="submit">Enviar código <span aria-hidden="true">→</span></button>
+        </form>
+
+        <form id="code-form" hidden>
+          <label for="otp-0">Código de seis dígitos</label>
+          <div class="otp" id="otp" role="group" aria-label="Código de seis dígitos">
+            <input class="otp-digit" id="otp-0" inputmode="numeric" autocomplete="one-time-code" maxlength="1" aria-label="Dígito 1">
+            <input class="otp-digit" inputmode="numeric" maxlength="1" aria-label="Dígito 2">
+            <input class="otp-digit" inputmode="numeric" maxlength="1" aria-label="Dígito 3">
+            <input class="otp-digit" inputmode="numeric" maxlength="1" aria-label="Dígito 4">
+            <input class="otp-digit" inputmode="numeric" maxlength="1" aria-label="Dígito 5">
+            <input class="otp-digit" inputmode="numeric" maxlength="1" aria-label="Dígito 6">
+          </div>
+          <input id="auth-code" type="hidden" value="">
+          <button id="verify-code" class="primary" type="submit">Verificar y entrar</button>
+          <button id="change-email" class="secondary" type="button">Usar otro correo</button>
+        </form>
+
+        <p id="auth-message" class="message" role="status" aria-live="polite"></p>
+        <p class="footnote">Solo se aceptan direcciones <strong>@alu.edu.gva.es</strong>. El código caduca en 10 minutos. Tus datos de registro se guardan solo en este servidor.</p>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const URL_KEY = 'picklebrain.web.apiUrl';
+    const SESSION_KEY = 'picklebrain.web.session';
+    const FIXED_SERVER = 'https://dawn-greeter-grazing.ngrok-free.dev';
+    const apiUrlInput = document.getElementById('api-url');
+    const authMessage = document.getElementById('auth-message');
+    const otpInputs = Array.from(document.querySelectorAll('.otp-digit'));
+    const hiddenCode = document.getElementById('auth-code');
+    const emailInput = document.getElementById('auth-email');
+    apiUrlInput.value = localStorage.getItem(URL_KEY)
+      || (/^https?:$/.test(location.protocol) ? location.origin : FIXED_SERVER);
+    const logoutNotice = sessionStorage.getItem('picklebrain.web.logoutNotice');
+    if (logoutNotice) {
+      authMessage.textContent = logoutNotice;
+      sessionStorage.removeItem('picklebrain.web.logoutNotice');
+    }
+
+    function apiBase() {
+      return apiUrlInput.value.trim().replace(/\/+$/, '');
+    }
+
+    function saveApiUrl() {
+      const url = new URL(apiBase());
+      if (!['http:', 'https:'].includes(url.protocol)) throw new Error('La URL del servidor debe usar HTTP o HTTPS.');
+      localStorage.setItem(URL_KEY, url.origin);
+      apiUrlInput.value = url.origin;
+      return url.origin;
+    }
+
+    async function parseResponse(response) {
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `Error HTTP ${response.status}`);
+      return data;
+    }
+
+    async function publicAuthRequest(path, body) {
+      const response = await fetch(apiBase() + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      return parseResponse(response);
+    }
+
+    // --- Código de 6 dígitos en casillas separadas ---------------------
+    // El valor "de verdad" sigue estando en #auth-code, que es el que lee el
+    // envío. Así el resto de la lógica no cambia.
+    function syncCode() {
+      hiddenCode.value = otpInputs.map((input) => input.value.replace(/\D/g, '')).join('');
+      otpInputs.forEach((input) => input.classList.toggle('filled', input.value !== ''));
+    }
+
+    function clearCode() {
+      otpInputs.forEach((input) => { input.value = ''; });
+      syncCode();
+    }
+
+    otpInputs.forEach((input, index) => {
+      input.addEventListener('input', () => {
+        input.value = input.value.replace(/\D/g, '').slice(-1);
+        if (input.value && index < otpInputs.length - 1) otpInputs[index + 1].focus();
+        syncCode();
+      });
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Backspace' && !input.value && index > 0) {
+          otpInputs[index - 1].focus();
+        }
+        if (event.key === 'ArrowLeft' && index > 0) otpInputs[index - 1].focus();
+        if (event.key === 'ArrowRight' && index < otpInputs.length - 1) otpInputs[index + 1].focus();
+      });
+      input.addEventListener('paste', (event) => {
+        const digits = (event.clipboardData?.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+        if (!digits) return;
+        event.preventDefault();
+        digits.split('').forEach((digit, position) => {
+          if (otpInputs[position]) otpInputs[position].value = digit;
+        });
+        syncCode();
+        otpInputs[Math.min(digits.length, otpInputs.length - 1)].focus();
+      });
+    });
+
+    document.getElementById('email-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const email = emailInput.value.trim().toLowerCase();
+      const button = document.getElementById('send-code');
+      authMessage.classList.remove('error');
+
+      // Modo debug: si en el correo se escribe solo un código corto (por
+      // ejemplo 0912), no hace falta correo ni esperar al OTP.
+      if (/^\d{4,8}$/.test(email)) {
+        return debugLogin(email);
+      }
+
+      const profile = {
+        name: document.getElementById('reg-name').value.trim(),
+        surname: document.getElementById('reg-surname').value.trim(),
+        course: document.getElementById('reg-course').value.trim(),
+        group: document.getElementById('reg-group').value.trim()
+      };
+      if (profile.name.length < 2) {
+        authMessage.textContent = 'Escribe tu nombre para completar el registro.';
+        authMessage.classList.add('error');
+        document.getElementById('reg-name').focus();
+        return;
+      }
+      if (!profile.course) {
+        authMessage.textContent = 'Dinos en qué curso estás.';
+        authMessage.classList.add('error');
+        document.getElementById('reg-course').focus();
+        return;
+      }
+
+      button.disabled = true;
+      authMessage.textContent = 'Conectando y enviando código…';
+      try {
+        saveApiUrl();
+        await publicAuthRequest('/api/auth/request-code', { email, profile });
+        document.getElementById('email-form').hidden = true;
+        document.getElementById('code-form').hidden = false;
+        document.getElementById('auth-title').textContent = 'Revisa tu correo';
+        document.getElementById('auth-description').textContent = `Hemos enviado un código de acceso a ${email}.`;
+        authMessage.textContent = 'El código caduca en 10 minutos.';
+        clearCode();
+        otpInputs[0].focus();
+      } catch (error) {
+        authMessage.textContent = error.message;
+        authMessage.classList.add('error');
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    // Acceso de depuración: el servidor valida el código y devuelve una sesión
+    // con permisos de administración. La web no guarda el código.
+    async function debugLogin(code) {
+      authMessage.classList.remove('error');
+      authMessage.textContent = 'Activando modo debug…';
+      try {
+        saveApiUrl();
+        const result = await publicAuthRequest('/api/auth/debug', { code });
+        sessionStorage.setItem(SESSION_KEY, result.token);
+        sessionStorage.setItem('picklebrain.web.debug', '1');
+        window.location.href = '../';
+      } catch (error) {
+        authMessage.textContent = error.message;
+        authMessage.classList.add('error');
+      }
+    }
+
+    // Al escribir exactamente un código corto en el campo de correo, entra solo.
+    emailInput.addEventListener('input', () => {
+      const value = emailInput.value.trim();
+      if (/^\d{4}$/.test(value)) debugLogin(value);
+    });
+
+    document.getElementById('code-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = document.getElementById('verify-code');
+      button.disabled = true;
+      authMessage.classList.remove('error');
+      authMessage.textContent = 'Verificando…';
+      try {
+        const result = await publicAuthRequest('/api/auth/verify', {
+          email: document.getElementById('auth-email').value.trim().toLowerCase(),
+          code: hiddenCode.value.trim()
+        });
+        sessionStorage.setItem(SESSION_KEY, result.token);
+        window.location.href = '../';
+      } catch (error) {
+        authMessage.textContent = error.message;
+        authMessage.classList.add('error');
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.getElementById('change-email').addEventListener('click', () => {
+      document.getElementById('email-form').hidden = false;
+      document.getElementById('code-form').hidden = true;
+      document.getElementById('auth-title').textContent = 'Conecta con tu espacio';
+      document.getElementById('auth-description').textContent = 'Usa la dirección del servidor PickleBrain y tu correo institucional.';
+      authMessage.textContent = '';
+      authMessage.classList.remove('error');
+      clearCode();
+      document.getElementById('auth-email').focus();
+    });
+  </script>
+</body>
+</html>
