@@ -1,14 +1,15 @@
-// Aviso de "está escribiendo…" en WhatsApp.
+// Avisos inmediatos en WhatsApp: el "está escribiendo…" y mensajes sueltos.
 //
-// Sirve para que se vea que el bot sigue trabajando cuando una tarea tarda
-// (por ejemplo, dibujar una imagen: puede tardar más de un minuto y, sin este
-// aviso, parece que se ha quedado colgado).
+// Sirven para que se vea que el bot sigue trabajando cuando una tarea tarda
+// (por ejemplo, dibujar una imagen: puede tardar más de un minuto y, sin estos
+// avisos, parece que se ha quedado colgado).
 //
-// `whatsapp.js` nos deja aquí su forma de mandar el aviso y el router lo usa
+// `whatsapp.js` nos deja aquí sus formas de mandar el aviso y el router las usa
 // cuando quiere, sin depender directamente de la conexión (y sin importar
 // `whatsapp.js` desde el router, que daría un ciclo raro de imports).
 
 let enviar = null;
+let enviarTexto = null;
 const latidos = new Map();
 
 /** WhatsApp nos deja aquí cómo mandar el aviso (o `null` al desconectar). */
@@ -17,6 +18,27 @@ export function usarEnvio(fn) {
   if (!enviar) {
     for (const t of latidos.values()) clearInterval(t);
     latidos.clear();
+  }
+}
+
+/** WhatsApp nos deja aquí cómo mandar un mensaje suelto (o `null` al desconectar). */
+export function usarEnvioTexto(fn) {
+  enviarTexto = typeof fn === 'function' ? fn : null;
+}
+
+/**
+ * Manda un mensaje suelto ya, sin esperar a que el router termine. Sirve para
+ * avisar de tareas lentas (por ejemplo, generar una imagen). Nunca lanza:
+ * devuelve `false` si no hay un canal de envío disponible.
+ */
+export function avisarTexto(chatJid, texto) {
+  if (!chatJid || !texto || !enviarTexto) return false;
+  try {
+    const r = enviarTexto(chatJid, texto);
+    if (r && typeof r.catch === 'function') r.catch(() => {});
+    return true;
+  } catch {
+    return false;
   }
 }
 

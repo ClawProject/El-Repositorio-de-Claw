@@ -1360,10 +1360,10 @@ async function handleCommand({ comando, input, out, listModels }) {
     // Dibujar tarda cerca de un minuto: avisamos de que estamos en ello para
     // que no parezca que se ha colgado (y lo quitamos al acabar, pase lo que pase).
     presence.escribiendo(chatJid, true);
-    try {
-      sendReplies(grupo, ['🎨 Generando, por favor espera...']);
-    } catch (err) {
-      log.debug(`No pude mandar aviso de generación: ${err.message}`);
+    // Aviso inmediato sin depender de whatsapp.js (el router no lo importa para
+    // no crear un ciclo): whatsapp.js deja aquí su forma de mandar mensajes.
+    if (!presence.avisarTexto(chatJid, '🎨 Generando, por favor espera...')) {
+      log.debug('No pude mandar el aviso de generación (sin conexión).');
     }
     let r;
     try {
