@@ -86,6 +86,7 @@ Se leen del entorno o del `.env` de la raíz (si está instalado `python-dotenv`
 | `PYTHON_AI_PORT` | `5050` | puerto |
 | `PYTHON_AI_URL` | vacío | si Node usa otra URL, el servicio toma de aquí host/puerto |
 | `PYTHON_MODELS_DIR` | `data/models` | caché de modelos |
+| `PICKLEBRAIN_DATA_DIR` | vacío | si está puesto, también lee el `.env` de esa carpeta |
 | `PYTHON_MAX_UPLOAD_MB` | `64` | tamaño máximo de audio |
 
 ### Voz
