@@ -30,6 +30,13 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 
 ### Añadido
 
+- **Guía de instalación y plantilla de configuración.** Nuevo `INSTALL.md` con
+  los pasos para Linux, macOS y Windows, `git clone`, Node, Ollama, servicio
+  Python, Homebrew y resolución de problemas. Se añade `.env.example` y `.env`
+  pasa a estar ignorado por Git.
+- **Carpeta de datos configurable.** `PICKLEBRAIN_DATA_DIR` permite guardar la
+  sesión, SQLite, fotos y modelos fuera del código (útil con Homebrew). El `.env`
+  también se puede colocar dentro de esa carpeta.
 - **Servicio Python para voz e imágenes.** `python/server.py` (FastAPI) usa
   faster-whisper para transcribir notas de voz y diffusers para dibujar. Node lo
   llama por HTTP en `127.0.0.1:5050`; si no está arrancado, el bot sigue con los
