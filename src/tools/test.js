@@ -318,8 +318,12 @@ async function main() {
     path.join(config.rootDir, 'src', 'tools', 'fixtures', 'nota-de-voz.ogg');
   if (!fs.existsSync(voiceFixture)) {
     console.log('  Se omite la prueba de voz: no hay una muestra local incluida.');
-  } else if (!(await (await import('../transcribe.js')).ffmpegAvailable())) {
-    check('Entiende las notas de voz (necesita ffmpeg)', false, 'instala ffmpeg: winget install Gyan.FFmpeg');
+  } else if (!(await (await import('../transcribe.js')).voiceAvailable())) {
+    check(
+      'Entiende las notas de voz (necesita ffmpeg o el servicio Python)',
+      false,
+      'instala ffmpeg o arranca python/server.py'
+    );
   } else {
     const ogg = fs.readFileSync(voiceFixture);
     const previousHistory = memory.findPending({ kind: 'examen', subjectKey: 'historia' })[0];

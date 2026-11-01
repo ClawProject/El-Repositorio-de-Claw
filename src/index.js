@@ -6,7 +6,7 @@ import * as media from './media.js';
 import * as ajustes from './settings.js';
 import { ping } from './ollama.js';
 import { resetTransientState, boundGroupJids } from './router.js';
-import { ffmpegAvailable, warmup as warmupVoice } from './transcribe.js';
+import { voiceEngine, warmup as warmupVoice } from './transcribe.js';
 import { avisosPendientes } from './reminders.js';
 import { resumenSemanal, tocaResumenSemanal } from './summary.js';
 import { textoNovedades, marcadorNovedades } from './changelog.js';
@@ -143,13 +143,18 @@ async function main() {
   // --- Extras: fotos y notas de voz ---
   const voiceOn = config.transcribeEnabled && config.transcribeMode !== 'nada';
   if (voiceOn) {
-    if (await ffmpegAvailable()) {
-      log.info(`Notas de voz activadas (modelo ${config.whisperModel}).`);
+    const motorVoz = await voiceEngine();
+    if (motorVoz) {
+      log.info(
+        motorVoz === 'python'
+          ? 'Notas de voz activadas con Python/faster-whisper.'
+          : `Notas de voz activadas con Whisper local (modelo ${config.whisperModel}).`
+      );
       // Lo dejamos cargando en segundo plano: la primera nota de voz ya irá rápida.
       warmupVoice().catch(() => {});
     } else {
-      log.warn('No encuentro ffmpeg, así que no podré entender las notas de voz.');
-      log.warn('Instálalo con:  winget install Gyan.FFmpeg   (y vuelve a abrir la consola)');
+      log.warn('No encuentro el servicio Python de voz ni ffmpeg: no podré entender notas de voz.');
+      log.warn('Arranca python/server.py o instala ffmpeg:  winget install Gyan.FFmpeg');
     }
   }
 

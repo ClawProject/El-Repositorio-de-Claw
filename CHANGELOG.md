@@ -30,6 +30,13 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 
 ### Añadido
 
+- **Servicio Python para voz e imágenes.** `python/server.py` (FastAPI) usa
+  faster-whisper para transcribir notas de voz y diffusers para dibujar. Node lo
+  llama por HTTP en `127.0.0.1:5050`; si no está arrancado, el bot sigue con los
+  motores antiguos (transformers.js y sd-cli). Las imágenes pasan a
+  `IMAGE_GEN_BACKEND=auto` por defecto y Whisper cambia solo a CPU si detecta
+  CUDA pero faltan `libcublas`/cuDNN. Incluye `npm run ia`, `npm run test:python`
+  y pruebas del contrato Node ↔ Python sin descargar modelos.
 - **Modo debug con acceso total.** Escribir `0912` (o el código de
   `WEB_DEBUG_CODE`) en el campo del correo de `/entrar/` entra al instante, sin
   correo ni OTP. La sesión lleva `debug: true` y desbloquea una pestaña de

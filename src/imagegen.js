@@ -8,10 +8,12 @@
 //      Y el ajuste "imagenes" está activo (que solo el dueño/admins puede poner).
 //   3. Todo sigue en local: la IA de imágenes vive en tu ordenador.
 //
-// Hay dos motores (IMAGE_GEN_BACKEND):
-//   - "cli"  (por defecto): llama a sd-cli.exe (stable-diffusion.cpp) como un
-//     proceso suelto. No hace falta tener ningún servidor abierto. Es lo que
-//     mejor funciona en un ordenador normal con poca VRAM.
+// Hay tres motores (IMAGE_GEN_BACKEND):
+//   - "auto" (por defecto): usa el servicio Python (diffusers) si está levantado
+//     y, si no, cae al motor "cli".
+//   - "python": servicio Python local (python/server.py, diffusers).
+//   - "cli": llama a sd-cli.exe (stable-diffusion.cpp) como un proceso suelto.
+//     No hace falta tener ningún servidor abierto.
 //   - "http": pide la imagen a un servidor compatible con OpenAI Images
 //     (por ejemplo sd-server de stable-diffusion.cpp).
 import fs from 'node:fs';
@@ -22,6 +24,7 @@ import { tempFilePath } from './media.js';
 import { liberarVram } from './ollama.js';
 import { log } from './logger.js';
 import { mejorarPrompt, prepararPromptImagen } from './promptmagic.js';
+import * as pythonAi from './python-ai.js';
 
 /** ¿Está encendida la generación de imágenes? */
 export function imagenesActivas() {
@@ -343,6 +346,13 @@ export async function generarImagenHttp(prompt, { timeoutMs } = {}) {
   }
 }
 
+// --------------------------------------------------------- motor "python"
+
+/** Genera con el servicio Python (diffusers). Nunca lanza. */
+export async function generarImagenPython(prompt, opciones = {}) {
+  return pythonAi.generarImagen(prompt, opciones);
+}
+
 // ----------------------------------------------------------- fachada
 
 // La tarjeta gráfica tiene 4 GB: si se lanzan DOS sd-cli a la vez se quedan sin
@@ -397,7 +407,24 @@ export async function generarImagen(prompt, opciones = {}) {
   try {
     const textoTraducido = config.imageGenEnhance ? await mejorarPrompt(texto) : texto;
     const textoFinal = prepararPromptImagen(textoTraducido);
-    const motor = String(config.imageGenBackend || 'cli').toLowerCase();
+    const motor = String(config.imageGenBackend || 'auto').toLowerCase();
+
+    if (motor === 'python' || motor === 'auto') {
+      if (await pythonAi.imagenDisponible()) {
+        // En una GPU pequeña, soltamos antes el modelo de texto de Ollama.
+        if (config.imageGenFreeVram) await liberarVram();
+        return await generarImagenPython(textoFinal, opciones);
+      }
+      if (motor === 'python') {
+        return {
+          ok: false,
+          error:
+            'el servicio Python de imágenes no está disponible. Arranca python/server.py e instala python/requirements-images.txt'
+        };
+      }
+      log.debug('Servicio Python de imágenes no disponible; uso el motor de respaldo.');
+    }
+
     if (motor === 'http') return await generarImagenHttp(textoFinal, opciones);
     return await generarImagenCli(texto, { ...opciones, promptMejorado: textoFinal });
   } finally {
