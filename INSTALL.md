@@ -368,8 +368,8 @@ brew upgrade claw
 > permite crear repositorios desde esta cuenta. Se puede transferir a
 > `ClawProject` más adelante; el comando sería `brew tap ClawProject/claw`.
 >
-> La fórmula instala el código desde una etiqueta de la rama de desarrollo
-> hasta que se fusione el servicio Python. Después se cambiará a `main`.
+> La fórmula instala la última versión estable publicada (`v1.1.0`). Al sacar una
+> versión nueva se actualiza el tap con `brew update && brew upgrade claw`.
 
 ---
 
