@@ -368,8 +368,7 @@ brew upgrade claw
 > `ClawProject` más adelante; el comando sería `brew tap ClawProject/claw`.
 >
 > La fórmula instala el código desde una etiqueta de la rama de desarrollo
-> (`v1.1.0-rc1`) hasta que se fusione el servicio Python. Después se cambiará a
-> `main`.
+> hasta que se fusione el servicio Python. Después se cambiará a `main`.
 
 ---
 
