@@ -1,13 +1,14 @@
-// Transcripcion de notas de voz con Whisper, en local.
+// Transcripcion de notas de voz, en local.
 //
-// Tuberia:  audio (ogg/opus de WhatsApp)  ->  ffmpeg  ->  PCM 16 kHz mono
-//           ->  Whisper (transformers.js / ONNX)  ->  texto
+// Camino principal: servicio Python (python/server.py) con faster-whisper.
+// Respaldo:         audio -> ffmpeg -> PCM 16 kHz -> transformers.js (ONNX).
 //
 // No sale nada a internet salvo la primera descarga del modelo.
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { config } from './config.js';
 import { log } from './logger.js';
+import * as pythonAi from './python-ai.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -29,6 +30,21 @@ export async function ffmpegAvailable() {
   } catch {
     return false;
   }
+}
+
+/**
+ * Qué motor de voz usaría ahora mismo: 'python', 'node' o null si no hay ninguno.
+ * Con Python no hace falta ffmpeg (faster-whisper decodifica el audio él solo).
+ */
+export async function voiceEngine() {
+  if (config.pythonAiEnabled && (await pythonAi.vozDisponible())) return 'python';
+  if (await ffmpegAvailable()) return 'node';
+  return null;
+}
+
+/** ¿Podemos transcribir con algún motor? */
+export async function voiceAvailable() {
+  return (await voiceEngine()) !== null;
 }
 
 /** Carga (una sola vez) el modelo de Whisper. */
@@ -121,6 +137,19 @@ function pcmToFloat32(buffer) {
  * @returns {Promise<{text:string, seconds:number, ms:number}>}
  */
 export async function transcribeFile(filePath, { localFilesOnly = false } = {}) {
+  // Primero el servicio Python (faster-whisper): no necesita ffmpeg y suele ser
+  // más rápido. Si falla y el respaldo está permitido, seguimos con Node.
+  if (config.pythonAiEnabled && (await pythonAi.vozDisponible())) {
+    try {
+      return await pythonAi.transcribir(filePath);
+    } catch (err) {
+      if (!config.pythonAiFallback) {
+        throw new TranscribeUnavailable(`El servicio Python de voz falló: ${err.message}`);
+      }
+      log.warn(`El servicio Python de voz falló (${err.message}); uso Whisper en Node.`);
+    }
+  }
+
   const t0 = Date.now();
 
   const pcm = await decodeToPcm(filePath);
@@ -149,6 +178,16 @@ export async function transcribeFile(filePath, { localFilesOnly = false } = {}) 
 
 /** Precalienta el modelo (util al arrancar para la primera nota de voz). */
 export async function warmup() {
+  if (config.pythonAiEnabled && (await pythonAi.vozDisponible())) {
+    const listo = await pythonAi.warmupVoz();
+    if (listo) {
+      log.info('Modelo de voz de Python precargado.');
+      return true;
+    }
+    log.warn('No pude precargar el modelo de voz de Python.');
+    return false;
+  }
+
   try {
     await getTranscriber();
     return true;
