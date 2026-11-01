@@ -127,6 +127,16 @@ export const config = {
   // cuanto tiempo mantiene Ollama el modelo cargado en memoria
   ollamaKeepAlive: process.env.OLLAMA_KEEP_ALIVE || '30m',
 
+  // --- Servicio Python local (voz e imágenes) ---
+  // Node sigue haciendo el resto; este servicio solo transcribe audio y dibuja.
+  // Si no está arrancado, se usan los motores antiguos (transformers.js/sd-cli).
+  pythonAiEnabled: bool(process.env.PYTHON_AI_ENABLED, true),
+  pythonAiUrl: (process.env.PYTHON_AI_URL || 'http://127.0.0.1:5050').replace(/\/+$/, ''),
+  pythonAiTimeoutMs: num(process.env.PYTHON_AI_TIMEOUT_MS, 120000),
+  pythonAiHealthTimeoutMs: num(process.env.PYTHON_AI_HEALTH_TIMEOUT_MS, 2500),
+  // Si el servicio Python falla a mitad, ¿probamos el motor antiguo?
+  pythonAiFallback: bool(process.env.PYTHON_AI_FALLBACK, true),
+
   // --- Zona horaria ---
   timezone: process.env.TZ || 'Europe/Madrid',
 
@@ -175,8 +185,9 @@ export const config = {
   // IMPORTANTE: por defecto apagada. El bot NUNCA genera imágenes por su cuenta;
   // solo cuando alguien escribe "!claw imagen ..." a mano Y el ajuste está activo.
   imageGenEnabled: bool(process.env.IMAGE_GEN_ENABLED, false),
-  // Motor: 'cli' (sd-cli.exe local, recomendado) o 'http' (servidor tipo OpenAI Images)
-  imageGenBackend: String(process.env.IMAGE_GEN_BACKEND || 'cli').toLowerCase(),
+  // Motor: 'auto' (Python si está disponible; si no, cli), 'python' (diffusers),
+  // 'cli' (sd-cli.exe local) o 'http' (servidor tipo OpenAI Images).
+  imageGenBackend: String(process.env.IMAGE_GEN_BACKEND || 'auto').toLowerCase(),
   // Rutas del motor "cli" (si son relativas, cuelgan de la carpeta del proyecto)
   imageGenBin: process.env.IMAGE_GEN_BIN || '',
   imageGenModelPath: process.env.IMAGE_GEN_MODEL_PATH || '',

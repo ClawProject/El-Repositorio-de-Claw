@@ -18,8 +18,10 @@ flowchart LR
   ROUTER --> BRAIN[Clasificador local · Ollama]
   ROUTER --> CLAW[Asistente Claw · Ollama]
   ROUTER <--> DB[(SQLite · data/picklebrain.db)]
-  BOT --> VOICE[Whisper local · notas de voz]
-  BOT --> IMG[Stable Diffusion local · imágenes opcionales]
+  BOT --> VOICE[Voz · servicio Python / Whisper Node]
+  BOT --> IMG[Imágenes · diffusers / stable-diffusion.cpp]
+  VOICE <-->|HTTP local :5050| PY[Servicio Python · faster-whisper + diffusers]
+  IMG <-->|HTTP local :5050| PY
   CLAW -. búsqueda opcional .-> DDG[DuckDuckGo]
 ```
 
@@ -39,6 +41,8 @@ código fuente no está incluido en esta carpeta.
 | `npm run doctor` | Diagnósticos de Ollama, modelos, base de datos y componentes disponibles. |
 | `npm test` | Suite de integración del bot. |
 | `npm run test:web` | Prueba autenticación por email, autorización API, CORS y sesiones temporales. |
+| `npm run test:python` | Contrato entre Node y el servicio Python, con un servidor HTTP falso (sin modelos). |
+| `npm run ia` | Arranca `python/server.py` (voz e imágenes). En Linux también `npm run ia:linux`. |
 | `npm run smtp` | Comprueba las credenciales SMTP de AsterMail; con un correo como argumento envía un código de prueba. |
 
 El servidor HTTP escucha en `127.0.0.1:3000`. Si `NGROK_ENABLED=true`, inicia
@@ -72,14 +76,30 @@ actualiza el apunte anterior.
 
 ## Voz, archivos e imágenes
 
-- **Notas de voz:** `src/transcribe.js` usa ffmpeg para convertir el audio y
-  Whisper local para transcribirlo. El modelo puede descargarse la primera vez.
+- **Servicio Python (opcional):** `python/server.py` es un servicio FastAPI que
+  escucha solo en `127.0.0.1:5050`. Node lo llama por HTTP con
+  `src/python-ai.js`. Hace dos cosas: transcribir audio con faster-whisper y
+  generar imágenes con diffusers. Si no está arrancado o falla, el bot sigue con
+  los motores antiguos; se controla con `PYTHON_AI_ENABLED` y
+  `PYTHON_AI_FALLBACK`.
+- **Notas de voz:** `src/transcribe.js` pide la transcripción al servicio Python.
+  Si no está disponible, usa ffmpeg para convertir el audio y Whisper local
+  (transformers.js) para transcribirlo. El modelo puede descargarse la primera
+  vez. Whisper cambia solo a CPU si CUDA está presente pero faltan
+  `libcublas`/cuDNN.
 - **Fotos y documentos:** `src/media.js` guarda archivos pertinentes en
   `data/media/`, comprueba el espacio disponible y aplica límites de tamaño y
   caducidad. Los documentos dependen de `DOCS_ENABLED`.
-- **Generación de imágenes:** `src/imagegen.js` puede invocar Stable
-  Diffusion local desde `sdserver/`. Está desactivada de fábrica y requiere
-  habilitarla expresamente.
+- **Generación de imágenes:** `src/imagegen.js` elige motor según
+  `IMAGE_GEN_BACKEND`:
+  - `auto` (por defecto): Python/diffusers si está disponible; si no, `cli`.
+  - `python`: servicio Python con el modelo de `PYTHON_IMAGE_MODEL`.
+  - `cli`: Stable Diffusion local desde `sdserver/`.
+  - `http`: servidor compatible con OpenAI Images.
+
+  Está desactivada de fábrica y requiere habilitarla expresamente. Con una GPU
+  pequeña, `IMAGE_GEN_FREE_VRAM=true` y `PYTHON_IMAGE_UNLOAD=true` liberan la
+  VRAM entre Ollama y el dibujo.
 
 ## Web, API y Android
 
@@ -196,4 +216,6 @@ todas las opciones, consulta `.env.example`.
 | `src/config.js` | Configuración desde `.env` y valores predeterminados. |
 | `src/dates.js`, `src/subjects.js`, `src/signals.js` | Fechas, asignaturas y detección rápida basada en texto. |
 | `src/media.js`, `src/transcribe.js`, `src/imagegen.js` | Gestión de archivos, voz e imágenes. |
-| `src/tools/` | Simulador, diagnósticos y pruebas; `web-auth-test.js` cubre el acceso institucional. |
+| `src/python-ai.js` | Cliente del servicio Python local (salud, transcripción e imágenes). |
+| `python/server.py` | Servicio FastAPI de voz (faster-whisper) e imágenes (diffusers). |
+| `src/tools/` | Simulador, diagnósticos y pruebas; `web-auth-test.js` cubre el acceso institucional y `python-ai-test.js` el contrato con Python. |

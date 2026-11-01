@@ -150,11 +150,19 @@ async function main() {
     summary();
     return;
   }
-  const { ffmpegAvailable, warmup, transcribeFile } = await import('../transcribe.js');
-  const hayFfmpeg = await ffmpegAvailable();
-  check('ffmpeg', hayFfmpeg, hayFfmpeg ? 'instalado' : 'instalalo con:  winget install Gyan.FFmpeg');
-  if (hayFfmpeg) {
-    console.log(`         Cargando el modelo de voz "${config.whisperModel}" (la primera vez se descarga)...`);
+  const { voiceEngine, warmup, transcribeFile } = await import('../transcribe.js');
+  const motorVoz = await voiceEngine();
+  check(
+    'Motor de voz',
+    Boolean(motorVoz),
+    motorVoz === 'python'
+      ? 'servicio Python (faster-whisper)'
+      : motorVoz === 'node'
+        ? `Whisper local (${config.whisperModel})`
+        : 'arranca python/server.py o instala ffmpeg'
+  );
+  if (motorVoz) {
+    console.log('         Cargando el modelo de voz (la primera vez se descarga)...');
     const t1 = Date.now();
     const listo = await warmup();
     check('Modelo de voz', listo, listo ? `listo en ${((Date.now() - t1) / 1000).toFixed(1)} s` : 'no se pudo cargar');

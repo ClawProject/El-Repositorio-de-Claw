@@ -39,7 +39,7 @@ Detalles útiles:
 
 ### Notas de voz y fotos
 
-- **Voz:** ffmpeg convierte el audio, Whisper lo transcribe y el texto sigue el camino normal. También reconoce *"Clau"* y *"Clao"* como el trigger. El audio nunca sale de tu PC.
+- **Voz:** un servicio Python local transcribe el audio con faster-whisper y el texto sigue el camino normal. Si el servicio no está arrancado, Claw usa el motor antiguo (ffmpeg + Whisper en Node). También reconoce *"Clau"* y *"Clao"* como el trigger. El audio nunca sale de tu PC.
 - **Fotos:** solo se guardan si van de deberes/exámenes (hay pregunta abierta, el pie lo menciona o se enlazan a un examen). Los memes se ignoran.
 - `TRANSCRIBE_MODE=contexto` transcribe para detectar "Claw" pero descarta el resto si no hay pregunta escolar abierta; `nada` desactiva la voz.
 
@@ -56,7 +56,11 @@ Detalles útiles:
 | Ollama | `winget install Ollama.Ollama` |
 | Modelo principal | `ollama pull qwen3:4b` |
 | Modelo de respaldo | `ollama pull qwen2.5:3b` |
-| ffmpeg (solo para voz) | `winget install Gyan.FFmpeg` |
+| Python 3.11/3.12 (opcional, recomendado) | `sudo apt install python3.12 python3.12-venv` · Windows: [python.org](https://www.python.org/downloads/) |
+| ffmpeg (solo si no usas el servicio Python) | `winget install Gyan.FFmpeg` |
+
+> El servicio Python es opcional: si no lo arrancas, Claw sigue funcionando con
+> los motores antiguos. Solo aporta velocidad y mejores modelos de voz/imagen.
 
 > Si PowerShell protesta por `npm.ps1`, usa `npm.cmd` en vez de `npm`. Es una restricción de Windows, no un fallo del proyecto.
 
@@ -67,6 +71,37 @@ npm install
 ```
 
 O haz doble clic en **`arrancar.bat`**: instala lo que falte, crea el `.env` y arranca el bot.
+
+#### Servicio Python (opcional, recomendado para voz e imágenes)
+
+Desde la raíz del proyecto:
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r python/requirements.txt        # servidor + voz
+pip install -r python/requirements-images.txt # imágenes (torch + diffusers)
+```
+
+Arranca el servicio en **otra terminal**, con el bot:
+
+```bash
+.venv/bin/python python/server.py  # Windows: .venv\Scripts\python.exe python\server.py
+```
+
+Comprueba que responde:
+
+```bash
+curl http://127.0.0.1:5050/health
+```
+
+Si no tienes GPU NVIDIA, instala torch para CPU antes de las imágenes:
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+```
+
+Detalles en [`python/README.md`](python/README.md).
 
 ### 3. Comprueba que todo va bien
 
@@ -88,7 +123,7 @@ Claw cuanto son 2+2
 
 Extras del simulador: `/imagen <ruta> <pie>`, `/audio [ruta]`, `/ver`, `/limpiar`.
 
-Otras pruebas: `npm run test:ai`, `npm run test:subjects` (sin Ollama) y `npm run test:voice` (necesita una muestra local; se omite si no hay, y se puede indicar con `WHISPER_TEST_AUDIO`).
+Otras pruebas: `npm run test:ai`, `npm run test:subjects` (sin Ollama), `npm run test:python` (contrato Node ↔ servicio Python, sin modelos) y `npm run test:voice` (necesita una muestra local; se omite si no hay, y se puede indicar con `WHISPER_TEST_AUDIO`).
 
 ### 4. Conéctalo a WhatsApp
 
@@ -274,9 +309,34 @@ Copia `.env.example` a `.env`. Casi todo se cambia en caliente con `!claw ajuste
 | `SHOW_TRANSCRIPTIONS` | `false` | muestra lo entendido en el grupo |
 | `FFMPEG_PATH` | `ffmpeg` | ruta a ffmpeg si no está en el PATH |
 
+#### Servicio Python (voz e imágenes)
+
+| Variable | Por defecto | Qué hace |
+|---|---|---|
+| `PYTHON_AI_ENABLED` | `true` | intentar usar el servicio Python |
+| `PYTHON_AI_URL` | `http://127.0.0.1:5050` | dónde escucha el servicio |
+| `PYTHON_AI_TIMEOUT_MS` | `120000` | tiempo máximo por petición |
+| `PYTHON_AI_HEALTH_TIMEOUT_MS` | `2500` | tiempo máximo del chequeo de salud |
+| `PYTHON_AI_FALLBACK` | `true` | si falla a mitad, probar el motor antiguo |
+| `PYTHON_WHISPER_MODEL` | `base` | `tiny`, `base`, `small`, `medium`, `large-v3` |
+| `PYTHON_WHISPER_DEVICE` | `auto` | `auto`, `cuda`, `cpu` |
+| `PYTHON_WHISPER_COMPUTE` | vacío | `int8`, `float16`, `int8_float16` |
+| `PYTHON_WHISPER_LANGUAGE` | `es` | idioma de transcripción |
+| `PYTHON_IMAGE_MODEL` | `stable-diffusion-v1-5/stable-diffusion-v1-5` | modelo de Hugging Face o ruta local |
+| `PYTHON_IMAGE_DEVICE` | `auto` | `auto`, `cuda`, `cpu` |
+| `PYTHON_IMAGE_UNLOAD` | `true` | libera la GPU tras cada imagen (recomendado con 4 GB) |
+| `PYTHON_IMAGE_MAX_SIDE` | `1024` | lado máximo permitido |
+| `PYTHON_MODELS_DIR` | `data/models` | caché de modelos |
+
+Con una GPU de 4 GB deja `PYTHON_IMAGE_UNLOAD=true`: así Ollama recupera la VRAM
+cuando el servicio termina de dibujar. Whisper cambia solo a CPU si detecta CUDA
+pero faltan `libcublas`/cuDNN.
+
 ### Imágenes (experimental)
 
-Todas empiezan por `IMAGE_GEN_`: `ENABLED` (`false`), `BACKEND` (`cli`), `BIN`, `MODEL_PATH`, `STEPS` (`20`), `WIDTH`/`HEIGHT` (`512`), `NEGATIVE`, `ENHANCE` (`true`), `SEED` (`-1`), `CFG` (`7`), `SAMPLER`, `SCHEDULER`, `FREE_VRAM` (`true`), `TIMEOUT` (`300`) y, solo para el motor `http`, `ENDPOINT`, `MODEL` y `API_KEY`. Valores completos en `.env.example`.
+Todas empiezan por `IMAGE_GEN_`: `ENABLED` (`false`), `BACKEND` (`auto`), `BIN`, `MODEL_PATH`, `STEPS` (`20`), `WIDTH`/`HEIGHT` (`512`), `NEGATIVE`, `ENHANCE` (`true`), `SEED` (`-1`), `CFG` (`7`), `SAMPLER`, `SCHEDULER`, `FREE_VRAM` (`true`), `TIMEOUT` (`300`) y, solo para el motor `http`, `ENDPOINT`, `MODEL` y `API_KEY`. Valores completos en `.env.example`.
+
+`IMAGE_GEN_BACKEND` acepta `auto` (Python si está disponible; si no, `cli`), `python` (diffusers), `cli` (stable-diffusion.cpp) o `http` (servidor compatible con OpenAI Images).
 
 > **Qwen3** puede tardar más en la primera respuesta. Si no termina, Claw prueba el respaldo para ese mensaje sin cambiar el modelo guardado. Para respuestas más rápidas usa `!claw ia fallback`.
 
@@ -284,12 +344,22 @@ Todas empiezan por `IMAGE_GEN_`: `ENABLED` (`false`), `BACKEND` (`cli`), `BIN`, 
 
 ## IA de imágenes (experimental, local)
 
-Dibuja con **stable-diffusion.cpp** + Stable Diffusion 1.5, todo en tu PC.
+Dibuja en tu PC, sin servicios en la nube. Hay dos caminos:
+
+- **Python + diffusers** (recomendado si tienes el servicio arrancado): más
+  flexible y usa el modelo de Hugging Face que elijas con `PYTHON_IMAGE_MODEL`.
+- **stable-diffusion.cpp** + Stable Diffusion 1.5 (motor `cli`): no necesita
+  Python ni servidores abiertos, y funciona con poca VRAM.
+
+Con `IMAGE_GEN_BACKEND=auto` Claw usa Python si está disponible y, si no, cae al
+motor `cli` sin que tengas que tocar nada.
 
 - **Apagada de fábrica.** Para encenderla: `!claw ajustes imagenes si`.
 - **Nunca** genera nada por su cuenta: solo con `!claw imagen <qué>` escrito a mano.
-- Una a la vez; mientras dibuja marca "escribiendo…". Si se pasa de tiempo, mata el proceso.
-- Si falta `sdserver\` o el modelo, avisa y el resto del bot sigue igual.
+- Una a la vez; mientras dibuja marca "escribiendo…". Si se pasa de tiempo, corta.
+- Si falta el motor o el modelo, avisa y el resto del bot sigue igual.
+
+Para el motor `cli`:
 
 ```
 sdserver\
@@ -297,7 +367,7 @@ sdserver\
 └─ models\v1-5-pruned_Q4_K.gguf
 ```
 
-El motor `cli` llama a `sd-cli.exe` en cada petición (sin servidores abiertos). Para un servidor compatible con OpenAI Images: `!claw ajustes imagen_motor http` y apunta `IMAGE_GEN_ENDPOINT`.
+El motor `cli` llama a `sd-cli.exe` en cada petición (sin servidores abiertos). Para un servidor compatible con OpenAI Images: `!claw ajustes imagen_motor http` y apunta `IMAGE_GEN_ENDPOINT`. Para forzar diffusers: `IMAGE_GEN_BACKEND=python`.
 
 Con una GTX 1650 (4 GB): 8 pasos ≈ 35 s (algo borroso), 20 pasos ≈ 65 s (por defecto). Se ajusta con `!claw ajustes imagen_pasos <n>`. En 4 GB el modelo de texto y el de imágenes no caben juntos, así que antes de dibujar Claw suelta el de Ollama (se recarga solo después). Con una gráfica grande, `IMAGE_GEN_FREE_VRAM=false`.
 
@@ -311,7 +381,8 @@ Claw/
 ├─ .env.example        plantilla de configuración
 ├─ docs/               portada, /entrar/ y arquitectura.md
 ├─ data/               se crea sola (auth/, media/, tmp/, picklebrain.db)
-├─ sdserver/           IA de imágenes (opcional)
+├─ sdserver/           IA de imágenes con stable-diffusion.cpp (opcional)
+├─ python/             servicio local de voz (faster-whisper) e imágenes (diffusers)
 └─ src/
    ├─ index.js         arranque completo (WhatsApp + servidor)
    ├─ web.js           solo web/API
@@ -324,7 +395,8 @@ Claw/
    ├─ search.js        búsqueda DuckDuckGo
    ├─ memory.js        base de datos SQLite
    ├─ media.js         fotos, disco y limpieza
-   ├─ transcribe.js    voz con Whisper
+   ├─ transcribe.js    voz: servicio Python o Whisper en Node
+   ├─ python-ai.js     cliente HTTP del servicio Python
    ├─ replies.js · dates.js · subjects.js · ollama.js
    ├─ imagegen.js · presence.js · changelog.js · config.js
    └─ tools/           doctor, simulador y pruebas
@@ -348,9 +420,9 @@ Claw/
 
 **"Ollama no responde".** Abre la aplicación Ollama y comprueba con `ollama list` que el modelo está descargado.
 
-**Las notas de voz no funcionan.** Instala ffmpeg, **reabre la consola** (para refrescar el PATH) y mira `npm run doctor`.
+**Las notas de voz no funcionan.** Arranca `python/server.py` y mira `npm run doctor`. Si no usas el servicio Python, instala ffmpeg, **reabre la consola** (para refrescar el PATH) y vuelve a mirar `npm run doctor`.
 
-**La primera nota de voz tarda mucho.** Whisper descarga el modelo (~75 MB) la primera vez, hasta medio minuto. Si va lento, usa `WHISPER_MODEL=Xenova/whisper-tiny`.
+**La primera nota de voz tarda mucho.** La primera vez se descarga el modelo (~75 MB en Node, ~150 MB con faster-whisper). Después, con el servicio Python, una nota de 10 s tarda alrededor de 1 s en CPU. Si va lento, usa `PYTHON_WHISPER_MODEL=tiny` o `WHISPER_MODEL=Xenova/whisper-tiny`.
 
 ---
 
