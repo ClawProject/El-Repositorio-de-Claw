@@ -37,16 +37,22 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
+ROOT = Path(__file__).resolve().parent.parent
+
 try:
     from dotenv import load_dotenv
 
-    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+    load_dotenv(ROOT / ".env")
+    # Con Homebrew el .env vive en la carpeta de datos, no junto al código.
+    _data_dir = os.getenv("PICKLEBRAIN_DATA_DIR", "").strip()
+    if _data_dir:
+        _data_path = Path(_data_dir).expanduser()
+        if not _data_path.is_absolute():
+            _data_path = ROOT / _data_path
+        load_dotenv(_data_path / ".env")
 except Exception:
     # python-dotenv es opcional: si no está, se usan las variables del sistema.
     pass
-
-
-ROOT = Path(__file__).resolve().parent.parent
 
 
 def _bool(name: str, default: bool) -> bool:

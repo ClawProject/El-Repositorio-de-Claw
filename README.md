@@ -47,6 +47,9 @@ Detalles útiles:
 
 ## Instalación
 
+> Guía detallada, con Windows, Linux, macOS y Homebrew:
+> **[INSTALL.md](INSTALL.md)**.
+
 ### 1. Requisitos
 
 | Cosa | Instalación |
