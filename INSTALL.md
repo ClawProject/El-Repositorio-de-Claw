@@ -368,8 +368,8 @@ brew upgrade claw
 > permite crear repositorios desde esta cuenta. Se puede transferir a
 > `ClawProject` más adelante; el comando sería `brew tap ClawProject/claw`.
 >
-> La fórmula instala la última versión estable publicada (`v1.1.0`). Al sacar una
-> versión nueva se actualiza el tap con `brew update && brew upgrade claw`.
+> La fórmula instala la última versión estable publicada. Al sacar una versión
+> nueva se actualiza el tap con `brew update && brew upgrade claw`.
 
 ---
 

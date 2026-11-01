@@ -2,6 +2,8 @@
 
 Bot de WhatsApp con **IA local**
 
+> **Instalación:** [INSTALL.md](INSTALL.md) — Linux, macOS y Windows, con `git clone`, servicio Python y Homebrew.
+>
 > Documentación técnica: [arquitectura, API y seguridad](docs/arquitectura.md).
 
 ## Qué hace
