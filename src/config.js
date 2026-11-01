@@ -5,6 +5,12 @@ import { fileURLToPath } from 'node:url';
 
 export const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+/** Carpeta de datos: por defecto `data/`, o `PICKLEBRAIN_DATA_DIR` si está puesta. */
+function resolverDataDir() {
+  const raw = String(process.env.PICKLEBRAIN_DATA_DIR || '').trim();
+  return raw ? path.resolve(rootDir, raw) : path.join(rootDir, 'data');
+}
+
 function loadEnvFile(file) {
   if (!fs.existsSync(file)) return;
   const text = fs.readFileSync(file, 'utf8');
@@ -26,6 +32,10 @@ function loadEnvFile(file) {
 }
 
 loadEnvFile(path.join(rootDir, '.env'));
+
+// La carpeta de datos también puede tener su propio .env (útil con Homebrew).
+export const dataDir = resolverDataDir();
+loadEnvFile(path.join(dataDir, '.env'));
 
 function bool(value, fallback) {
   if (value === undefined || value === '') return fallback;
@@ -79,7 +89,7 @@ export function normalizarJid(value, dominio = 's.whatsapp.net') {
 /** El numero de la propia cuenta del bot, sacado de la sesion guardada. */
 export function jidDeLaCuenta() {
   try {
-    const texto = fs.readFileSync(path.join(rootDir, 'data', 'auth', 'creds.json'), 'utf8');
+    const texto = fs.readFileSync(path.join(dataDir, 'auth', 'creds.json'), 'utf8');
     return normalizarJid(JSON.parse(texto)?.me?.id);
   } catch {
     return null;
@@ -91,7 +101,7 @@ export function jidDeLaCuenta() {
  *  que hay que conocerlo para reconocerte a ti mismo. */
 export function jidLidDeLaCuenta() {
   try {
-    const texto = fs.readFileSync(path.join(rootDir, 'data', 'auth', 'creds.json'), 'utf8');
+    const texto = fs.readFileSync(path.join(dataDir, 'auth', 'creds.json'), 'utf8');
     return normalizarJid(JSON.parse(texto)?.me?.lid, 'lid');
   } catch {
     return null;
@@ -108,9 +118,9 @@ export function listaDeJids(value) {
 
 export const config = {
   rootDir,
-  dataDir: path.join(rootDir, 'data'),
-  authDir: path.join(rootDir, 'data', 'auth'),
-  dbPath: process.env.PICKLEBRAIN_DB || path.join(rootDir, 'data', 'picklebrain.db'),
+  dataDir,
+  authDir: path.join(dataDir, 'auth'),
+  dbPath: process.env.PICKLEBRAIN_DB || path.join(dataDir, 'picklebrain.db'),
 
   // --- IA local ---
   ollamaUrl: (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/+$/, ''),
@@ -302,7 +312,7 @@ export const config = {
 
   // --- Imagenes y archivos ---
   mediaEnabled: bool(process.env.MEDIA_ENABLED, true),
-  mediaDir: process.env.MEDIA_DIR || path.join(rootDir, 'data', 'media'),
+  mediaDir: process.env.MEDIA_DIR || path.join(dataDir, 'media'),
   // 'contexto' = solo si tienen que ver con deberes/examenes | 'todo' | 'nada'
   mediaMode: (process.env.MEDIA_MODE || 'contexto').trim().toLowerCase(),
   // no descargar archivos mas grandes que esto (MB)
