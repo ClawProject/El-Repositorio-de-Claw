@@ -29,7 +29,7 @@ function runCleanup(reason) {
   }
 }
 
-/** Recordatorios de exámenes: avisa la tarde antes y la mañana del examen. */
+/** Recordatorios de exámenes y deberes: avisa la tarde antes y la mañana del día. */
 async function runAvisos(reason = 'periódica') {
   try {
     if (config.maintenance) return; // en mantenimiento no molestamos
@@ -39,8 +39,10 @@ async function runAvisos(reason = 'periódica') {
     let enviados = 0;
     for (const grupo of grupos) {
       const exams = memory.findPending({ kind: 'examen', chatJid: grupo });
+      const deberes = memory.findPending({ kind: 'deberes', chatJid: grupo });
       const pendientes = avisosPendientes({
         exams,
+        deberes,
         yaEnviado: (clave) => Boolean(memory.getSetting(clave))
       });
       for (const aviso of pendientes) {

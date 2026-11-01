@@ -49,6 +49,7 @@ export function cuandoConecte(cb) {
  */
 function closeSocket() {
   presence.usarEnvio(null); // deja de mandar "escribiendo…" (y para los latidos)
+  presence.usarEnvioTexto(null); // y de mandar avisos sueltos
   if (!sock) return;
   try {
     sock.ev?.removeAllListeners?.();
@@ -462,8 +463,9 @@ export async function start() {
   sock.ev.on('creds.update', saveCreds);
   sock.ev.on('messages.upsert', onMessagesUpsert);
 
-  // Le decimos al módulo de avisos cómo mandar el "escribiendo…".
+  // Le decimos al módulo de avisos cómo mandar el "escribiendo…" y los avisos sueltos.
   presence.usarEnvio((jid, estado) => sock?.sendPresenceUpdate?.(estado, jid));
+  presence.usarEnvioTexto((jid, texto) => sendReplies(jid, [texto]));
 
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, qr } = update;
