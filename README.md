@@ -1,6 +1,6 @@
 # 🪝 Claw
 
-Bot de WhatsApp con **IA local** para el grupo de un instituto.
+Bot de WhatsApp con **IA local**
 
 > Documentación técnica: [arquitectura, API y seguridad](docs/arquitectura.md).
 
