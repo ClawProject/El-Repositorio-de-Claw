@@ -110,7 +110,15 @@ function startNgrok(server) {
       { windowsHide: true, stdio: 'ignore' }
     );
     tunnel.once('spawn', () => log.info(`Túnel ngrok activo en https://${config.ngrokDomain} → puerto ${PORT}.`));
-    tunnel.once('error', (err) => log.error(`No se pudo iniciar ngrok: ${err.message}`));
+    tunnel.once('error', (err) => {
+      if (err.code === 'ENOENT') {
+        // Sin el binario no tiene sentido reintentar cada 5 s: avisa una vez.
+        stopping = true;
+        log.warn('No se encontró ngrok; el túnel público queda desactivado. Instálalo o pon NGROK_ENABLED=false.');
+        return;
+      }
+      log.error(`No se pudo iniciar ngrok: ${err.message}`);
+    });
     tunnel.once('close', (code) => {
       if (stopping) return;
       log.warn(`ngrok terminó${code === null ? '' : ` con código ${code}`}; reintento en 5 segundos.`);

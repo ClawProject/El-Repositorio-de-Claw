@@ -244,6 +244,8 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
   del túnel como origen y el servidor lo rechazaba con un 403. Ahora los dominios
   de ngrok se aceptan automáticamente y la propia web rellena la dirección del
   servidor con la del túnel, sin que el estudiante tenga que escribirla.
+- **ngrok sin instalar ya no llena el registro.** Si falta el binario, Claw avisa
+  una sola vez y desactiva el túnel en vez de reintentar cada 5 segundos.
 
 ---
 
