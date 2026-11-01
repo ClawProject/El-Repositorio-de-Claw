@@ -324,6 +324,7 @@ Hay un tap con una fórmula para instalar los comandos `claw` y `claw-ia`:
 
 ```bash
 brew tap Uyruw3/claw
+brew trust Uyruw3/claw   # Homebrew 7 y posteriores
 brew install claw
 ```
 
