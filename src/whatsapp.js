@@ -3,12 +3,11 @@ import fs from 'node:fs';
 import { config } from './config.js';
 import { log } from './logger.js';
 import * as memory from './memory.js';
-import { sameGroupName } from './groups.js';
 import { welcomeText } from './replies.js';
 import * as ajustes from './settings.js';
 import * as admins from './admins.js';
 import * as presence from './presence.js';
-import { handleMessage, rememberBotMessage, boundGroups, gruposFijos, nombreDeGrupoConfigurado } from './router.js';
+import { handleMessage, rememberBotMessage, boundGroups, gruposFijos } from './router.js';
 
 let baileys = null;
 let sock = null;
@@ -194,26 +193,15 @@ async function groupName(jid) {
   }
 }
 
-/** ¿A qué grupo le mando la bienvenida? Los ya asignados; si no, los que se llamen como en el .env. */
+/** ¿A qué grupo le mando la bienvenida? A los ya asignados o a los fijados por JID. */
 async function resolveWelcomeTargets() {
   const asignados = boundGroups();
   if (asignados.length) {
-    return asignados.map((g) => ({ jid: g.jid, nombre: g.name || '' }));
+    return asignados.map((g) => ({ jid: g.jid, nombre: '' }));
   }
   const fijos = gruposFijos();
   if (fijos.length) return fijos.map((jid) => ({ jid, nombre: '' }));
-  const nombres = config.groupNames?.length ? config.groupNames : config.groupName ? [config.groupName] : [];
-  if (!nombres.length) return null;
-  try {
-    const todos = await sock.groupFetchAllParticipating();
-    const encontrados = Object.values(todos || {}).filter((g) =>
-      nombres.some((n) => sameGroupName(g.subject, n))
-    );
-    return encontrados.length ? encontrados.map((g) => ({ jid: g.id, nombre: g.subject })) : null;
-  } catch (err) {
-    log.debug(`No pude mirar los grupos: ${err.message}`);
-    return null;
-  }
+  return null;
 }
 
 /** JIDs de todos los participantes de un grupo (para mencionar a todo el mundo). */
@@ -235,11 +223,8 @@ export async function sendWelcome({ force = false } = {}) {
 
   const yaSaludado = (jid) => Boolean(memory.getSetting(`welcome_sent:${jid}`));
 
-  // Recien conectado, la lista de grupos puede tardar un momento en estar lista.
-  const porNombre = !boundGroups().length && nombreDeGrupoConfigurado?.length !== undefined;
-  const nombres = config.groupNames?.length ? config.groupNames : config.groupName ? [config.groupName] : [];
-  const esperandoPorNombre = !boundGroups().length && !gruposFijos().length && nombres.length > 0;
-  const intentos = esperandoPorNombre ? 5 : 1;
+  // Sin grupos asignados no hay a quién presentarse: se hace al vincularse.
+  const intentos = 1;
   for (let i = 0; i < intentos; i++) {
     const destinos = await resolveWelcomeTargets();
     if (destinos?.length) {
@@ -477,9 +462,7 @@ export async function start() {
       log.info(`Conectado a WhatsApp como ${sock.user?.id || 'desconocido'}`);
       const bound = config.groupJid || null;
       if (bound) log.info(`Grupo fijado por configuracion: ${bound}`);
-      else if (config.groupName)
-        log.info(`Mirando por el grupo "${config.groupName}": me vincularé solo a él.`);
-      else log.info('Sin grupo vinculado todavia. Escribe "!pickle aqui" en el grupo del instituto.');
+      else log.info('Sin grupo vinculado todavia. Escribe "!claw aqui" en el grupo del instituto.');
 
       // Avisos que esperaban a que hubiera conexión (novedades, recordatorios…).
       const pendientes = alConectar.splice(0, alConectar.length);

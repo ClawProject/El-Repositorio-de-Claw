@@ -132,10 +132,6 @@ async function main() {
     log.info(`Grupos ya asignados: ${asignados.join(', ')}`);
   } else if (config.groupJids?.length) {
     log.info(`Grupos fijados por el .env: ${config.groupJids.join(', ')}`);
-  } else if (config.groupNames?.length) {
-    log.info(`Me vincularé solo a los grupos llamados: ${config.groupNames.join(' / ')} (en cuanto hable alguien en alguno).`);
-  } else if (config.groupName) {
-    log.info(`Me vincularé solo al grupo llamado "${config.groupName}" (en cuanto hable alguien en él).`);
   } else {
     log.info('Sin grupo asignado. Escribe "!claw aqui" dentro del grupo del instituto.');
   }

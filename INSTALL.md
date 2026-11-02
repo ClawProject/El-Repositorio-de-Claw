@@ -154,10 +154,12 @@ Lo mínimo para empezar:
 ```dotenv
 OLLAMA_MODEL=qwen3:4b
 OLLAMA_MODEL_BRAIN=qwen2.5:3b
-WHATSAPP_GROUP_NAME=Nombre exacto del grupo
+# Identificador del grupo (o escribe "!claw aqui" dentro del grupo)
+WHATSAPP_GROUP_JID=120363000000000000@g.us
 ```
 
-- El grupo también se puede fijar después con `!claw aqui` desde WhatsApp.
+- El grupo se puede vincular después con `!claw aqui` desde WhatsApp; solo se
+  guarda el identificador, nunca el nombre.
 - Si usas `PICKLEBRAIN_DATA_DIR`, el `.env` puede vivir dentro de esa carpeta de
   datos.
 - Casi todo se puede cambiar en caliente con `!claw ajustes`; reinicia tras
@@ -400,8 +402,8 @@ Abre la aplicación Ollama o ejecuta `ollama serve`. Comprueba
 `curl http://127.0.0.1:11434/api/tags`.
 
 **El bot no dice nada en el grupo.**
-1. Comprueba el nombre exacto en `WHATSAPP_GROUP_NAME` o escribe `!claw aqui`
-   dentro del grupo.
+1. Comprueba que está vinculado: escribe `!claw aqui` dentro del grupo o fija
+   `WHATSAPP_GROUP_JID`.
 2. Escribe `!claw` para ver el estado.
 3. Arranca con `LOG_LEVEL=debug` para ver por qué descarta cada mensaje.
 

@@ -7,7 +7,6 @@
 // a la vez con la misma sesión se pelean y WhatsApp cierra una de las dos.
 import { config } from '../config.js';
 import * as memory from '../memory.js';
-import { sameGroupName } from '../groups.js';
 import { welcomeText } from '../replies.js';
 
 const args = process.argv.slice(2);
@@ -37,25 +36,20 @@ function ok(msg) {
   console.log(`  ${msg}`);
 }
 
-/** ¿A qué grupo lo mando? Primero por identificador; si no, por nombre. */
-async function resolverGrupo(sock) {
+/**
+ * ¿A qué grupo lo mando? Solo por identificador: el del .env o el que guardó
+ * el bot al vincularse con "!claw aqui". El nombre no se usa para elegir grupo.
+ */
+async function resolverGrupo() {
   try {
     await memory.init(config.dbPath);
   } catch {
     /* si no hay base de datos, tiramos del .env */
   }
 
-  const jidFijo = config.groupJid || memory.getSetting('group_jid');
-  const nombreEnBase = memory.getSetting('group_name') || '';
-  if (jidFijo) return { jid: jidFijo, nombre: nombreEnBase, como: 'identificador guardado' };
-
-  if (!config.groupName) return null;
-
-  const todos = await sock.groupFetchAllParticipating();
-  const grupos = Object.values(todos || {});
-  const encontrado = grupos.find((g) => sameGroupName(g.subject, config.groupName));
-  if (!encontrado) return { jid: null, nombre: config.groupName, como: 'nombre', grupos };
-  return { jid: encontrado.id, nombre: encontrado.subject, como: 'nombre' };
+  const jidFijo = config.groupJid || (memory.getSetting('group_jid') || null);
+  if (!jidFijo) return null;
+  return { jid: jidFijo, nombre: '', como: 'identificador guardado' };
 }
 
 async function main() {
@@ -130,14 +124,14 @@ async function main() {
 
   ok(`Conectado como ${sock.user?.id || 'desconocido'}`);
 
-  const destino = await resolverGrupo(sock);
+  const destino = await resolverGrupo();
 
   if (listar) {
     const todos = await sock.groupFetchAllParticipating();
     const grupos = Object.values(todos || {}).sort((a, b) => String(a.subject).localeCompare(String(b.subject)));
     console.log(`\n  Grupos en los que estás (${grupos.length}):\n`);
     for (const g of grupos) {
-      const marca = sameGroupName(g.subject, config.groupName) ? ' ← este es el del .env' : '';
+      const marca = destino && g.id === destino.jid ? ' ← este es el asignado' : '';
       console.log(`    ${g.subject}\n      ${g.id}${marca}`);
     }
     console.log('');
@@ -146,21 +140,16 @@ async function main() {
   }
 
   if (!destino) {
-    bail('No sé a qué grupo mandarlo. Pon WHATSAPP_GROUP_NAME en el .env o lista los grupos con --listar.');
-    sock.end();
-    return;
-  }
-
-  if (!destino.jid) {
     bail(
-      `No encuentro ningún grupo que se llame "${config.groupName}". ` +
-        'Mira cómo se llaman de verdad con:  npm run enviar -- --listar'
+      'No sé a qué grupo mandarlo: no hay ninguno asignado.\n' +
+        '      Escribe "!claw aqui" dentro del grupo, o fija WHATSAPP_GROUP_JID.\n' +
+        '      Para ver los identificadores:  npm run enviar -- --listar'
     );
     sock.end();
     return;
   }
 
-  ok(`Grupo: ${destino.nombre || destino.jid}  ${destino.nombre && destino.jid !== destino.nombre ? `(${destino.jid})` : ''}`);
+  ok(`Grupo: ${destino.jid}`);
   ok(`Encontrado por: ${destino.como}`);
 
   const payload = { text: texto };

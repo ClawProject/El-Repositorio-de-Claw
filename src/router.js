@@ -19,7 +19,6 @@ import * as admins from './admins.js';
 import { resumenDeDias } from './summary.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import { sameGroupName } from './groups.js';
 import { contarPalabrotas } from './swears.js';
 import { transcribeFile } from './transcribe.js';
 import { clawAnswer, clawGreeting } from './claw.js';
@@ -84,8 +83,6 @@ function clawAllowed(chatJid) {
 
 // ---------------------------------------------------------------- vinculacion
 
-export { sameGroupName };
-
 /**
  * Grupos a los que está asignado el bot.
  *  - Si el .env fija grupos (WHATSAPP_GROUP_JID), esos son los únicos.
@@ -93,7 +90,7 @@ export { sameGroupName };
  */
 export function boundGroups() {
   const fijos = (config.groupJids || []).filter(Boolean);
-  if (fijos.length) return fijos.map((jid) => ({ jid, name: config.groupNames?.[0] || null }));
+  if (fijos.length) return fijos.map((jid) => ({ jid, name: null }));
 
   const raw = memory.getSetting('group_jids');
   let guardados = [];
@@ -116,7 +113,7 @@ export function boundGroups() {
   for (const g of guardados) {
     if (vistos.has(g.jid)) continue;
     vistos.add(g.jid);
-    lista.push({ jid: g.jid, name: g.name || null });
+    lista.push({ jid: g.jid, name: null });
   }
   return lista;
 }
@@ -135,34 +132,18 @@ export function groupAllowed(chatJid) {
   return boundGroups().some((g) => g.jid === chatJid);
 }
 
-/** ¿Este nombre es alguno de los grupos que he puesto en la configuración? */
-export function nombreDeGrupoConfigurado(chatName) {
-  const nombres = config.groupNames?.length ? config.groupNames : config.groupName ? [config.groupName] : [];
-  return nombres.some((n) => sameGroupName(chatName, n));
-}
-
-/** El primer nombre de grupo configurado (para mensajes). */
-function primerNombreConfigurado() {
-  return config.groupNames?.[0] || config.groupName || null;
-}
-
 /** ¿Tengo los grupos fijados desde el .env (no se pueden cambiar de WhatsApp)? */
 export function gruposFijos() {
   return (config.groupJids || []).filter(Boolean);
 }
 
 /** Añade un grupo a la lista (si el .env no lo tiene fijado). */
-export function bindGroup(chatJid, name) {
+export function bindGroup(chatJid) {
   const fijos = gruposFijos();
-  if (fijos.length) return fijos.map((jid) => ({ jid, name: config.groupNames?.[0] || null }));
+  if (fijos.length) return fijos.map((jid) => ({ jid, name: null }));
   const lista = boundGroups();
-  const existente = lista.find((g) => g.jid === chatJid);
-  if (existente) {
-    if (name && existente.name !== name) existente.name = name;
-    else return lista;
-  } else {
-    lista.push({ jid: chatJid, name: name || null });
-  }
+  if (lista.some((g) => g.jid === chatJid)) return lista;
+  lista.push({ jid: chatJid, name: null });
   guardarGrupos(lista);
   return lista;
 }
@@ -176,10 +157,13 @@ export function unbindGroup(chatJid) {
 }
 
 function guardarGrupos(lista) {
-  memory.setSetting('group_jids', JSON.stringify(lista));
+  // Solo se guarda el identificador. El nombre ya no se usa para nada y no se
+  // apunta: es un dato del grupo, no del bot.
+  const limpia = lista.map((g) => ({ jid: g.jid, name: null }));
+  memory.setSetting('group_jids', JSON.stringify(limpia));
   // El primer grupo sigue "a mano" por si algún código espera group_jid.
-  memory.setSetting('group_jid', lista[0]?.jid || null);
-  memory.setSetting('group_name', lista[0]?.name || null);
+  memory.setSetting('group_jid', limpia[0]?.jid || null);
+  memory.setSetting('group_name', null);
 }
 
 // ---------------------------------------------------------------- principal
@@ -273,36 +257,14 @@ export async function handleMessage(
 
   if (comando) return await handleCommand({ comando, input: { ...input, chatJid }, out, listModels });
 
-  // Comodidad: si en la configuracion hay un nombre de grupo, se vincula solo
-  // al verlo, sin que nadie tenga que escribir "!pickle aqui". Acepta varios
-  // nombres (separados por comas en el .env), así que sirve para varios grupos.
-  if (isGroup && chatName && !groupAllowed(chatJid) && nombreDeGrupoConfigurado(chatName)) {
-    bindGroup(chatJid, chatName);
-    log.info(`Grupo vinculado automáticamente por su nombre: "${chatName}" (${chatJid})`);
-    // Si al arrancar no pude presentarme (todavia no sabia el grupo), me presento ahora.
-    // Va en "notices" porque una respuesta normal reemplaza a replies y se perderia.
-    if (config.welcomeEnabled && (config.welcomeAlways || !memory.getSetting('welcome_sent'))) {
-      const cuerpo = replies.welcomeText(config.welcomeMessage);
-      out.notices.push(cuerpo);
-      memory.setSetting('welcome_sent', new Date().toISOString());
-      log.info(`Mensaje de bienvenida enviado a "${chatName}".`);
-    }
-  }
-
   // A partir de aqui solo actuamos en los grupos asignados.
   if (isGroup && !groupAllowed(chatJid)) {
     if (!warnedUnbound.has(chatJid)) {
       warnedUnbound.add(chatJid);
       const fijos = gruposFijos();
-      const esperando = primerNombreConfigurado();
       if (fijos.length) {
         log.info(
           `Este bot está fijado desde el .env a ${fijos.length} grupo(s) y no responde en "${chatName || chatJid}".`
-        );
-      } else if (esperando) {
-        log.info(
-          `Estoy puesto para el grupo "${esperando}", y este se llama "${chatName || chatJid}". ` +
-            'Si te has equivocado de nombre, cámbialo en el .env (WHATSAPP_GROUP_NAME).'
         );
       } else {
         log.info(
@@ -938,13 +900,8 @@ async function handleCommand({ comando, input, out, listModels }) {
       out.replies = ['🔒 Este bot está fijado a un grupo concreto desde la configuración.'];
       return out;
     }
-    const nombres = config.groupNames?.length ? config.groupNames : config.groupName ? [config.groupName] : [];
-    if (nombres.length && !nombreDeGrupoConfigurado(chatName)) {
-      out.replies = [`🔒 Estoy puesto para *${nombres.join(' / ')}*, no para este. No me vinculo aquí.`];
-      return out;
-    }
     const yaEstaba = groupAllowed(chatJid);
-    bindGroup(chatJid, chatName || null);
+    bindGroup(chatJid);
     const grupos = boundGroups();
     log.info(`Grupo ${yaEstaba ? 'actualizado' : 'vinculado'}: ${chatName || ''} (${chatJid}) — en total ${grupos.length}`);
     out.action = 'vinculado';

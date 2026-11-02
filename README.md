@@ -140,10 +140,10 @@ Escanea el **QR** en *Ajustes → Dispositivos vinculados → Vincular un dispos
 
 ### 5. Actívalo en el grupo
 
-- **Automático:** pon el nombre exacto del grupo en `WHATSAPP_GROUP_NAME`. Se vincula al primer mensaje.
 - **Manual:** escribe `!claw aqui` dentro del grupo.
+- **Fijo:** pon el identificador interno (`...@g.us`) en `WHATSAPP_GROUP_JID` y no hace falta nada más.
 
-Tras vincularse guarda el identificador interno (`...@g.us`), así que renombrar el grupo ya no le afecta. Con `WHATSAPP_GROUP_NAME` puesto, `!claw aqui` solo funciona en ese grupo y, si alguien lo desvincula, se vuelve a vincular solo.
+Solo se guarda el identificador, nunca el nombre: el nombre se puede repetir entre grupos y cualquiera lo cambia, así que no sirve para decidir dónde hablar. Una vez vinculado, renombrar el grupo no le afecta.
 
 ### 6. Mensaje de bienvenida
 
@@ -264,7 +264,6 @@ Copia `.env.example` a `.env`. Casi todo se cambia en caliente con `!claw ajuste
 | Variable | Por defecto | Qué hace |
 |---|---|---|
 | `WHATSAPP_GROUP_JID` | vacío | fija el grupo por identificador |
-| `WHATSAPP_GROUP_NAME` | vacío | vincula por nombre exacto |
 | `WHATSAPP_OWNER_JID` | el del bot | dueño |
 | `WHATSAPP_ADMINS` / `WHATSAPP_BLOCKED` | vacío | admins / vetados de arranque |
 | `PRIVATE_MODE` | `dueno` | quién puede escribir por privado |
@@ -421,7 +420,7 @@ Claw/
 
 **¿Se llena el disco con las fotos?** No debería: solo guarda las relevantes, mira el espacio libre antes de bajar nada (y avisa si no hay) y borra cada hora lo caducado (exámenes pasados, fotos sueltas viejas y lo que supere el tope). Con `MEDIA_MODE=todo` guarda todo, incluidas fotos privadas: no lo recomiendo.
 
-**El bot no dice nada en el grupo.** 1) Comprueba que el grupo está vinculado (nombre exacto en `WHATSAPP_GROUP_NAME` o `!claw aqui`). 2) Escribe `!claw` para ver el estado. 3) Con `LOG_LEVEL=debug` verás por qué descarta cada mensaje.
+**El bot no dice nada en el grupo.** 1) Comprueba que el grupo está vinculado (escribe `!claw aqui` o fija `WHATSAPP_GROUP_JID`). 2) Escribe `!claw` para ver el estado. 3) Con `LOG_LEVEL=debug` verás por qué descarta cada mensaje.
 
 **"Ollama no responde".** Abre la aplicación Ollama y comprueba con `ollama list` que el modelo está descargado.
 
