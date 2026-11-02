@@ -98,6 +98,13 @@ export function canonicalSubject(name) {
   return key;
 }
 
+// Las agujas se preparan una vez. Antes se normalizaban los 70+ candidatos en
+// cada mensaje, y era el mayor coste del triaje sin IA.
+const SEARCHABLE_NEEDLES = SEARCHABLE.map((candidate) => ({
+  candidate,
+  needle: ` ${stripAccents(candidate)} `
+}));
+
 /**
  * Intenta adivinar la asignatura mencionada en un texto libre.
  * Devuelve { key, label } o null.
@@ -105,8 +112,7 @@ export function canonicalSubject(name) {
 export function detectSubject(text) {
   const normalized = ' ' + stripAccents(String(text || '').toLowerCase()).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ') + ' ';
   let best = null;
-  for (const candidate of SEARCHABLE) {
-    const needle = ' ' + stripAccents(candidate) + ' ';
+  for (const { candidate, needle } of SEARCHABLE_NEEDLES) {
     if (normalized.includes(needle)) {
       if (!best || candidate.length > best.matched.length) {
         best = { matched: candidate };

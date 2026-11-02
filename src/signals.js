@@ -35,10 +35,25 @@ const QUESTION_WORDS = [
 const DEBERES_WORDS = ['deber', 'tarea', 'ejercicio', 'entregar', 'entrega', 'mandaron', 'mandado', 'trabajo', 'exponer', 'lectura'];
 const EXAMEN_WORDS = ['examen', 'control', 'prueba', 'parcial', 'recuperacion', 'entra en el exam'];
 
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Cada mensaje comprueba alrededor de 90 palabras, y antes se construia un
+// RegExp nuevo por palabra y por mensaje. Se compilan una vez y se reutilizan:
+// es el mayor coste del triaje sin IA.
+const wordReCache = new Map();
+
+function wordRegex(word) {
+  let re = wordReCache.get(word);
+  if (!re) {
+    re = new RegExp(`(^|[^a-z0-9])${escapeRe(word)}([^a-z0-9]|$)`);
+    wordReCache.set(word, re);
+  }
+  return re;
+}
+
 function hasWord(haystack, word) {
   if (word.endsWith(' ')) return haystack.includes(word);
-  const re = new RegExp(`(^|[^a-z0-9])${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z0-9]|$)`);
-  return re.test(haystack);
+  return wordRegex(word).test(haystack);
 }
 
 /** ¿Merece la pena pasar este mensaje por la IA? */
@@ -104,7 +119,8 @@ export function fastRoute(text) {
   };
 }
 
-const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// La expresión del trigger también se compila una sola vez por configuración.
+const clawReCache = new Map();
 
 /** Detecta la palabra clave del modo Claw como palabra suelta. */
 export function clawMatch(text) {
@@ -116,8 +132,13 @@ export function clawMatch(text) {
     // Whisper suele transcribir el nombre pronunciado en español por su sonido.
     triggers.push('clau', 'clao');
   }
-  const alternatives = [...new Set(triggers)].map(escapeRe).join('|');
-  const re = new RegExp(`(^|[^\\p{L}\\p{N}])(${alternatives})(?=$|[^\\p{L}\\p{N}])`, 'iu');
+  const key = triggers.join('\u0000');
+  let re = clawReCache.get(key);
+  if (!re) {
+    const alternatives = [...new Set(triggers)].map(escapeRe).join('|');
+    re = new RegExp(`(^|[^\\p{L}\\p{N}])(${alternatives})(?=$|[^\\p{L}\\p{N}])`, 'iu');
+    clawReCache.set(key, re);
+  }
   const m = String(text || '').match(re);
   if (!m) return null;
   const index = m.index + m[1].length;

@@ -158,13 +158,10 @@ export const config = {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),
-  // Nombre del grupo: si se pone, el bot se vincula solo a ese grupo
-  // sin tener que escribir "!pickle aqui" dentro. Tambien admite varios, por comas.
-  groupName: (process.env.WHATSAPP_GROUP_NAME || '').trim() || null,
-  groupNames: (process.env.WHATSAPP_GROUP_NAME || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean),
+  // El grupo se fija por identificador (WHATSAPP_GROUP_JID) o escribiendo
+  // "!claw aqui". Nunca por nombre: dos grupos pueden llamarse igual y
+  // cualquiera puede renombrarlo, asi que el nombre no sirve para decidir
+  // donde hablar.
 
   // --- Dueno y administradores ---
   // El dueno es quien manda de verdad: es el unico que puede tocar los ajustes

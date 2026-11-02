@@ -383,14 +383,8 @@ async function main() {
     cfg.ollamaUrl = realUrl;
   }
 
-  // ---- 15. Vinculacion por nombre de grupo -------------------------
-  console.log('\n\x1b[1m--- Vincularse solo al grupo llamado como en el .env ---\x1b[0m');
-  const nombreGuardado = config.groupName;
-  const nombresGuardados = config.groupNames;
-  config.groupName = 'Grupo de clase 2ºB';
-  // `groupNames` manda sobre `groupName`, así que hay que cambiarlo también
-  // (en el .env real el grupo se llama de otra forma).
-  config.groupNames = ['Grupo de clase 2ºB'];
+  // ---- 15. Vinculacion del grupo (solo por identificador) -----------
+  console.log('\n\x1b[1m--- Vinculación del grupo (sin mirar el nombre) ---\x1b[0m');
   memory.setSetting('group_jid', null);
   memory.setSetting('group_name', null);
   memory.setSetting('welcome_sent', null);
@@ -414,51 +408,39 @@ async function main() {
 
   await enOtro('otros-familia@g.us', 'Familia 🎄', 'que deberes hay?');
   check(
-    'No se vincula a un grupo con otro nombre',
+    'No se vincula solo a un grupo ajeno',
     boundGroupJid() === null,
     `vinculado=${boundGroupJid()}`
   );
 
-  const unido = await enOtro(JID, 'Grupo de clase 2B 🎓', 'que deberes hay?');
+  const unido = await enOtro(JID, 'Grupo de clase 2B 🎓', '!claw aqui');
   const diceUnido = [...unido.replies, ...unido.notices].join(' | ');
   check(
-    'Se vincula solo al grupo con ese nombre (aunque tenga adornos)',
+    'Se vincula con "!claw aqui"',
     boundGroupJid() === JID,
     `vinculado=${boundGroupJid()}`
   );
   check(
-    'Al vincularse se presenta con la bienvenida',
-    /PickleBrain/.test(diceUnido) && Boolean(memory.getSetting('welcome_sent')),
+    'Contesta al vincularse',
+    /me quedo aquí/i.test(diceUnido),
     `dice=${diceUnido.slice(0, 90)}`
   );
-
-  const otra = await enOtro(JID, 'Grupo de clase 2ºB', 'cuando es el examen de historia?');
-  const diceOtra = [...otra.replies, ...otra.notices].join(' | ');
   check(
-    'La bienvenida no se repite',
-    !/Soy \*PickleBrain\*/.test(diceOtra),
-    `dice=${diceOtra.slice(0, 90)}`
+    'No guarda el nombre del grupo',
+    memory.getSetting('group_name') === null,
+    `group_name=${memory.getSetting('group_name')}`
   );
 
   const fuera = await enOtro(JID, 'Grupo de clase 2B 🎓', '!claw fuera');
   check(
     'Se puede desvincular con "!claw fuera"',
-    boundGroupJid() === null && /qued[oó] aquí|me quito/i.test(fuera.replies.join(' ')),
+    boundGroupJid() === null,
     `vinculado=${boundGroupJid()} reply=${fuera.replies.join(' ').slice(0, 80)}`
   );
 
-  const ajeno = await enOtro('otros-familia@g.us', 'Familia 🎄', '!claw aqui');
-  check(
-    'No obedece a "!claw aqui" fuera del grupo configurado',
-    boundGroupJid() === null && /fijado|puesto para/i.test(ajeno.replies.join(' ')),
-    `vinculado=${boundGroupJid()} reply=${ajeno.replies.join(' ').slice(0, 80)}`
-  );
-
   // Dejamos todo como estaba para no confundir a nadie.
-  config.groupName = nombreGuardado;
-  config.groupNames = nombresGuardados;
   memory.setSetting('group_jid', JID);
-  memory.setSetting('group_name', 'Grupo de prueba');
+  memory.setSetting('group_name', null);
   memory.setSetting('cfg:admins', null);
 
   // ---- 16. Comandos, ajustes y permisos ----------------------------
