@@ -10,4 +10,6 @@ node_modules/
 .venv/
 __pycache__/
 *.pyc
-data/models/
+# Datos locales: sesión de WhatsApp, base de datos, fotos y modelos.
+# Nunca deben subirse a Git.
+data/
