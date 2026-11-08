@@ -1,0 +1,3092 @@
+<!DOCTYPE html>
+<html lang="es" dir="ltr"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#05070b">
+  <title>Claw — un asistente de WhatsApp autoalojado para la vida escolar</title>
+  <meta name="description" content="Claw es un bot de WhatsApp con IA local que recuerda los deberes y los exámenes de un grupo de clase. Autoalojado, privado y de código abierto.">
+  <meta property="og:title" content="Claw — your class group's memory, on your own machine">
+  <meta property="og:description" content="A self-hosted WhatsApp bot powered by local AI. It tracks homework and exams, understands voice notes and answers only when asked.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23000000'/%3E%3Cpath fill='%232f6bff' d='M31.5 6C44 25 46 42 43 55 38 39 33.5 22 31.5 6Z'/%3E%3Cpath fill='%23ffffff' d='M9 4C22 24 24 44 21 60 16 42 11 24 9 4Z'/%3E%3Cpath fill='%23ffffff' d='M19 3C32 23 34 42 31 56 26 40 21 22 19 3Z'/%3E%3Cpath fill='%23ffffff' d='M29 5C42 24 44 41 41 54 36 38 31 21 29 5Z'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    /* ============================================================
+       Claw — public repository page
+       Single file, no framework, no build step.
+       ============================================================ */
+    :root {
+      color-scheme: dark;
+      --bg: #05070b;
+      --bg-soft: #080b10;
+      --surface: rgba(255, 255, 255, .038);
+      --surface-2: rgba(255, 255, 255, .062);
+      --ink: #f4f6fb;
+      --muted: #9aa3b5;
+      --muted-2: #6f7789;
+      --brand: #2f6bff;
+      --brand-soft: #a9c6ff;
+      --brand-hover: #1f5fe8;
+      --accent: #9db9ff;
+      --line: rgba(255, 255, 255, .085);
+      --line-strong: rgba(255, 255, 255, .17);
+      --radius: 20px;
+      --font-display: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --font-mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+      --shadow: 0 40px 120px -50px rgba(0, 0, 0, .95);
+      --glow: 0 30px 90px -35px rgba(47, 107, 255, .35);
+      --wrap: 1160px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; scroll-padding-top: 96px; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 600; letter-spacing: -.02em; line-height: 1.1; margin: 0; }
+    p { margin: 0; }
+    a { color: inherit; text-decoration: none; }
+    code, kbd, pre { font-family: var(--font-mono); }
+    ::selection { background: var(--brand); color: #ffffff; }
+    :focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 6px; }
+    .wrap { width: 100%; max-width: var(--wrap); margin-inline: auto; padding-inline: 24px; }
+    .skip {
+      position: absolute; left: 16px; top: -60px; z-index: 100;
+      background: var(--brand); color: #ffffff; padding: 10px 16px; border-radius: 10px;
+      font-weight: 600; transition: top .2s ease;
+    }
+    .skip:focus { top: 16px; }
+
+    /* ---------- background ---------- */
+    .fx { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .fx::before {
+      content: ""; position: absolute; inset: -20%;
+      background:
+        radial-gradient(40rem 40rem at 80% -2%, rgba(47, 107, 255, .16), transparent 62%),
+        radial-gradient(32rem 32rem at 4% 12%, rgba(157, 185, 255, .10), transparent 64%),
+        radial-gradient(44rem 44rem at 55% 112%, rgba(47, 107, 255, .08), transparent 62%);
+      filter: blur(8px);
+      animation: drift 28s ease-in-out infinite alternate;
+    }
+    .fx::after {
+      content: ""; position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, .028) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .028) 1px, transparent 1px);
+      background-size: 72px 72px;
+      mask-image: radial-gradient(70% 55% at 50% 8%, #000 0%, transparent 85%);
+    }
+    @keyframes drift {
+      0% { transform: translate3d(-1.5%, -1%, 0) scale(1); }
+      100% { transform: translate3d(2%, 2%, 0) scale(1.06); }
+    }
+
+    /* ---------- header ---------- */
+    .site-header {
+      position: sticky; top: 0; z-index: 50;
+      border-bottom: 1px solid transparent;
+      transition: background .3s ease, border-color .3s ease, backdrop-filter .3s ease;
+    }
+    .site-header.scrolled {
+      background: rgba(5, 7, 11, .78);
+      backdrop-filter: blur(14px) saturate(140%);
+      border-bottom-color: var(--line);
+    }
+    .header-inner { display: flex; align-items: center; gap: 20px; height: 72px; }
+    .brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; letter-spacing: -.02em; }
+    .brand-mark {
+      width: 26px; height: 26px;
+      display: grid; place-items: center;
+      transition: transform .25s ease;
+    }
+    .brand:hover .brand-mark { transform: translateY(-1px) scale(1.05); }
+    .brand-mark svg { width: 26px; height: 26px; }
+    .brand small {
+      font-family: var(--font-body); font-weight: 500; font-size: .68rem; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--muted-2); padding-left: 10px; margin-left: 2px;
+      border-left: 1px solid var(--line-strong);
+    }
+    .nav { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+    .nav a {
+      padding: 8px 12px; border-radius: 10px; font-size: .9rem; color: var(--muted);
+      transition: color .2s ease, background .2s ease;
+    }
+    .nav a:hover { color: var(--ink); background: var(--surface); }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+      padding: 11px 18px; border-radius: 12px; border: 1px solid transparent;
+      font-size: .9rem; font-weight: 600; letter-spacing: -.01em;
+      transition: transform .18s ease, background .2s ease, border-color .2s ease, box-shadow .25s ease;
+      white-space: nowrap;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn svg { width: 16px; height: 16px; flex: none; }
+    .btn-primary { background: var(--brand); color: #ffffff; box-shadow: var(--glow); }
+    .btn-primary:hover { background: var(--brand-hover); }
+    .btn-ghost { border-color: var(--line-strong); color: var(--ink); background: var(--surface); }
+    .btn-ghost:hover { background: var(--surface-2); border-color: rgba(255, 255, 255, .28); }
+    .menu-btn {
+      display: none; width: 42px; height: 42px; border-radius: 12px;
+      background: var(--surface); border: 1px solid var(--line-strong); color: var(--ink);
+      align-items: center; justify-content: center;
+    }
+    .menu-btn svg { width: 18px; height: 18px; }
+
+    /* ---------- hero ---------- */
+    .hero { position: relative; z-index: 1; padding: clamp(48px, 7vw, 92px) 0 clamp(40px, 6vw, 72px); }
+    .hero-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: clamp(32px, 5vw, 64px); align-items: center; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 9px;
+      padding: 7px 14px 7px 11px; border-radius: 999px;
+      border: 1px solid var(--line-strong); background: var(--surface);
+      font-size: .78rem; font-weight: 500; letter-spacing: .01em; color: var(--muted);
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 0 4px rgba(47, 107, 255, .16); animation: pulse 3s ease-in-out infinite; }
+    @keyframes pulse { 50% { box-shadow: 0 0 0 7px rgba(47, 107, 255, .06); } }
+    .hero h1 {
+      margin: 22px 0 0;
+      font-size: clamp(2.35rem, 5.1vw, 4.05rem);
+      font-weight: 700; letter-spacing: -.035em; line-height: 1.03;
+    }
+    .hero h1 em { font-style: normal; color: var(--brand); }
+    .hero .lead {
+      margin-top: 22px; max-width: 33em;
+      font-size: clamp(1rem, 1.35vw, 1.1rem); color: var(--muted);
+    }
+    .hero .lead strong { color: var(--ink); font-weight: 600; }
+    .hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+    .hero-meta {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+      margin-top: 26px; font-size: .8rem; color: var(--muted-2);
+    }
+    .hero-meta span { display: inline-flex; align-items: center; gap: 6px; }
+    .hero-meta span::before { content: ""; width: 4px; height: 4px; border-radius: 50%; background: var(--muted-2); }
+    .hero-meta span:first-child::before { display: none; }
+
+    /* chat mock */
+    .chat {
+      position: relative; border-radius: 26px; border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .012));
+      box-shadow: var(--shadow); overflow: hidden;
+      transform: rotate(.6deg);
+      transition: transform .5s cubic-bezier(.2, .8, .2, 1);
+    }
+    .chat:hover { transform: rotate(0deg) translateY(-4px); }
+    .chat::before {
+      content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+      background: radial-gradient(24rem 14rem at 85% -10%, rgba(47, 107, 255, .13), transparent 70%);
+    }
+    .chat-top {
+      position: relative; z-index: 1; display: flex; align-items: center; gap: 12px;
+      padding: 15px 18px; border-bottom: 1px solid var(--line);
+      background: rgba(5, 7, 11, .35);
+    }
+    .chat-avatar {
+      width: 36px; height: 36px; border-radius: 12px; flex: none;
+      display: grid; place-items: center;
+      background: var(--brand); color: #ffffff;
+      font-family: var(--font-display); font-weight: 700; font-size: .95rem;
+    }
+    .chat-name { font-size: .9rem; font-weight: 600; line-height: 1.25; }
+    .chat-sub { font-size: .74rem; color: var(--muted-2); }
+    .chat-pill {
+      margin-left: auto; font-size: .68rem; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--brand-soft); border: 1px solid rgba(47, 107, 255, .28);
+      background: rgba(47, 107, 255, .08); padding: 5px 9px; border-radius: 999px;
+    }
+    .chat-body { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 9px; padding: 20px 18px 22px; }
+    .bubble {
+      max-width: 84%; padding: 10px 14px; border-radius: 16px; font-size: .875rem; line-height: 1.45;
+      border: 1px solid var(--line); background: rgba(255, 255, 255, .045); color: #e7eadf;
+      box-shadow: 0 12px 30px -22px #000;
+    }
+    .bubble b { display: block; font-size: .68rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-2); margin-bottom: 3px; }
+    .bubble.in { border-top-left-radius: 6px; }
+    .bubble.claw {
+      background: rgba(47, 107, 255, .1); border-color: rgba(47, 107, 255, .3);
+      color: #f2ffd0;
+    }
+    .bubble.claw b { color: rgba(47, 107, 255, .75); }
+    .bubble.note {
+      align-self: center; max-width: 100%; background: transparent; border-style: dashed;
+      border-color: var(--line-strong); color: var(--muted); font-size: .74rem; padding: 6px 12px; border-radius: 999px;
+    }
+    .chat-foot {
+      position: relative; z-index: 1; display: flex; align-items: center; gap: 8px;
+      padding: 12px 18px 16px; font-size: .72rem; color: var(--muted-2);
+      border-top: 1px solid var(--line);
+    }
+    .chat-foot svg { width: 13px; height: 13px; color: var(--accent); }
+
+    /* ---------- band ---------- */
+    .band { position: relative; z-index: 1; padding: 10px 0 0; }
+    .band-inner {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px;
+      border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
+      background: var(--line);
+    }
+    .stat { background: var(--bg-soft); padding: 22px 20px; }
+    .stat b { display: block; font-family: var(--font-display); font-size: clamp(1.5rem, 2.4vw, 1.95rem); font-weight: 700; letter-spacing: -.03em; color: var(--brand); line-height: 1; }
+    .stat span { display: block; margin-top: 7px; font-size: .79rem; color: var(--muted); line-height: 1.4; }
+
+    /* ---------- sections ---------- */
+    section[id] { position: relative; z-index: 1; }
+    .section { padding: clamp(64px, 9vw, 108px) 0 0; }
+    .section-head { max-width: 46rem; margin-bottom: clamp(28px, 4vw, 44px); }
+    .kicker {
+      display: inline-block; font-size: .72rem; font-weight: 600; letter-spacing: .16em;
+      text-transform: uppercase; color: var(--brand-soft); margin-bottom: 14px;
+    }
+    .section-head h2 { font-size: clamp(1.7rem, 3.4vw, 2.55rem); letter-spacing: -.03em; }
+    .section-head p { margin-top: 16px; color: var(--muted); font-size: 1rem; max-width: 40em; }
+
+    /* features */
+    .features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .card {
+      position: relative; padding: 24px 22px; border-radius: var(--radius);
+      border: 1px solid var(--line); background: var(--surface);
+      transition: border-color .25s ease, transform .25s ease, background .25s ease;
+    }
+    .card:hover { border-color: rgba(47, 107, 255, .32); background: rgba(255, 255, 255, .055); transform: translateY(-2px); }
+    .card .icon {
+      width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center;
+      background: rgba(47, 107, 255, .1); border: 1px solid rgba(47, 107, 255, .22); color: var(--brand);
+      margin-bottom: 16px;
+    }
+    .card .icon svg { width: 18px; height: 18px; }
+    .card h3 { font-size: 1.04rem; margin-bottom: 8px; }
+    .card p { font-size: .875rem; color: var(--muted); line-height: 1.55; }
+    .card code { font-size: .8rem; color: var(--brand-soft); background: rgba(47, 107, 255, .1); padding: 1px 5px; border-radius: 5px; }
+
+    .also { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 22px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px;
+      border: 1px solid var(--line-strong); background: var(--surface);
+      font-size: .82rem; color: var(--muted);
+    }
+    .chip i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; }
+
+    /* how it works */
+    .how-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: clamp(28px, 4vw, 52px); align-items: start; }
+    .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+    .steps li { position: relative; display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 16px; padding: 0 0 26px; }
+    .steps li:last-child { padding-bottom: 0; }
+    .steps li::before {
+      content: ""; position: absolute; left: 20px; top: 42px; bottom: 0; width: 1px;
+      background: linear-gradient(180deg, rgba(47, 107, 255, .4), rgba(255, 255, 255, .07));
+    }
+    .steps li:last-child::before { display: none; }
+    .steps .num {
+      width: 42px; height: 42px; border-radius: 50%; flex: none;
+      display: grid; place-items: center; font-family: var(--font-display); font-weight: 600; font-size: .9rem;
+      color: var(--brand); border: 1px solid rgba(47, 107, 255, .3); background: rgba(47, 107, 255, .07);
+    }
+    .steps h3 { font-size: 1.02rem; padding-top: 9px; }
+    .steps p { margin-top: 7px; font-size: .88rem; color: var(--muted); }
+    .steps code { font-size: .8rem; color: var(--brand-soft); }
+
+    .timeline {
+      border-radius: var(--radius); border: 1px solid var(--line); background: var(--bg-soft);
+      padding: 24px 22px; box-shadow: var(--shadow);
+    }
+    .timeline > h3 { font-size: .78rem; letter-spacing: .13em; text-transform: uppercase; color: var(--muted-2); font-weight: 600; }
+    .tl { list-style: none; margin: 18px 0 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+    .tl li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 12px; font-size: .875rem; color: var(--muted); }
+    .tl .mark {
+      width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center;
+      font-size: .72rem; font-weight: 700; font-family: var(--font-display);
+      background: var(--surface-2); border: 1px solid var(--line-strong); color: var(--ink);
+    }
+    .tl li strong { color: var(--ink); font-weight: 600; display: block; margin-bottom: 2px; font-size: .875rem; }
+    .tl li.claw .mark { background: rgba(47, 107, 255, .12); border-color: rgba(47, 107, 255, .3); color: var(--brand); }
+
+    /* quickstart */
+    .quick-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
+    .step-card {
+      border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface);
+      overflow: hidden; display: flex; flex-direction: column; height: 100%;
+    }
+    .step-card header { display: flex; align-items: center; gap: 10px; padding: 18px 20px 14px; }
+    .step-card header .n {
+      font-family: var(--font-mono); font-size: .72rem; color: var(--brand);
+      border: 1px solid rgba(47, 107, 255, .3); background: rgba(47, 107, 255, .08);
+      border-radius: 6px; padding: 2px 6px;
+    }
+    .step-card h3 { font-size: .98rem; }
+    .step-card p { padding: 0 20px 16px; font-size: .85rem; color: var(--muted); }
+    .code {
+      position: relative; margin: auto 0 0; border-top: 1px solid var(--line);
+      background: rgba(0, 0, 0, .42);
+    }
+    .code pre { margin: 0; padding: 16px 18px; overflow-x: auto; max-width: 100%; font-size: .8rem; line-height: 1.7; color: #dfe6d6; }
+    .code .prompt { color: var(--brand); user-select: none; }
+    .code .comment { color: var(--muted-2); }
+    .copy {
+      position: absolute; top: 10px; right: 10px;
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 9px; border-radius: 8px; font-size: .7rem; font-family: var(--font-body);
+      color: var(--muted); background: rgba(255, 255, 255, .07); border: 1px solid var(--line-strong);
+      transition: color .2s ease, background .2s ease;
+    }
+    .copy:hover { color: var(--ink); background: rgba(255, 255, 255, .13); }
+    .copy.done { color: var(--brand); border-color: rgba(47, 107, 255, .45); }
+    .copy svg { width: 12px; height: 12px; }
+
+    /* commands */
+    .cmd-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+    .cmd-card { border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); padding: 22px 22px 8px; }
+    .cmd-card h3 { display: flex; align-items: center; gap: 10px; font-size: .95rem; margin-bottom: 4px; }
+    .cmd-card > p { font-size: .8rem; color: var(--muted-2); margin-bottom: 14px; }
+    .cmd-card .tag {
+      font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; color: var(--accent);
+      border: 1px solid rgba(157, 185, 255, .3); background: rgba(157, 185, 255, .08);
+      padding: 3px 7px; border-radius: 5px; font-weight: 600;
+    }
+    .cmd-list { list-style: none; margin: 0; padding: 0; }
+    .cmd-list li {
+      display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 14px;
+      align-items: baseline; padding: 9px 0; border-top: 1px solid var(--line); font-size: .84rem;
+    }
+    .cmd-list code { color: var(--brand-soft); font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cmd-list span { color: var(--muted); }
+
+    /* stack */
+    .stack-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(28px, 4vw, 56px); align-items: start; }
+    .req { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+    .req li { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: .87rem; }
+    .req b { font-weight: 600; color: var(--ink); font-family: var(--font-display); letter-spacing: -.01em; }
+    .req span { color: var(--muted); }
+    .req em { font-style: normal; color: var(--muted-2); font-size: .75rem; display: block; }
+    .req li > * { min-width: 0; }
+    .req code { overflow-wrap: anywhere; }
+    .stack-grid > * { min-width: 0; }
+
+    .diagram {
+      border: 1px solid var(--line); border-radius: var(--radius);
+      overflow: hidden; min-width: 0; background: rgba(0, 0, 0, .42);
+    }
+    .diagram pre {
+      margin: 0; padding: 20px 22px; font-size: clamp(.68rem, 1.7vw, .76rem); line-height: 1.85;
+      overflow-x: auto; max-width: 100%; color: #dfe6d6;
+    }
+
+    /* privacy */
+    .privacy {
+      margin-top: clamp(56px, 8vw, 96px);
+      border-radius: 26px; border: 1px solid rgba(47, 107, 255, .2);
+      background:
+        radial-gradient(34rem 20rem at 88% 0%, rgba(47, 107, 255, .12), transparent 68%),
+        linear-gradient(180deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, .012));
+      padding: clamp(28px, 4vw, 44px); box-shadow: var(--shadow);
+    }
+    .privacy-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(24px, 4vw, 52px); }
+    .privacy h2 { font-size: clamp(1.45rem, 2.6vw, 2rem); letter-spacing: -.03em; }
+    .privacy p { margin-top: 14px; color: var(--muted); font-size: .92rem; }
+    .privacy ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 11px; }
+    .privacy li { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; font-size: .86rem; color: var(--muted); }
+    .privacy li svg { width: 16px; height: 16px; margin-top: 3px; color: var(--brand); }
+    .privacy li strong { color: var(--ink); font-weight: 600; }
+    .privacy .local { box-shadow: inset 0 0 0 1px rgba(47, 107, 255, .18); border-radius: 14px; padding: 14px 16px; background: rgba(47, 107, 255, .05); }
+    .privacy code { color: var(--brand-soft); font-size: .8rem; }
+
+    /* docs */
+    .docs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .doc {
+      display: flex; flex-direction: column; gap: 6px; padding: 20px;
+      border-radius: 16px; border: 1px solid var(--line); background: var(--surface);
+      transition: border-color .25s ease, transform .25s ease, background .25s ease;
+    }
+    .doc:hover { border-color: rgba(47, 107, 255, .35); background: rgba(255, 255, 255, .055); transform: translateY(-2px); }
+    .doc .file { font-family: var(--font-mono); font-size: .72rem; color: var(--brand-soft); letter-spacing: .02em; }
+    .doc b { font-family: var(--font-display); font-size: .95rem; font-weight: 600; }
+    .doc span { font-size: .79rem; color: var(--muted-2); line-height: 1.45; }
+    .doc .arrow { margin-top: 6px; color: var(--muted-2); transition: transform .25s ease, color .25s ease; }
+    .doc:hover .arrow { color: var(--brand); transform: translate(2px, -2px); }
+    .doc .arrow svg { width: 14px; height: 14px; }
+
+    /* faq */
+    .faq { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+    details {
+      border-radius: 16px; border: 1px solid var(--line); background: var(--surface);
+      padding: 4px 20px; transition: border-color .2s ease, background .2s ease;
+    }
+    details[open] { border-color: rgba(47, 107, 255, .28); background: rgba(255, 255, 255, .055); }
+    summary {
+      display: flex; align-items: center; gap: 12px; padding: 16px 0;
+      cursor: pointer; list-style: none; font-size: .9rem; font-weight: 500;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after {
+      content: "+"; margin-left: auto; font-family: var(--font-display); font-size: 1.1rem;
+      color: var(--brand); line-height: 1; transition: transform .2s ease;
+    }
+    details[open] summary::after { content: "−"; }
+    details p { padding: 0 0 16px; font-size: .86rem; color: var(--muted); }
+    details code { color: var(--brand-soft); font-size: .8rem; }
+
+    /* footer */
+    .site-footer { position: relative; z-index: 1; margin-top: clamp(64px, 9vw, 110px); border-top: 1px solid var(--line); background: linear-gradient(180deg, rgba(255, 255, 255, .02), transparent); }
+    .footer-cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px; padding: clamp(36px, 5vw, 56px) 0 30px; }
+    .footer-cta h2 { font-size: clamp(1.5rem, 3vw, 2.2rem); letter-spacing: -.03em; max-width: 22ch; }
+    .footer-cta p { margin-top: 10px; color: var(--muted); font-size: .9rem; max-width: 34em; }
+    .footer-bottom {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+      padding: 22px 0 34px; border-top: 1px solid var(--line); font-size: .8rem; color: var(--muted-2);
+    }
+    .footer-bottom nav { display: flex; flex-wrap: wrap; gap: 16px; margin-left: auto; }
+    .footer-bottom a:hover { color: var(--brand); }
+
+    /* reveal */
+    .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s cubic-bezier(.2, .8, .2, 1); }
+    .reveal.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .fx::before, .dot { animation: none; }
+      .reveal { opacity: 1; transform: none; transition: none; }
+      .chat { transform: none; }
+      * { transition-duration: .01ms !important; }
+    }
+
+    /* ---------- responsive ---------- */
+    @media (max-width: 1000px) {
+      .features { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .docs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .quick-grid { grid-template-columns: 1fr; }
+      .step-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); align-items: stretch; }
+      .step-card header, .step-card p { grid-column: 1; }
+      .step-card p { padding-bottom: 20px; }
+      .step-card .code { grid-column: 2; grid-row: 1 / span 3; border-top: 0; border-left: 1px solid var(--line); display: flex; flex-direction: column; justify-content: center; }
+    }
+    @media (max-width: 880px) {
+      .hero-grid, .how-grid, .stack-grid, .privacy-grid { grid-template-columns: 1fr; }
+      .chat { max-width: 520px; transform: none; }
+      .band-inner { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .cmd-grid, .faq { grid-template-columns: 1fr; }
+      .nav { display: none; }
+      .menu-btn { display: inline-flex; }
+      .site-header.nav-open .nav {
+        display: flex; position: absolute; left: 16px; right: 16px; top: 70px;
+        flex-direction: column; align-items: stretch; gap: 2px;
+        padding: 12px; border-radius: 16px; border: 1px solid var(--line-strong);
+        background: rgba(9, 12, 9, .97); backdrop-filter: blur(18px); box-shadow: var(--shadow);
+      }
+      .site-header.nav-open .nav a { padding: 11px 12px; font-size: .92rem; }
+      .header-actions .btn-ghost { display: none; }
+    }
+    @media (max-width: 680px) {
+      .features, .docs { grid-template-columns: 1fr; }
+      .step-card { display: flex; }
+      .step-card .code { border-left: 0; border-top: 1px solid var(--line); }
+      .hero-cta .btn { flex: 1 1 auto; }
+      .cmd-list li { grid-template-columns: 1fr; gap: 2px; }
+      .req li { grid-template-columns: 1fr; gap: 4px; }
+      .footer-bottom nav { margin-left: 0; }
+      .brand small { display: none; }
+    }
+  </style>
+  <style>
+    .lang {
+      appearance: none; -webkit-appearance: none;
+      padding: 10px 32px 10px 12px; border-radius: 11px;
+      border: 1px solid var(--line-strong); background-color: var(--surface);
+      color: var(--ink); font-size: .84rem; font-weight: 500; cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa498' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center; background-size: 13px;
+      transition: background-color .2s ease, border-color .2s ease;
+    }
+    [dir="rtl"] .lang { padding: 10px 12px 10px 32px; background-position: left 10px center; }
+    .lang:hover { background-color: var(--surface-2); }
+    .lang option { background: #0d100d; color: var(--ink); }
+
+    .flow {
+      border: 1px solid var(--line); border-radius: var(--radius);
+      background: rgba(0, 0, 0, .4); padding: 18px 20px 20px;
+    }
+    .flow > h3 { font-size: .74rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted-2); font-weight: 600; }
+    .flow-in {
+      margin: 16px 0 14px; padding: 9px 13px; border-radius: 10px;
+      border: 1px solid var(--line-strong); background: var(--surface);
+      font-family: var(--font-mono); font-size: .78rem; color: var(--ink);
+    }
+    .flow ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+    .flow li { display: grid; grid-template-columns: minmax(0, 1fr) 18px minmax(0, .95fr); align-items: center; gap: 8px; font-size: .8rem; }
+    .flow .q { color: var(--muted); }
+    .flow .ar { color: var(--brand); font-family: var(--font-mono); text-align: center; }
+    .flow .r { color: var(--ink); font-family: var(--font-mono); font-size: .77rem; }
+    .flow em { grid-column: 1 / -1; font-style: normal; color: var(--muted-2); font-size: .74rem; padding-inline-start: 2px; }
+
+    .stack-grid > * { min-width: 0; }
+    .req li > * { min-width: 0; }
+    .req code { overflow-wrap: anywhere; }
+
+    [dir="rtl"] .steps li::before { left: auto; right: 20px; }
+    [dir="rtl"] .copy { right: auto; left: 10px; }
+    [dir="rtl"] .chat-pill { margin-left: 0; margin-right: auto; }
+    [dir="rtl"] .footer-bottom nav { margin-left: 0; margin-right: auto; }
+    [dir="rtl"] .bubble.in { border-top-left-radius: 16px; border-top-right-radius: 6px; }
+    [dir="rtl"] .brand small { padding-left: 0; padding-right: 10px; border-left: 0; border-right: 1px solid var(--line-strong); }
+    [dir="rtl"] .flow .ar { transform: scaleX(-1); display: inline-block; }
+    [dir="rtl"] .doc .arrow svg { transform: scaleX(-1); }
+
+    @media (max-width: 680px) {
+      .lang { padding-inline-end: 26px; font-size: .8rem; }
+      .header-inner { gap: 10px; }
+    }
+
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main" data-i18n="skip">Ir al contenido</a>
+  <div class="fx" aria-hidden="true"></div>
+
+  <header class="site-header scrolled" id="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="#top" aria-label="Claw">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 64 64">
+            <path fill="#2f6bff" d="M31.5 6C44 25 46 42 43 55 38 39 33.5 22 31.5 6Z"></path>
+            <path fill="#ffffff" d="M9 4C22 24 24 44 21 60 16 42 11 24 9 4Z"></path>
+            <path fill="#ffffff" d="M19 3C32 23 34 42 31 56 26 40 21 22 19 3Z"></path>
+            <path fill="#ffffff" d="M29 5C42 24 44 41 41 54 36 38 31 21 29 5Z"></path>
+          </svg>
+        </span>
+        Claw
+        <small data-i18n="hNote">Código abierto</small>
+      </a>
+
+      <nav class="nav" id="nav" aria-label="Sections">
+        <a href="#features" data-i18n="nFeat">Funciones</a>
+        <a href="#how" data-i18n="nHow">Cómo funciona</a>
+        <a href="#quickstart" data-i18n="nQuick">Instalación</a>
+        <a href="#commands" data-i18n="nCmd">Comandos</a>
+        <a href="#docs" data-i18n="nDocs">Documentación</a>
+      </nav>
+
+      <div class="header-actions">
+        <select class="lang" id="lang" aria-label="Idioma"></select>
+        <a class="btn btn-ghost" href="https://github.com/ClawProject/El-Repositorio-de-Claw" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.8 10.9.6.1.8-.2.8-.6v-2.2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.1.1 1.7 1.2 1.7 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2.9-.3 1.9-.4 2.9-.4s2 .1 2.9.4C17.5 4.7 18.5 5 18.5 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.2c0 .4.2.7.8.6 4.5-1.5 7.8-5.8 7.8-10.9C23.5 5.7 18.3.5 12 .5z"></path></svg>
+          <span data-i18n="hRepo">Repositorio</span>
+        </a>
+        <button class="menu-btn" id="menu-btn" aria-expanded="false" aria-controls="nav" aria-label="Menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="wrap hero-grid">
+        <div>
+          <span class="eyebrow"><span class="dot" aria-hidden="true"></span><span data-i18n="eEyebrow">Bot de WhatsApp autoalojado · IA local</span></span>
+          <h1 data-i18n="eTitle">La memoria de tu clase,<br><em>en tu propio ordenador.</em></h1>
+          <p class="lead" data-i18n="eLead">Claw vive dentro de un grupo de WhatsApp del instituto. Apunta los deberes y los exámenes que se dicen, los guarda en una base de datos local y responde cuando alguien pregunta — <strong>en silencio, con privacidad y sin enviar ni un mensaje a una IA en la nube.</strong></p>
+
+          <div class="hero-cta">
+            <a class="btn btn-primary" href="https://github.com/ClawProject/El-Repositorio-de-Claw" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.8 10.9.6.1.8-.2.8-.6v-2.2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.1.1 1.7 1.2 1.7 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2.9-.3 1.9-.4 2.9-.4s2 .1 2.9.4C17.5 4.7 18.5 5 18.5 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.2c0 .4.2.7.8.6 4.5-1.5 7.8-5.8 7.8-10.9C23.5 5.7 18.3.5 12 .5z"></path></svg>
+              <span data-i18n="eCta1">Ver el repositorio</span>
+            </a>
+            <a class="btn btn-ghost" href="#quickstart">
+              <span data-i18n="eCta2">Instalar en cinco minutos</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+            </a>
+          </div>
+
+          <div class="hero-meta">
+            <span data-i18n="eM1">Node 22+</span>
+            <span data-i18n="eM2">Ollama</span>
+            <span data-i18n="eM3">Python opcional</span>
+            <span data-i18n="eM4">Windows · Linux · macOS</span>
+          </div>
+        </div>
+
+        <div class="chat reveal">
+          <div class="chat-top">
+            <div class="chat-avatar" aria-hidden="true">1B</div>
+            <div>
+              <div class="chat-name" data-i18n="chGroup">1.º de Bachillerato · B</div>
+              <div class="chat-sub" data-i18n="chSub">Grupo de WhatsApp · 34 miembros</div>
+            </div>
+            <span class="chat-pill" data-i18n="chLocal">local</span>
+          </div>
+          <div class="chat-body">
+            <div class="bubble in"><b>Ana</b><span data-i18n="chM1">¿Qué deberes hay de mates?</span></div>
+            <div class="bubble note" data-i18n="chNote">Claw abrió una pregunta pendiente · 15 min</div>
+            <div class="bubble in"><b>Lucía</b><span data-i18n="chM2">Páginas 30 a 32 del cuadernillo.</span></div>
+            <div class="bubble in"><b>Ana</b><span data-i18n="chM1">¿Qué deberes hay de mates?</span></div>
+            <div class="bubble claw"><b>Claw</b><span data-i18n="chM2">Páginas 30 a 32 del cuadernillo.</span></div>
+            <div class="bubble in"><b>Marc</b><span data-i18n="chM3">Claw, ¿cuánto es el 15 % de 240?</span></div>
+            <div class="bubble claw"><b>Claw</b><span data-i18n="chM4">36.</span></div>
+          </div>
+          <div class="chat-foot">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>
+            <span data-i18n="chFoot">Respondido desde la base de datos local — sin usar el modelo</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="band">
+      <div class="wrap">
+        <div class="band-inner reveal">
+          <div class="stat"><b data-i18n="b1v">100</b><span data-i18n="b1t">idiomas disponibles en el primer arranque</span></div>
+          <div class="stat"><b data-i18n="b2v">15 min</b><span data-i18n="b2t">tiempo para responder a una pregunta pendiente</span></div>
+          <div class="stat"><b data-i18n="b3v">0</b><span data-i18n="b3t">peticiones de IA que salen de tu ordenador</span></div>
+          <div class="stat"><b data-i18n="b4v">14 días</b><span data-i18n="b4t">conservación por defecto de las imágenes guardadas</span></div>
+        </div>
+      </div>
+    </div>
+
+    <section class="section" id="features">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker" data-i18n="featK">Qué hace</span>
+          <h2 data-i18n="featH">Un asistente que escucha más de lo que habla.</h2>
+          <p data-i18n="featP">Claw no responde a cada mensaje. Lee la conversación, decide si algo merece recordarse y se aparta hasta que alguien lo necesita.</p>
+        </div>
+
+        <div class="features">
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H6.5A2.5 2.5 0 0 0 4 21.5z"></path><path d="M8 8h8M8 12h5"></path></svg></div>
+            <h3 data-i18n="f1t">Deberes que no se pierden</h3>
+            <p data-i18n="f1d">Detecta tareas y exámenes próximos entre la conversación del grupo y los apunta, para que nadie tenga que subir trescientos mensajes.</p>
+          </article>
+
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></div>
+            <h3 data-i18n="f2t">Silencio por defecto</h3>
+            <p data-i18n="f2d">Solo habla cuando alguien pregunta o menciona <code>Claw</code>. Sin saludos, sin respuestas no pedidas y sin ruido en el grupo.</p>
+          </article>
+
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-3-.5L3 21l1.6-4.9A8.3 8.3 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"></path><path d="M8.5 11h.01M12 11h.01M15.5 11h.01"></path></svg></div>
+            <h3 data-i18n="f3t">Preguntas pendientes</h3>
+            <p data-i18n="f3d">Si una pregunta sobre deberes aún no tiene respuesta, Claw abre una ventana de 15 minutos. La primera respuesta útil queda guardada y las correcciones posteriores la sustituyen.</p>
+          </article>
+
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"></rect><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"></path></svg></div>
+            <h3 data-i18n="f4t">Notas de voz, transcritas en local</h3>
+            <p data-i18n="f4d">Whisper convierte el audio en texto en tu ordenador, incluso si pronuncian mal el nombre, como <code>Clau</code> o <code>Clao</code>. El audio nunca sale del equipo.</p>
+          </article>
+
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="m21 15-5-5L6 20"></path></svg></div>
+            <h3 data-i18n="f5t">Imágenes útiles, no memes</h3>
+            <p data-i18n="f5d">Las fotos de deberes y exámenes se guardan y pueden reenviarse más tarde. Las imágenes que no tienen que ver se ignoran y los archivos caducados se borran solos.</p>
+          </article>
+
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"></path><circle cx="12" cy="12" r="3.2"></circle></svg></div>
+            <h3 data-i18n="f6t">Modelos locales, respuestas reales</h3>
+            <p data-i18n="f6d"><code>qwen3:4b</code> lleva la conversación con <code>qwen2.5:3b</code> como respaldo, mientras un modelo más pequeño clasifica los mensajes. Todo con Ollama en tu propio hardware.</p>
+          </article>
+
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M8 3v4M16 3v4M3 11h18M8 15h3"></path></svg></div>
+            <h3 data-i18n="f7t">Exportar al calendario</h3>
+            <p data-i18n="f7d">Los exámenes se exportan como archivo <code>.ics</code>, así toda la clase puede añadirlos a su calendario sin copiar fechas a mano.</p>
+          </article>
+
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9h6v6H9z"></path><path d="M4 9V7a3 3 0 0 1 3-3h2M20 9V7a3 3 0 0 0-3-3h-2M4 15v2a3 3 0 0 0 3 3h2M20 15v2a3 3 0 0 1-3 3h-2"></path></svg></div>
+            <h3 data-i18n="f8t">Contexto que no se mezcla</h3>
+            <p data-i18n="f8d">Los mensajes recientes del mismo grupo dan sentido a las respuestas cortas, sin mezclar conversaciones de sitios distintos.</p>
+          </article>
+
+          <article class="card reveal">
+            <div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6z"></path><path d="m9 12 2 2 4-4"></path></svg></div>
+            <h3 data-i18n="f9t">Mantenimiento incluido</h3>
+            <p data-i18n="f9d">La limpieza de archivos, las comprobaciones y los recordatorios funcionan solos. <code>npm run doctor</code> dice exactamente qué falta cuando algo deja de ir.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="how">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker" data-i18n="howK">Cómo funciona</span>
+          <h2 data-i18n="howH">Cada mensaje toma uno de cuatro caminos.</h2>
+          <p data-i18n="howP">Claw lee un mensaje y decide: contestarlo, recordarlo, abrir una pregunta pendiente o ignorarlo. La mayoría se ignoran — de eso se trata.</p>
+        </div>
+
+        <div class="how-grid">
+          <ol class="steps">
+            <li class="reveal">
+              <span class="num" aria-hidden="true">1</span>
+              <div>
+                <h3 data-i18n="s1t">Llega un mensaje</h3>
+                <p data-i18n="s1d">Texto, nota de voz o imagen del grupo vinculado. El audio se transcribe primero, así que todo entra por el mismo proceso que el texto.</p>
+              </div>
+            </li>
+            <li class="reveal">
+              <span class="num" aria-hidden="true">2</span>
+              <div>
+                <h3 data-i18n="s2t">¿Menciona <code>Claw</code>?</h3>
+                <p data-i18n="s2d">Entonces es una petición directa: una pregunta general va al asistente y la respuesta se genera con el modelo local.</p>
+              </div>
+            </li>
+            <li class="reveal">
+              <span class="num" aria-hidden="true">3</span>
+              <div>
+                <h3 data-i18n="s3t">¿Es una pregunta de deberes o exámenes?</h3>
+                <p data-i18n="s3d">Claw responde directamente desde la base de datos, que es instantáneo y no necesita modelo. Si falta la respuesta, se abre una pregunta pendiente.</p>
+              </div>
+            </li>
+            <li class="reveal">
+              <span class="num" aria-hidden="true">4</span>
+              <div>
+                <h3 data-i18n="s4t">¿Puede ser información del instituto?</h3>
+                <p data-i18n="s4d">Lo decide un clasificador pequeño. La información se guarda en silencio; lo demás — bromas, planes, enlaces, memes — se queda como está.</p>
+              </div>
+            </li>
+          </ol>
+
+          <aside class="timeline reveal">
+            <h3 data-i18n="tlT">Una pregunta pendiente, de principio a fin</h3>
+            <ul class="tl">
+              <li>
+                <span class="mark" aria-hidden="true">1</span>
+                <div><strong data-i18n="l1s">Alguien pregunta</strong><span data-i18n="l1d">«¿Qué deberes hay de inglés?» — aún no hay nada guardado, así que la pregunta queda abierta.</span></div>
+              </li>
+              <li class="claw">
+                <span class="mark" aria-hidden="true">2</span>
+                <div><strong data-i18n="l2s">Claw espera 15 minutos</strong><span data-i18n="l2d">Lo que se diga después en ese grupo se lee como una posible respuesta.</span></div>
+              </li>
+              <li>
+                <span class="mark" aria-hidden="true">3</span>
+                <div><strong data-i18n="l3s">Un compañero contesta</strong><span data-i18n="l3d">«Hacer la página 12.» Claw lo reconoce como la información que faltaba y la guarda.</span></div>
+              </li>
+              <li class="claw">
+                <span class="mark" aria-hidden="true">4</span>
+                <div><strong data-i18n="l4s">Cualquiera puede preguntar luego</strong><span data-i18n="l4d">La respuesta sale de la base de datos, y una corrección posterior sustituye a la anterior.</span></div>
+              </li>
+            </ul>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="quickstart">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker" data-i18n="qkK">Instalación</span>
+          <h2 data-i18n="qkH">Del clon al grupo vinculado.</h2>
+          <p data-i18n="qkP">Tres comandos. El primer arranque abre una página de configuración para elegir idioma y después muestra el código QR que vincula tu WhatsApp.</p>
+        </div>
+
+        <div class="quick-grid">
+          <article class="step-card reveal">
+            <header><span class="n">01</span><h3 data-i18n="q1t">Clonar e instalar</h3></header>
+            <p data-i18n="q1d">Hace falta Node.js 22 o superior. En Windows también puedes hacer doble clic en <code>arrancar.bat</code>.</p>
+            <div class="code">
+              <button class="copy" data-copy="code-1" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>
+                <span data-i18n="uiCopy">Copiar</span>
+              </button>
+              <pre id="code-1"><span class="prompt">$</span> git clone https://github.com/ClawProject/El-Repositorio-de-Claw.git
+<span class="prompt">$</span> cd El-Repositorio-de-Claw
+<span class="prompt">$</span> npm install</pre>
+            </div>
+          </article>
+
+          <article class="step-card reveal">
+            <header><span class="n">02</span><h3 data-i18n="q2t">Descargar los modelos</h3></header>
+            <p data-i18n="q2d">Con Ollama instalado, descarga el modelo de conversación y su respaldo. La primera vez son varios GB.</p>
+            <div class="code">
+              <button class="copy" data-copy="code-2" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>
+                <span data-i18n="uiCopy">Copiar</span>
+              </button>
+              <pre id="code-2"><span class="prompt">$</span> ollama pull qwen3:4b
+<span class="prompt">$</span> ollama pull qwen2.5:3b</pre>
+            </div>
+          </article>
+
+          <article class="step-card reveal">
+            <header><span class="n">03</span><h3 data-i18n="q3t">Arrancar y vincular un grupo</h3></header>
+            <p data-i18n="q3d">Escanea el código QR desde <em>Dispositivos vinculados</em> y escribe <code>!claw aqui</code> dentro del grupo.</p>
+            <div class="code">
+              <button class="copy" data-copy="code-3" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>
+                <span data-i18n="uiCopy">Copiar</span>
+              </button>
+              <pre id="code-3"><span class="prompt">$</span> npm start
+<span class="comment"># full bot: WhatsApp + web + reminders</span></pre>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="commands">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker" data-i18n="cmdK">Comandos</span>
+          <h2 data-i18n="cmdH">Todo empieza por <span style="color:var(--brand)">!claw</span>.</h2>
+          <p data-i18n="cmdP">Los mismos comandos funcionan en el grupo y en el simulador. Los de administración solo responden al propietario y a los administradores autorizados.</p>
+        </div>
+
+        <div class="cmd-grid">
+          <article class="cmd-card reveal">
+            <h3><span data-i18n="gt">Para todos</span> <span class="tag" data-i18n="gtag">grupo</span></h3>
+            <p data-i18n="gs">Consultar y corregir lo que hay apuntado.</p>
+            <ul class="cmd-list">
+              <li><code>!claw</code><span data-i18n="c1">Estado del bot</span></li>
+              <li><code>!claw deberes [subject]</code><span data-i18n="c2">Deberes pendientes</span></li>
+              <li><code>!claw examenes</code><span data-i18n="c3">Próximos exámenes</span></li>
+              <li><code>!claw apuntes</code><span data-i18n="c4">Información guardada</span></li>
+              <li><code>!claw proximo</code><span data-i18n="c5">Siguiente examen o tarea</span></li>
+              <li><code>!claw apunta …</code><span data-i18n="c6">Añadir o corregir una tarea</span></li>
+              <li><code>!claw hecho …</code><span data-i18n="c7">Marcar algo como hecho</span></li>
+              <li><code>!claw resumen [hoy/semana]</code><span data-i18n="c8">Resumen de lo reciente</span></li>
+              <li><code>!claw calendario</code><span data-i18n="c9">Exportar exámenes en .ics</span></li>
+              <li><code>!claw busca …</code><span data-i18n="c10">Buscar en la web (se puede desactivar)</span></li>
+              <li><code>!claw ajedrez [move]</code><span data-i18n="c11">Jugar al ajedrez</span></li>
+              <li><code>!claw analiza [FEN]</code><span data-i18n="c12">Analizar una posición</span></li>
+            </ul>
+          </article>
+
+          <article class="cmd-card reveal">
+            <h3><span data-i18n="ot">Para el propietario</span> <span class="tag" data-i18n="otag">admin</span></h3>
+            <p data-i18n="os">Ajustes, accesos y mantenimiento.</p>
+            <ul class="cmd-list">
+              <li><code>!claw aqui</code> / <code>fuera</code><span data-i18n="a1">Vincular o desvincular un grupo</span></li>
+              <li><code>!claw ajustes</code><span data-i18n="a2">Ver y cambiar ajustes</span></li>
+              <li><code>!claw ia</code><span data-i18n="a3">Elegir el modelo de IA</span></li>
+              <li><code>!claw idioma en</code><span data-i18n="a4">Cambiar el idioma</span></li>
+              <li><code>!claw prohibir [number]</code><span data-i18n="a5">Bloquear a un usuario</span></li>
+              <li><code>!claw permitir [number]</code><span data-i18n="a6">Desbloquear a un usuario</span></li>
+              <li><code>!claw vetados</code><span data-i18n="a7">Ver usuarios bloqueados</span></li>
+              <li><code>!claw mantenimiento si/no</code><span data-i18n="a8">Modo mantenimiento</span></li>
+              <li><code>!claw olvida …</code><span data-i18n="a9">Borrar información guardada</span></li>
+              <li><code>!claw admins</code><span data-i18n="a10">Gestionar administradores</span></li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="stack">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker" data-i18n="stK">Bajo el capó</span>
+          <h2 data-i18n="stH">Stack pequeño, sin cuentas en la nube.</h2>
+          <p data-i18n="stP">Un proceso de Node.js habla, SQLite guarda los datos y todo lo inteligente pasa por modelos locales. Python es opcional y solo añade voz e imágenes más rápidas.</p>
+        </div>
+
+        <div class="stack-grid">
+          <ul class="req reveal">
+            <li><b>Node.js</b><span><span data-i18n="r1v">22 o superior · 24 LTS recomendado</span><em data-i18n="r1d">Bot, servidor web y base de datos</em></span></li>
+            <li><b>Ollama</b><span><span data-i18n="r2v">Motor de inferencia local</span><em data-i18n="r2d">Los modelos de texto se quedan en el equipo</em></span></li>
+            <li><b>qwen3:4b</b><span><span data-i18n="r3v">Modelo principal de conversación</span><em data-i18n="r3d">Respuestas y preguntas generales</em></span></li>
+            <li><b>qwen2.5:3b</b><span><span data-i18n="r4v">Respaldo y clasificador</span><em data-i18n="r4d">Apunta deberes y exámenes</em></span></li>
+            <li><b>SQLite</b><span><span data-i18n="r5v">Datos en <code>data/picklebrain.db</code></span><em data-i18n="r5d">Deberes, exámenes, ajustes y alumnos</em></span></li>
+            <li><b>Python 3.11 / 3.12</b><span><span data-i18n="r6v">Servicio opcional en el puerto 5050</span><em data-i18n="r6d">faster-whisper y diffusers</em></span></li>
+            <li><b>FFmpeg</b><span><span data-i18n="r7v">Respaldo opcional</span><em data-i18n="r7d">Voz antigua procesada en Node</em></span></li>
+            <li><b>ngrok</b><span><span data-i18n="r8v">Opcional</span><em data-i18n="r8d">Ver la web desde fuera de la red local</em></span></li>
+          </ul>
+
+          <div class="reveal">
+            <div class="flow">
+              <h3 data-i18n="flT">Un mensaje, simplificado</h3>
+              <div class="flow-in" data-i18n="flIn">mensaje entrante</div>
+              <ul>
+                <li><span class="q" data-i18n="flO1">¿menciona <code>claw</code>?</span><span class="ar">→</span><span class="r" data-i18n="flR1">modelo local</span></li>
+                <li><span class="q" data-i18n="flO2">¿pregunta de deberes?</span><span class="ar">→</span><span class="r" data-i18n="flR2">base de datos</span><em data-i18n="flO2s">sin respuesta → abre una pregunta de 15 min</em></li>
+                <li><span class="q" data-i18n="flO3">¿información del instituto?</span><span class="ar">→</span><span class="r" data-i18n="flR3">clasificador</span><em data-i18n="flR3s">sí: guardar en silencio · no: ignorar</em></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="privacy reveal">
+          <div class="privacy-grid">
+            <div>
+              <h2 data-i18n="prH">Privado por arquitectura, no por promesa.</h2>
+              <p data-i18n="prP1">La base de datos, la transcripción y los modelos corren en el ordenador que aloja Claw. El proyecto existe justamente para que una clase comparta apuntes sin entregar sus conversaciones a terceros.</p>
+              <p data-i18n="prP2">WhatsApp sigue entregando los mensajes y las funciones opcionales necesitan conexión, pero la parte que piensa nunca sale del equipo.</p>
+            </div>
+            <ul>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg><span><strong data-i18n="pb1s">Inferencia local:</strong> <span data-i18n="pb1d">Los modelos de Ollama y la clasificación funcionan sin conexión.</span></span></li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg><span><strong data-i18n="pb2s">Voz local:</strong> <span data-i18n="pb2d">El audio se transcribe con Whisper sin subirlo a ningún sitio.</span></span></li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg><span><strong data-i18n="pb3s">Datos locales:</strong> <span data-i18n="pb3d">Todo vive en <code>data/</code>, que Git nunca rastrea.</span></span></li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg><span><strong data-i18n="pb4s">Red opcional:</strong> <span data-i18n="pb4d">La búsqueda web está activada y un comando la desactiva.</span></span></li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg><span><strong data-i18n="pb5s">Historial borrable:</strong> <span data-i18n="pb5d">Los apuntes se pueden borrar por asignatura o de uno en uno.</span></span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="docs">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker" data-i18n="dkK">Documentación</span>
+          <h2 data-i18n="dkH">Léela antes de instalar.</h2>
+          <p data-i18n="dkP">Todo está en el repositorio, en Markdown normal — sin wikis externas que mantener.</p>
+        </div>
+
+        <div class="docs">
+          <a class="doc reveal in" href="https://github.com/ClawProject/El-Repositorio-de-Claw/blob/main/README.md" target="_blank" rel="noopener">
+            <span class="file">README.md</span>
+            <b data-i18n="d1t">La visión general</b>
+            <span data-i18n="d1d">Funciones, comandos, configuración y preguntas frecuentes.</span>
+            <span class="arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"></path></svg></span>
+          </a>
+          <a class="doc reveal in" href="https://github.com/ClawProject/El-Repositorio-de-Claw/blob/main/INSTALL.md" target="_blank" rel="noopener">
+            <span class="file">INSTALL.md</span>
+            <b data-i18n="d2t">Guía de instalación</b>
+            <span data-i18n="d2d">Paso a paso en Windows y solución de problemas.</span>
+            <span class="arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"></path></svg></span>
+          </a>
+          <a class="doc reveal in" href="https://github.com/ClawProject/El-Repositorio-de-Claw/blob/main/docs/arquitectura.md" target="_blank" rel="noopener">
+            <span class="file">docs/arquitectura.md</span>
+            <b data-i18n="d3t">Arquitectura</b>
+            <span data-i18n="d3d">Interioridades, API y modelo de seguridad.</span>
+            <span class="arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"></path></svg></span>
+          </a>
+          <a class="doc reveal in" href="https://github.com/ClawProject/El-Repositorio-de-Claw/blob/main/python/README.md" target="_blank" rel="noopener">
+            <span class="file">python/README.md</span>
+            <b data-i18n="d4t">Servicio de Python</b>
+            <span data-i18n="d4d">Voz con faster-whisper, imágenes con diffusers.</span>
+            <span class="arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"></path></svg></span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="faq">
+      <div class="wrap">
+        <div class="section-head reveal in">
+          <span class="kicker" data-i18n="fqK">Preguntas frecuentes</span>
+          <h2 data-i18n="fqH">Lo que la gente pregunta de verdad.</h2>
+        </div>
+
+        <div class="faq">
+          <details class="reveal in">
+            <summary data-i18n="qa1q">¿Necesita conexión a internet?</summary>
+            <p data-i18n="qa1a">WhatsApp sí, y las descargas de modelos del primer arranque también. Una vez en caché, las respuestas, la clasificación y la transcripción funcionan sin conexión.</p>
+          </details>
+          <details class="reveal in">
+            <summary data-i18n="qa2q">¿Pueden banearme el número en WhatsApp?</summary>
+            <p data-i18n="qa2a">El riesgo es real. Claw usa Baileys, una biblioteca no oficial de WhatsApp Web, y las condiciones de WhatsApp restringen la automatización no autorizada. Se recomienda usar un número aparte.</p>
+          </details>
+          <details class="reveal in">
+            <summary data-i18n="qa3q">¿Qué pasa si apago el ordenador?</summary>
+            <p data-i18n="qa3a">El bot se detiene, pero no se pierde nada: los datos quedan en <code>data/picklebrain.db</code> y la sesión en <code>data/auth/</code>. Al arrancar otra vez, todo sigue donde estaba.</p>
+          </details>
+          <details class="reveal in">
+            <summary data-i18n="qa4q">¿Guarda todas las imágenes del grupo?</summary>
+            <p data-i18n="qa4a">No. Por defecto solo se guardan las relacionadas con el instituto, con un límite de tamaño y un periodo tras el cual los archivos se borran solos.</p>
+          </details>
+          <details class="reveal in">
+            <summary data-i18n="qa5q">¿Por qué no contesta en el grupo?</summary>
+            <p data-i18n="qa5a">Comprueba que el grupo está vinculado (<code>!claw aqui</code>), escribe <code>!claw</code> para ver su estado y ejecuta <code>npm run doctor</code>. El registro de depuración muestra por qué se descartó cada mensaje.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="footer-cta">
+        <div>
+          <h2 data-i18n="ftH">Alójalo, vincula tu grupo y olvídate de subir mensajes.</h2>
+          <p data-i18n="ftP">Libre para leer, ejecutar y cambiar. Todo lo que necesitas está en el repositorio.</p>
+        </div>
+        <div class="hero-cta" style="margin-top:0">
+          <a class="btn btn-primary" href="https://github.com/ClawProject/El-Repositorio-de-Claw" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.8 10.9.6.1.8-.2.8-.6v-2.2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.1.1 1.7 1.2 1.7 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2.9-.3 1.9-.4 2.9-.4s2 .1 2.9.4C17.5 4.7 18.5 5 18.5 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.2c0 .4.2.7.8.6 4.5-1.5 7.8-5.8 7.8-10.9C23.5 5.7 18.3.5 12 .5z"></path></svg>
+            <span data-i18n="ftC1">Ir a GitHub</span>
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/ClawProject/El-Repositorio-de-Claw/blob/main/INSTALL.md" target="_blank" rel="noopener" data-i18n="ftC2">Guía de instalación</a>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span><span data-i18n="ftBy">Claw · hecho por</span> <a href="https://github.com/ClawProject" target="_blank" rel="noopener" style="color:var(--muted)">ClawProject</a></span>
+        <nav aria-label="Footer">
+          <a href="#features" data-i18n="nFeat">Funciones</a>
+          <a href="#how" data-i18n="nHow">Cómo funciona</a>
+          <a href="#quickstart" data-i18n="nQuick">Instalación</a>
+          <a href="#commands" data-i18n="nCmd">Comandos</a>
+          <a href="#docs" data-i18n="nDocs">Documentación</a>
+          <a href="#top" data-i18n="ftTop">Volver arriba</a>
+        </nav>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Translations. Each locale repeats the keys used by the data-i18n attributes.
+    // English lives in the markup itself and is restored from the original HTML.
+    const LOCALES = {
+      en: {
+        skip: 'Skip to content',
+        metaTitle: 'Claw — a self-hosted WhatsApp assistant for school life',
+        metaDesc: 'Claw is a WhatsApp bot with local AI that remembers homework and exams for a class group. Self-hosted, private and open source.',
+        hNote: 'Open source',
+        hRepo: 'Repository',
+        hLang: 'Language',
+        nFeat: 'Features',
+        nHow: 'How it works',
+        nQuick: 'Quick start',
+        nCmd: 'Commands',
+        nDocs: 'Docs',
+        eEyebrow: 'Self-hosted WhatsApp bot · Local AI',
+        eTitle: "Your class group's memory,<br><em>on your own computer.</em>",
+        eLead: 'Claw lives inside a school WhatsApp group. It picks up homework and exam announcements, keeps them in a local database and answers when someone asks — <strong>quietly, privately and without sending a single message to a cloud AI.</strong>',
+        eCta1: 'View the repository',
+        eCta2: 'Install in five minutes',
+        eM1: 'Node 22+',
+        eM2: 'Ollama',
+        eM3: 'Python optional',
+        eM4: 'Windows · Linux · macOS',
+        chGroup: 'Year 12 · B',
+        chSub: 'WhatsApp group · 34 members',
+        chLocal: 'local',
+        chNote: 'Claw opened a pending question · 15 min',
+        chM1: 'What is the maths homework?',
+        chM2: 'Pages 30 to 32 of the workbook.',
+        chM3: 'Claw, what is 15% of 240?',
+        chM4: '36.',
+        chFoot: 'Answered from the local database — no model used',
+        b1v: '100',
+        b1t: 'languages offered on first start',
+        b2v: '15 min',
+        b2t: 'window to answer a pending question',
+        b3v: '0',
+        b3t: 'AI requests leaving your computer',
+        b4v: '14 days',
+        b4t: 'default retention for saved images',
+        featK: 'What it does',
+        featH: 'An assistant that listens more than it talks.',
+        featP: 'Claw does not reply to every message. It reads the conversation, decides what is worth remembering and stays out of the way until someone needs it.',
+        f1t: 'Homework that does not get lost',
+        f1d: 'It spots homework and upcoming exams in the group chat and writes them down, so nobody has to scroll back three hundred messages.',
+        f2t: 'Silent by default',
+        f2d: 'It speaks only when someone asks or mentions <code>Claw</code>. No greetings, no unrequested replies, no noise in the group.',
+        f3t: 'Pending questions',
+        f3d: 'If a homework question has no answer yet, Claw opens a 15-minute window. The first useful reply is saved and later corrections replace it.',
+        f4t: 'Voice notes transcribed locally',
+        f4d: 'Whisper turns audio into text on your computer, even when the name is mispronounced, like <code>Clau</code> or <code>Clao</code>. The audio never leaves the machine.',
+        f5t: 'Useful images, not memes',
+        f5d: 'Photos of homework and exams are saved and can be sent again later. Unrelated images are ignored and expired files are deleted automatically.',
+        f6t: 'Local models, real answers',
+        f6d: '<code>qwen3:4b</code> handles the conversation with <code>qwen2.5:3b</code> as a fallback, while a smaller model classifies messages. All through Ollama on your hardware.',
+        f7t: 'Calendar export',
+        f7d: 'Exams can be exported as an <code>.ics</code> file, so the whole class can add them to their own calendar without copying dates by hand.',
+        f8t: 'Context that stays in its chat',
+        f8d: 'Recent messages from the same group give short replies their meaning, without mixing conversations from different places.',
+        f9t: 'Maintenance built in',
+        f9d: 'Media cleanup, checks and reminders run on their own. <code>npm run doctor</code> tells you exactly what is missing when something stops working.',
+        howK: 'How it works',
+        howH: 'Every message takes one of four paths.',
+        howP: 'Claw reads a message and decides: reply, remember it, open a pending question or ignore it. Most are ignored — that is the point.',
+        s1t: 'A message arrives',
+        s1d: 'Text, voice or image from the linked group. Audio is transcribed first, so everything follows the same path as text.',
+        s2t: 'Does it mention <code>Claw</code>?',
+        s2d: 'Then it is a direct request: a general question goes to the assistant and the answer is generated with the local model.',
+        s3t: 'Is it a question about homework or exams?',
+        s3d: 'Claw answers straight from the database, instantly and with no model needed. If the answer is missing, a pending question is opened.',
+        s4t: 'Could it be school information?',
+        s4d: 'A small classifier decides. Information is saved silently; everything else — jokes, plans, links, memes — stays where it is.',
+        tlT: 'A pending question, start to finish',
+        l1s: 'Someone asks',
+        l1d: '“What is the English homework?” — nothing is saved yet, so the question stays open.',
+        l2s: 'Claw waits 15 minutes',
+        l2d: 'Whatever is said in that group next is read as a possible answer.',
+        l3s: 'A classmate answers',
+        l3d: '“Do page 12.” Claw recognises the missing information and saves it.',
+        l4s: 'Anyone can ask later',
+        l4d: 'The answer comes from the database, and a later correction replaces the old entry.',
+        qkK: 'Quick start',
+        qkH: 'From clone to linked group.',
+        qkP: 'Three commands. The first start opens a setup page to pick the language, then shows the QR code that links your WhatsApp account.',
+        q1t: 'Clone and install',
+        q1d: 'Node.js 22 or newer is required. On Windows you can also double-click <code>arrancar.bat</code>.',
+        q2t: 'Download the local models',
+        q2d: 'With Ollama installed, download the chat model and its fallback. The first time is several GB.',
+        q3t: 'Start and link a group',
+        q3d: 'Scan the QR code from <em>Linked devices</em>, then type <code>!claw aqui</code> in the group.',
+        cmdK: 'Commands',
+        cmdH: 'Everything starts with <span style="color:var(--brand-soft)">!claw</span>.',
+        cmdP: 'The same commands work in the group and in the simulator. Admin commands answer only the owner and authorised admins.',
+        gt: 'Everyone',
+        gtag: 'group',
+        gs: 'Read and correct what is recorded.',
+        ot: 'Owner',
+        otag: 'admin',
+        os: 'Settings, access and maintenance.',
+        c1: 'Bot status',
+        c2: 'Pending homework',
+        c3: 'Upcoming exams',
+        c4: 'Saved information',
+        c5: 'Next exam or homework',
+        c6: 'Add or correct homework',
+        c7: 'Mark something as done',
+        c8: 'Summary of what is new',
+        c9: 'Export exams as .ics',
+        c10: 'Search the web (can be turned off)',
+        c11: 'Play chess',
+        c12: 'Analyse a position',
+        a1: 'Link or unlink a group',
+        a2: 'See and change settings',
+        a3: 'Choose the AI model',
+        a4: 'Change the language',
+        a5: 'Ban a user',
+        a6: 'Unban a user',
+        a7: 'List banned users',
+        a8: 'Maintenance mode',
+        a9: 'Delete saved information',
+        a10: 'Manage admins',
+        stK: 'Under the hood',
+        stH: 'Small stack, no cloud accounts.',
+        stP: 'A Node.js process talks, SQLite stores the data and everything smart goes through local models. Python is optional and only adds faster voice and images.',
+        r1v: '22 or newer · 24 LTS recommended',
+        r1d: 'Bot, web server and database',
+        r2v: 'Local inference engine',
+        r2d: 'Text models stay on the machine',
+        r3v: 'Main chat model',
+        r3d: 'Replies and general questions',
+        r4v: 'Fallback and classifier',
+        r4d: 'Records homework and exams',
+        r5v: 'Data in <code>data/picklebrain.db</code>',
+        r5d: 'Homework, exams, settings and students',
+        r6v: 'Optional service on port 5050',
+        r6d: 'faster-whisper and diffusers',
+        r7v: 'Optional fallback',
+        r7d: 'Legacy voice handling in Node',
+        r8v: 'Optional',
+        r8d: 'Reach the web page from outside the local network',
+        flT: 'One message, simplified',
+        flIn: 'incoming message',
+        flO1: 'mentions <code>claw</code>?',
+        flR1: 'local model',
+        flO2: 'homework question?',
+        flR2: 'database',
+        flO2s: 'no answer → opens a 15-min question',
+        flO3: 'school information?',
+        flR3: 'classifier',
+        flR3s: 'yes: save silently · no: ignore',
+        prH: 'Private by architecture, not by promise.',
+        prP1: 'The database, transcription and models run on the computer that hosts Claw. The project exists precisely so a class can share notes without handing its conversations to a third party.',
+        prP2: 'WhatsApp still delivers the messages and optional features need a connection, but the part that thinks never leaves the computer.',
+        pb1s: 'Local inference:',
+        pb1d: 'Ollama models and classification work offline.',
+        pb2s: 'Local voice:',
+        pb2d: 'Audio is transcribed with Whisper without uploading it anywhere.',
+        pb3s: 'Local data:',
+        pb3d: 'Everything lives in <code>data/</code>, which Git never tracks.',
+        pb4s: 'Optional network:',
+        pb4d: 'Web search is on, and one command turns it off.',
+        pb5s: 'Deletable history:',
+        pb5d: 'Notes can be deleted by subject or one at a time.',
+        dkK: 'Docs',
+        dkH: 'Read them before installing.',
+        dkP: 'Everything is in the repository, in plain Markdown — no external wiki to keep in sync.',
+        d1t: 'The overview',
+        d1d: 'Features, commands, setup and FAQ.',
+        d2t: 'Installation guide',
+        d2d: 'Step by step on Windows and troubleshooting.',
+        d3t: 'Architecture',
+        d3d: 'Internals, API and security model.',
+        d4t: 'Python service',
+        d4d: 'Voice with faster-whisper, images with diffusers.',
+        fqK: 'FAQ',
+        fqH: 'The questions people actually ask.',
+        qa1q: 'Does it need an internet connection?',
+        qa1a: 'WhatsApp does, and so do the model downloads on first start. Once cached, replies, classification and transcription run offline.',
+        qa2q: 'Can WhatsApp ban my number?',
+        qa2a: 'The risk is real. Claw uses Baileys, an unofficial WhatsApp Web library, and the WhatsApp terms restrict unauthorised automation. A separate number is strongly recommended.',
+        qa3q: 'What happens if I turn the computer off?',
+        qa3a: 'The bot stops, but nothing is lost: data stays in <code>data/picklebrain.db</code> and the session in <code>data/auth/</code>. After a restart everything is where it was.',
+        qa4q: 'Does it save every image in the group?',
+        qa4a: 'No. By default only school-related images are kept, with a size limit and a period after which files are deleted automatically.',
+        qa5q: 'Why is it not replying in the group?',
+        qa5a: 'Check that the group is linked (<code>!claw aqui</code>), type <code>!claw</code> for status and run <code>npm run doctor</code>. Debug logs show why each message was dropped.',
+        ftH: 'Host it, link your group and forget the scrolling.',
+        ftP: 'Free to read, run and change. Everything you need is in the repository.',
+        ftC1: 'Go to GitHub',
+        ftC2: 'Installation guide',
+        ftBy: 'Claw · by',
+        ftTop: 'Back to top',
+        uiCopy: 'Copy',
+        uiCopied: 'Copied',
+      },
+      es: {
+        skip: 'Ir al contenido',
+        metaTitle: 'Claw — un asistente de WhatsApp autoalojado para la vida escolar',
+        metaDesc: 'Claw es un bot de WhatsApp con IA local que recuerda los deberes y los exámenes de un grupo de clase. Autoalojado, privado y de código abierto.',
+        hNote: 'Código abierto',
+        hRepo: 'Repositorio',
+        hLang: 'Idioma',
+        nFeat: 'Funciones',
+        nHow: 'Cómo funciona',
+        nQuick: 'Instalación',
+        nCmd: 'Comandos',
+        nDocs: 'Documentación',
+        eEyebrow: 'Bot de WhatsApp autoalojado · IA local',
+        eTitle: 'La memoria de tu clase,<br><em>en tu propio ordenador.</em>',
+        eLead: 'Claw vive dentro de un grupo de WhatsApp del instituto. Apunta los deberes y los exámenes que se dicen, los guarda en una base de datos local y responde cuando alguien pregunta — <strong>en silencio, con privacidad y sin enviar ni un mensaje a una IA en la nube.</strong>',
+        eCta1: 'Ver el repositorio',
+        eCta2: 'Instalar en cinco minutos',
+        eM1: 'Node 22+',
+        eM2: 'Ollama',
+        eM3: 'Python opcional',
+        eM4: 'Windows · Linux · macOS',
+        chGroup: '1.º de Bachillerato · B',
+        chSub: 'Grupo de WhatsApp · 34 miembros',
+        chLocal: 'local',
+        chNote: 'Claw abrió una pregunta pendiente · 15 min',
+        chM1: '¿Qué deberes hay de mates?',
+        chM2: 'Páginas 30 a 32 del cuadernillo.',
+        chM3: 'Claw, ¿cuánto es el 15 % de 240?',
+        chM4: '36.',
+        chFoot: 'Respondido desde la base de datos local — sin usar el modelo',
+        b1v: '100',
+        b1t: 'idiomas disponibles en el primer arranque',
+        b2v: '15 min',
+        b2t: 'tiempo para responder a una pregunta pendiente',
+        b3v: '0',
+        b3t: 'peticiones de IA que salen de tu ordenador',
+        b4v: '14 días',
+        b4t: 'conservación por defecto de las imágenes guardadas',
+        featK: 'Qué hace',
+        featH: 'Un asistente que escucha más de lo que habla.',
+        featP: 'Claw no responde a cada mensaje. Lee la conversación, decide si algo merece recordarse y se aparta hasta que alguien lo necesita.',
+        f1t: 'Deberes que no se pierden',
+        f1d: 'Detecta tareas y exámenes próximos entre la conversación del grupo y los apunta, para que nadie tenga que subir trescientos mensajes.',
+        f2t: 'Silencio por defecto',
+        f2d: 'Solo habla cuando alguien pregunta o menciona <code>Claw</code>. Sin saludos, sin respuestas no pedidas y sin ruido en el grupo.',
+        f3t: 'Preguntas pendientes',
+        f3d: 'Si una pregunta sobre deberes aún no tiene respuesta, Claw abre una ventana de 15 minutos. La primera respuesta útil queda guardada y las correcciones posteriores la sustituyen.',
+        f4t: 'Notas de voz, transcritas en local',
+        f4d: 'Whisper convierte el audio en texto en tu ordenador, incluso si pronuncian mal el nombre, como <code>Clau</code> o <code>Clao</code>. El audio nunca sale del equipo.',
+        f5t: 'Imágenes útiles, no memes',
+        f5d: 'Las fotos de deberes y exámenes se guardan y pueden reenviarse más tarde. Las imágenes que no tienen que ver se ignoran y los archivos caducados se borran solos.',
+        f6t: 'Modelos locales, respuestas reales',
+        f6d: '<code>qwen3:4b</code> lleva la conversación con <code>qwen2.5:3b</code> como respaldo, mientras un modelo más pequeño clasifica los mensajes. Todo con Ollama en tu propio hardware.',
+        f7t: 'Exportar al calendario',
+        f7d: 'Los exámenes se exportan como archivo <code>.ics</code>, así toda la clase puede añadirlos a su calendario sin copiar fechas a mano.',
+        f8t: 'Contexto que no se mezcla',
+        f8d: 'Los mensajes recientes del mismo grupo dan sentido a las respuestas cortas, sin mezclar conversaciones de sitios distintos.',
+        f9t: 'Mantenimiento incluido',
+        f9d: 'La limpieza de archivos, las comprobaciones y los recordatorios funcionan solos. <code>npm run doctor</code> dice exactamente qué falta cuando algo deja de ir.',
+        howK: 'Cómo funciona',
+        howH: 'Cada mensaje toma uno de cuatro caminos.',
+        howP: 'Claw lee un mensaje y decide: contestarlo, recordarlo, abrir una pregunta pendiente o ignorarlo. La mayoría se ignoran — de eso se trata.',
+        s1t: 'Llega un mensaje',
+        s1d: 'Texto, nota de voz o imagen del grupo vinculado. El audio se transcribe primero, así que todo entra por el mismo proceso que el texto.',
+        s2t: '¿Menciona <code>Claw</code>?',
+        s2d: 'Entonces es una petición directa: una pregunta general va al asistente y la respuesta se genera con el modelo local.',
+        s3t: '¿Es una pregunta de deberes o exámenes?',
+        s3d: 'Claw responde directamente desde la base de datos, que es instantáneo y no necesita modelo. Si falta la respuesta, se abre una pregunta pendiente.',
+        s4t: '¿Puede ser información del instituto?',
+        s4d: 'Lo decide un clasificador pequeño. La información se guarda en silencio; lo demás — bromas, planes, enlaces, memes — se queda como está.',
+        tlT: 'Una pregunta pendiente, de principio a fin',
+        l1s: 'Alguien pregunta',
+        l1d: '«¿Qué deberes hay de inglés?» — aún no hay nada guardado, así que la pregunta queda abierta.',
+        l2s: 'Claw espera 15 minutos',
+        l2d: 'Lo que se diga después en ese grupo se lee como una posible respuesta.',
+        l3s: 'Un compañero contesta',
+        l3d: '«Hacer la página 12.» Claw lo reconoce como la información que faltaba y la guarda.',
+        l4s: 'Cualquiera puede preguntar luego',
+        l4d: 'La respuesta sale de la base de datos, y una corrección posterior sustituye a la anterior.',
+        qkK: 'Instalación',
+        qkH: 'Del clon al grupo vinculado.',
+        qkP: 'Tres comandos. El primer arranque abre una página de configuración para elegir idioma y después muestra el código QR que vincula tu WhatsApp.',
+        q1t: 'Clonar e instalar',
+        q1d: 'Hace falta Node.js 22 o superior. En Windows también puedes hacer doble clic en <code>arrancar.bat</code>.',
+        q2t: 'Descargar los modelos',
+        q2d: 'Con Ollama instalado, descarga el modelo de conversación y su respaldo. La primera vez son varios GB.',
+        q3t: 'Arrancar y vincular un grupo',
+        q3d: 'Escanea el código QR desde <em>Dispositivos vinculados</em> y escribe <code>!claw aqui</code> dentro del grupo.',
+        cmdK: 'Comandos',
+        cmdH: 'Todo empieza por <span style="color:var(--brand)">!claw</span>.',
+        cmdP: 'Los mismos comandos funcionan en el grupo y en el simulador. Los de administración solo responden al propietario y a los administradores autorizados.',
+        gt: 'Para todos',
+        gtag: 'grupo',
+        gs: 'Consultar y corregir lo que hay apuntado.',
+        ot: 'Para el propietario',
+        otag: 'admin',
+        os: 'Ajustes, accesos y mantenimiento.',
+        c1: 'Estado del bot',
+        c2: 'Deberes pendientes',
+        c3: 'Próximos exámenes',
+        c4: 'Información guardada',
+        c5: 'Siguiente examen o tarea',
+        c6: 'Añadir o corregir una tarea',
+        c7: 'Marcar algo como hecho',
+        c8: 'Resumen de lo reciente',
+        c9: 'Exportar exámenes en .ics',
+        c10: 'Buscar en la web (se puede desactivar)',
+        c11: 'Jugar al ajedrez',
+        c12: 'Analizar una posición',
+        a1: 'Vincular o desvincular un grupo',
+        a2: 'Ver y cambiar ajustes',
+        a3: 'Elegir el modelo de IA',
+        a4: 'Cambiar el idioma',
+        a5: 'Bloquear a un usuario',
+        a6: 'Desbloquear a un usuario',
+        a7: 'Ver usuarios bloqueados',
+        a8: 'Modo mantenimiento',
+        a9: 'Borrar información guardada',
+        a10: 'Gestionar administradores',
+        stK: 'Bajo el capó',
+        stH: 'Stack pequeño, sin cuentas en la nube.',
+        stP: 'Un proceso de Node.js habla, SQLite guarda los datos y todo lo inteligente pasa por modelos locales. Python es opcional y solo añade voz e imágenes más rápidas.',
+        r1v: '22 o superior · 24 LTS recomendado',
+        r1d: 'Bot, servidor web y base de datos',
+        r2v: 'Motor de inferencia local',
+        r2d: 'Los modelos de texto se quedan en el equipo',
+        r3v: 'Modelo principal de conversación',
+        r3d: 'Respuestas y preguntas generales',
+        r4v: 'Respaldo y clasificador',
+        r4d: 'Apunta deberes y exámenes',
+        r5v: 'Datos en <code>data/picklebrain.db</code>',
+        r5d: 'Deberes, exámenes, ajustes y alumnos',
+        r6v: 'Servicio opcional en el puerto 5050',
+        r6d: 'faster-whisper y diffusers',
+        r7v: 'Respaldo opcional',
+        r7d: 'Voz antigua procesada en Node',
+        r8v: 'Opcional',
+        r8d: 'Ver la web desde fuera de la red local',
+        flT: 'Un mensaje, simplificado',
+        flIn: 'mensaje entrante',
+        flO1: '¿menciona <code>claw</code>?',
+        flR1: 'modelo local',
+        flO2: '¿pregunta de deberes?',
+        flR2: 'base de datos',
+        flO2s: 'sin respuesta → abre una pregunta de 15 min',
+        flO3: '¿información del instituto?',
+        flR3: 'clasificador',
+        flR3s: 'sí: guardar en silencio · no: ignorar',
+        prH: 'Privado por arquitectura, no por promesa.',
+        prP1: 'La base de datos, la transcripción y los modelos corren en el ordenador que aloja Claw. El proyecto existe justamente para que una clase comparta apuntes sin entregar sus conversaciones a terceros.',
+        prP2: 'WhatsApp sigue entregando los mensajes y las funciones opcionales necesitan conexión, pero la parte que piensa nunca sale del equipo.',
+        pb1s: 'Inferencia local:',
+        pb1d: 'Los modelos de Ollama y la clasificación funcionan sin conexión.',
+        pb2s: 'Voz local:',
+        pb2d: 'El audio se transcribe con Whisper sin subirlo a ningún sitio.',
+        pb3s: 'Datos locales:',
+        pb3d: 'Todo vive en <code>data/</code>, que Git nunca rastrea.',
+        pb4s: 'Red opcional:',
+        pb4d: 'La búsqueda web está activada y un comando la desactiva.',
+        pb5s: 'Historial borrable:',
+        pb5d: 'Los apuntes se pueden borrar por asignatura o de uno en uno.',
+        dkK: 'Documentación',
+        dkH: 'Léela antes de instalar.',
+        dkP: 'Todo está en el repositorio, en Markdown normal — sin wikis externas que mantener.',
+        d1t: 'La visión general',
+        d1d: 'Funciones, comandos, configuración y preguntas frecuentes.',
+        d2t: 'Guía de instalación',
+        d2d: 'Paso a paso en Windows y solución de problemas.',
+        d3t: 'Arquitectura',
+        d3d: 'Interioridades, API y modelo de seguridad.',
+        d4t: 'Servicio de Python',
+        d4d: 'Voz con faster-whisper, imágenes con diffusers.',
+        fqK: 'Preguntas frecuentes',
+        fqH: 'Lo que la gente pregunta de verdad.',
+        qa1q: '¿Necesita conexión a internet?',
+        qa1a: 'WhatsApp sí, y las descargas de modelos del primer arranque también. Una vez en caché, las respuestas, la clasificación y la transcripción funcionan sin conexión.',
+        qa2q: '¿Pueden banearme el número en WhatsApp?',
+        qa2a: 'El riesgo es real. Claw usa Baileys, una biblioteca no oficial de WhatsApp Web, y las condiciones de WhatsApp restringen la automatización no autorizada. Se recomienda usar un número aparte.',
+        qa3q: '¿Qué pasa si apago el ordenador?',
+        qa3a: 'El bot se detiene, pero no se pierde nada: los datos quedan en <code>data/picklebrain.db</code> y la sesión en <code>data/auth/</code>. Al arrancar otra vez, todo sigue donde estaba.',
+        qa4q: '¿Guarda todas las imágenes del grupo?',
+        qa4a: 'No. Por defecto solo se guardan las relacionadas con el instituto, con un límite de tamaño y un periodo tras el cual los archivos se borran solos.',
+        qa5q: '¿Por qué no contesta en el grupo?',
+        qa5a: 'Comprueba que el grupo está vinculado (<code>!claw aqui</code>), escribe <code>!claw</code> para ver su estado y ejecuta <code>npm run doctor</code>. El registro de depuración muestra por qué se descartó cada mensaje.',
+        ftH: 'Alójalo, vincula tu grupo y olvídate de subir mensajes.',
+        ftP: 'Libre para leer, ejecutar y cambiar. Todo lo que necesitas está en el repositorio.',
+        ftC1: 'Ir a GitHub',
+        ftC2: 'Guía de instalación',
+        ftBy: 'Claw · hecho por',
+        ftTop: 'Volver arriba',
+        uiCopy: 'Copiar',
+        uiCopied: 'Copiado',
+      },
+      ca: {
+        skip: 'Ves al contingut',
+        metaTitle: 'Claw — un assistent de WhatsApp autoallotjat per a la vida escolar',
+        metaDesc: "Claw és un bot de WhatsApp amb IA local que recorda els deures i els exàmens d'un grup de classe. Autoallotjat, privat i de codi obert.",
+        hNote: 'Codi obert',
+        hRepo: 'Repositori',
+        hLang: 'Idioma',
+        nFeat: 'Funcions',
+        nHow: 'Com funciona',
+        nQuick: 'Instal·lació',
+        nCmd: 'Comandes',
+        nDocs: 'Documentació',
+        eEyebrow: 'Bot de WhatsApp autoallotjat · IA local',
+        eTitle: 'La memòria de la teva classe,<br><em>al teu propi ordinador.</em>',
+        eLead: "Claw viu dins d'un grup de WhatsApp de l'institut. Apunta els deures i els exàmens que es diuen, els guarda en una base de dades local i respon quan algú pregunta — <strong>en silenci, amb privacitat i sense enviar ni un missatge a una IA al núvol.</strong>",
+        eCta1: 'Veure el repositori',
+        eCta2: 'Instal·lar en cinc minuts',
+        eM1: 'Node 22+',
+        eM2: 'Ollama',
+        eM3: 'Python opcional',
+        eM4: 'Windows · Linux · macOS',
+        chGroup: '1r de Batxillerat · B',
+        chSub: 'Grup de WhatsApp · 34 membres',
+        chLocal: 'local',
+        chNote: 'Claw va obrir una pregunta pendent · 15 min',
+        chM1: 'Quins deures hi ha de mates?',
+        chM2: 'Pàgines 30 a 32 del quadernet.',
+        chM3: 'Claw, quant és el 15 % de 240?',
+        chM4: '36.',
+        chFoot: 'Respost des de la base de dades local — sense fer servir el model',
+        b1v: '100',
+        b1t: 'idiomes disponibles a la primera arrencada',
+        b2v: '15 min',
+        b2t: 'temps per respondre una pregunta pendent',
+        b3v: '0',
+        b3t: "peticions d'IA que surten del teu ordinador",
+        b4v: '14 dies',
+        b4t: 'conservació per defecte de les imatges guardades',
+        featK: 'Què fa',
+        featH: 'Un assistent que escolta més del que parla.',
+        featP: "Claw no respon a cada missatge. Llegeix la conversa, decideix si alguna cosa val la pena recordar-la i s'aparta fins que algú el necessita.",
+        f1t: 'Deures que no es perden',
+        f1d: 'Detecta tasques i exàmens propers entre la conversa del grup i els apunta, perquè ningú hagi de pujar tres-cents missatges.',
+        f2t: 'Silenci per defecte',
+        f2d: 'Només parla quan algú pregunta o esmenta <code>Claw</code>. Sense salutacions, sense respostes no demanades i sense soroll al grup.',
+        f3t: 'Preguntes pendents',
+        f3d: 'Si una pregunta sobre deures encara no té resposta, Claw obre una finestra de 15 minuts. La primera resposta útil queda guardada i les correccions posteriors la substitueixen.',
+        f4t: 'Notes de veu, transcrites en local',
+        f4d: "Whisper converteix l'àudio en text al teu ordinador, encara que pronunciïn malament el nom, com <code>Clau</code> o <code>Clao</code>. L'àudio no surt mai de l'equip.",
+        f5t: 'Imatges útils, no mems',
+        f5d: "Les fotos de deures i exàmens es guarden i es poden reenviar més tard. Les imatges que no hi tenen res a veure s'ignoren i els fitxers caducats s'esborren sols.",
+        f6t: 'Models locals, respostes reals',
+        f6d: '<code>qwen3:4b</code> porta la conversa amb <code>qwen2.5:3b</code> com a suport, mentre un model més petit classifica els missatges. Tot amb Ollama al teu propi maquinari.',
+        f7t: 'Exportar al calendari',
+        f7d: "Els exàmens s'exporten com a fitxer <code>.ics</code>, així tota la classe els pot afegir al seu calendari sense copiar dates a mà.",
+        f8t: 'Context que no es barreja',
+        f8d: 'Els missatges recents del mateix grup donen sentit a les respostes curtes, sense barrejar converses de llocs diferents.',
+        f9t: 'Manteniment inclòs',
+        f9d: 'La neteja de fitxers, les comprovacions i els recordatoris funcionen sols. <code>npm run doctor</code> diu exactament què falta quan alguna cosa deixa de funcionar.',
+        howK: 'Com funciona',
+        howH: 'Cada missatge pren un de quatre camins.',
+        howP: "Claw llegeix un missatge i decideix: contestar-lo, recordar-lo, obrir una pregunta pendent o ignorar-lo. La majoria s'ignoren — d'això es tracta.",
+        s1t: 'Arriba un missatge',
+        s1d: "Text, nota de veu o imatge del grup vinculat. L'àudio es transcriu primer, així que tot entra pel mateix procés que el text.",
+        s2t: 'Esmenta <code>Claw</code>?',
+        s2d: "Llavors és una petició directa: una pregunta general va a l'assistent i la resposta es genera amb el model local.",
+        s3t: 'És una pregunta de deures o exàmens?',
+        s3d: "Claw respon directament des de la base de dades, que és instantani i no necessita model. Si falta la resposta, s'obre una pregunta pendent.",
+        s4t: "Pot ser informació de l'institut?",
+        s4d: "Ho decideix un classificador petit. La informació es guarda en silenci; la resta — acudits, plans, enllaços, mems — es queda com està.",
+        tlT: 'Una pregunta pendent, de principi a fi',
+        l1s: 'Algú pregunta',
+        l1d: "«Quins deures hi ha d'anglès?» — encara no hi ha res guardat, així que la pregunta queda oberta.",
+        l2s: 'Claw espera 15 minuts',
+        l2d: 'El que es digui després en aquell grup es llegeix com una possible resposta.',
+        l3s: 'Un company contesta',
+        l3d: '«Fer la pàgina 12.» Claw ho reconeix com la informació que faltava i la guarda.',
+        l4s: 'Qualsevol pot preguntar després',
+        l4d: "La resposta surt de la base de dades, i una correcció posterior substitueix l'anterior.",
+        qkK: 'Instal·lació',
+        qkH: 'Del clon al grup vinculat.',
+        qkP: 'Tres comandes. La primera arrencada obre una pàgina de configuració per triar idioma i després mostra el codi QR que vincula el teu WhatsApp.',
+        q1t: 'Clonar i instal·lar',
+        q1d: 'Cal Node.js 22 o superior. A Windows també pots fer doble clic a <code>arrancar.bat</code>.',
+        q2t: 'Baixar els models',
+        q2d: 'Amb Ollama instal·lat, baixa el model de conversa i el seu suport. El primer cop són uns quants GB.',
+        q3t: 'Arrencar i vincular un grup',
+        q3d: 'Escaneja el codi QR des de <em>Dispositius vinculats</em> i escriu <code>!claw aqui</code> dins del grup.',
+        cmdK: 'Comandes',
+        cmdH: 'Tot comença per <span style="color:var(--brand)">!claw</span>.',
+        cmdP: "Les mateixes comandes funcionen al grup i al simulador. Les d'administració només responen al propietari i als administradors autoritzats.",
+        gt: 'Per a tothom',
+        gtag: 'grup',
+        gs: 'Consultar i corregir el que hi ha apuntat.',
+        ot: 'Per al propietari',
+        otag: 'admin',
+        os: 'Ajustos, accessos i manteniment.',
+        c1: 'Estat del bot',
+        c2: 'Deures pendents',
+        c3: 'Pròxims exàmens',
+        c4: 'Informació guardada',
+        c5: 'Següent examen o tasca',
+        c6: 'Afegir o corregir una tasca',
+        c7: 'Marcar una cosa com a feta',
+        c8: 'Resum del que és recent',
+        c9: 'Exportar exàmens en .ics',
+        c10: 'Cercar a la web (es pot desactivar)',
+        c11: 'Jugar als escacs',
+        c12: 'Analitzar una posició',
+        a1: 'Vincular o desvincular un grup',
+        a2: 'Veure i canviar ajustos',
+        a3: "Triar el model d'IA",
+        a4: "Canviar l'idioma",
+        a5: 'Bloquejar un usuari',
+        a6: 'Desbloquejar un usuari',
+        a7: 'Veure usuaris bloquejats',
+        a8: 'Mode manteniment',
+        a9: 'Esborrar informació guardada',
+        a10: 'Gestionar administradors',
+        stK: 'Sota el capó',
+        stH: 'Pila petita, sense comptes al núvol.',
+        stP: 'Un procés de Node.js parla, SQLite guarda les dades i tot el que és intel·ligent passa per models locals. Python és opcional i només afegeix veu i imatges més ràpides.',
+        r1v: '22 o superior · 24 LTS recomanat',
+        r1d: 'Bot, servidor web i base de dades',
+        r2v: "Motor d'inferència local",
+        r2d: "Els models de text es queden a l'equip",
+        r3v: 'Model principal de conversa',
+        r3d: 'Respostes i preguntes generals',
+        r4v: 'Suport i classificador',
+        r4d: 'Apunta deures i exàmens',
+        r5v: 'Dades a <code>data/picklebrain.db</code>',
+        r5d: 'Deures, exàmens, ajustos i alumnes',
+        r6v: 'Servei opcional al port 5050',
+        r6d: 'faster-whisper i diffusers',
+        r7v: 'Suport opcional',
+        r7d: 'Veu antiga processada a Node',
+        r8v: 'Opcional',
+        r8d: 'Veure la web des de fora de la xarxa local',
+        flT: 'Un missatge, simplificat',
+        flIn: 'missatge entrant',
+        flO1: 'esmenta <code>claw</code>?',
+        flR1: 'model local',
+        flO2: 'pregunta de deures?',
+        flR2: 'base de dades',
+        flO2s: 'sense resposta → obre una pregunta de 15 min',
+        flO3: "informació de l'institut?",
+        flR3: 'classificador',
+        flR3s: 'sí: guardar en silenci · no: ignorar',
+        prH: 'Privat per arquitectura, no per promesa.',
+        prP1: "La base de dades, la transcripció i els models corren a l'ordinador que allotja Claw. El projecte existeix justament perquè una classe comparteixi apunts sense lliurar les seves converses a tercers.",
+        prP2: "WhatsApp continua lliurant els missatges i les funcions opcionals necessiten connexió, però la part que pensa no surt mai de l'equip.",
+        pb1s: 'Inferència local:',
+        pb1d: "Els models d'Ollama i la classificació funcionen sense connexió.",
+        pb2s: 'Veu local:',
+        pb2d: "L'àudio es transcriu amb Whisper sense pujar-lo enlloc.",
+        pb3s: 'Dades locals:',
+        pb3d: 'Tot viu a <code>data/</code>, que Git no rastreja mai.',
+        pb4s: 'Xarxa opcional:',
+        pb4d: 'La cerca web està activada i una comanda la desactiva.',
+        pb5s: 'Historial esborrable:',
+        pb5d: "Els apunts es poden esborrar per assignatura o d'un en un.",
+        dkK: 'Documentació',
+        dkH: "Llegeix-la abans d'instal·lar.",
+        dkP: 'Tot és al repositori, en Markdown normal — sense wikis externes que mantenir.',
+        d1t: 'La visió general',
+        d1d: 'Funcions, comandes, configuració i preguntes freqüents.',
+        d2t: "Guia d'instal·lació",
+        d2d: 'Pas a pas a Windows i solució de problemes.',
+        d3t: 'Arquitectura',
+        d3d: 'Interioritats, API i model de seguretat.',
+        d4t: 'Servei de Python',
+        d4d: 'Veu amb faster-whisper, imatges amb diffusers.',
+        fqK: 'Preguntes freqüents',
+        fqH: 'El que la gent pregunta de veritat.',
+        qa1q: 'Necessita connexió a internet?',
+        qa1a: 'WhatsApp sí, i les descàrregues de models de la primera arrencada també. Un cop en memòria cau, les respostes, la classificació i la transcripció funcionen sense connexió.',
+        qa2q: 'Em poden bannejar el número a WhatsApp?',
+        qa2a: "El risc és real. Claw fa servir Baileys, una biblioteca no oficial de WhatsApp Web, i les condicions de WhatsApp restringeixen l'automatització no autoritzada. Es recomana fer servir un número a part.",
+        qa3q: "Què passa si apago l'ordinador?",
+        qa3a: "El bot s'atura, però no es perd res: les dades queden a <code>data/picklebrain.db</code> i la sessió a <code>data/auth/</code>. En arrencar de nou, tot és on era.",
+        qa4q: 'Guarda totes les imatges del grup?',
+        qa4a: "No. Per defecte només es guarden les relacionades amb l'institut, amb un límit de mida i un període després del qual els fitxers s'esborren sols.",
+        qa5q: 'Per què no contesta al grup?',
+        qa5a: "Comprova que el grup està vinculat (<code>!claw aqui</code>), escriu <code>!claw</code> per veure'n l'estat i executa <code>npm run doctor</code>. El registre de depuració mostra per què es va descartar cada missatge.",
+        ftH: "Allotja'l, vincula el teu grup i oblida't de pujar missatges.",
+        ftP: 'Lliure per llegir, executar i canviar. Tot el que necessites és al repositori.',
+        ftC1: 'Anar a GitHub',
+        ftC2: "Guia d'instal·lació",
+        ftBy: 'Claw · fet per',
+        ftTop: 'Tornar a dalt',
+        uiCopy: 'Copiar',
+        uiCopied: 'Copiat',
+      },
+      fr: {
+        skip: 'Aller au contenu',
+        metaTitle: 'Claw — un assistant WhatsApp auto-hébergé pour la vie scolaire',
+        metaDesc: "Claw est un bot WhatsApp à IA locale qui retient les devoirs et les contrôles d'un groupe de classe. Auto-hébergé, privé et open source.",
+        hNote: 'Open source',
+        hRepo: 'Dépôt',
+        hLang: 'Langue',
+        nFeat: 'Fonctions',
+        nHow: 'Fonctionnement',
+        nQuick: 'Installation',
+        nCmd: 'Commandes',
+        nDocs: 'Documentation',
+        eEyebrow: 'Bot WhatsApp auto-hébergé · IA locale',
+        eTitle: 'La mémoire de votre classe,<br><em>sur votre propre machine.</em>',
+        eLead: "Claw vit dans un groupe WhatsApp de lycée. Il retient les devoirs et les contrôles qui y passent, les garde dans une base de données locale et répond quand on l'interroge — <strong>en silence, en privé, sans envoyer un seul message à une IA dans le cloud.</strong>",
+        eCta1: 'Voir le dépôt',
+        eCta2: 'Installer en cinq minutes',
+        eM1: 'Node 22+',
+        eM2: 'Ollama',
+        eM3: 'Python facultatif',
+        eM4: 'Windows · Linux · macOS',
+        chGroup: 'Première · B',
+        chSub: 'Groupe WhatsApp · 34 membres',
+        chLocal: 'local',
+        chNote: 'Claw a ouvert une question en attente · 15 min',
+        chM1: 'Quels sont les devoirs de maths ?',
+        chM2: "Pages 30 à 32 du cahier d'exercices.",
+        chM3: 'Claw, combien font 15 % de 240 ?',
+        chM4: '36.',
+        chFoot: 'Répondu depuis la base locale — sans passer par le modèle',
+        b1v: '100',
+        b1t: 'langues proposées au premier lancement',
+        b2v: '15 min',
+        b2t: 'délai pour répondre à une question en attente',
+        b3v: '0',
+        b3t: 'requêtes IA qui quittent votre ordinateur',
+        b4v: '14 jours',
+        b4t: 'durée de conservation par défaut des images',
+        featK: 'Ce qu\'il fait',
+        featH: 'Un assistant qui écoute plus qu\'il ne parle.',
+        featP: "Claw ne répond pas à chaque message. Il lit la conversation, décide si quelque chose mérite d'être retenu et reste à l'écart jusqu'à ce qu'on ait besoin de lui.",
+        f1t: 'Des devoirs qui ne se perdent pas',
+        f1d: "Il repère les devoirs et les contrôles à venir dans la conversation et les enregistre, pour que personne n'ait à remonter trois cents messages.",
+        f2t: 'Silencieux par défaut',
+        f2d: 'Il ne parle que si on lui pose une question ou si on mentionne <code>Claw</code>. Pas de bonjour, pas de réponses non demandées, pas de bruit dans le groupe.',
+        f3t: 'Questions en attente',
+        f3d: "Si une question sur les devoirs n'a pas encore de réponse, Claw ouvre une fenêtre de 15 minutes. La première réponse utile est enregistrée, et les corrections suivantes la remplacent.",
+        f4t: 'Messages vocaux transcrits en local',
+        f4d: "Whisper transforme l'audio en texte sur votre machine, même si le nom est mal prononcé, comme <code>Clau</code> ou <code>Clao</code>. L'audio ne quitte jamais l'ordinateur.",
+        f5t: 'Des images utiles, pas des mèmes',
+        f5d: 'Les photos liées aux devoirs et aux contrôles sont conservées et peuvent être renvoyées plus tard. Les images sans rapport sont ignorées et les fichiers expirés sont supprimés automatiquement.',
+        f6t: 'Modèles locaux, vraies réponses',
+        f6d: "<code>qwen3:4b</code> gère la conversation avec <code>qwen2.5:3b</code> en secours, tandis qu'un modèle plus petit classe les messages. Le tout via Ollama, sur votre matériel.",
+        f7t: 'Export vers le calendrier',
+        f7d: "Les contrôles s'exportent en fichier <code>.ics</code> : toute la classe peut les ajouter à son calendrier sans recopier les dates.",
+        f8t: 'Un contexte qui ne se mélange pas',
+        f8d: 'Les messages récents du même groupe donnent leur sens aux réponses courtes, sans mélanger les conversations de lieux différents.',
+        f9t: 'Entretien intégré',
+        f9d: "Le nettoyage des médias, les vérifications et les rappels tournent seuls. <code>npm run doctor</code> indique exactement ce qui manque quand quelque chose s'arrête.",
+        howK: 'Fonctionnement',
+        howH: 'Chaque message prend l\'un des quatre chemins.',
+        howP: "Claw lit un message, puis décide : y répondre, le retenir, ouvrir une question en attente ou l'ignorer. La plupart sont ignorés — c'est le but.",
+        s1t: 'Un message arrive',
+        s1d: "Texte, vocal ou image du groupe lié. L'audio est transcrit d'abord, donc tout passe par le même pipeline que le texte.",
+        s2t: 'Mentionne-t-il <code>Claw</code> ?',
+        s2d: "C'est alors une demande directe : une question générale part vers l'assistant et la réponse est générée par le modèle local.",
+        s3t: 'Est-ce une question de devoirs ou de contrôle ?',
+        s3d: "Claw répond directement depuis la base de données : c'est instantané et sans modèle. Si la réponse manque, une question en attente s'ouvre.",
+        s4t: 'Est-ce une information de cours ?',
+        s4d: "Un petit classifieur tranche. L'information est enregistrée en silence ; le reste — blagues, projets, liens, mèmes — est laissé de côté.",
+        tlT: 'Une question en attente, de bout en bout',
+        l1s: 'Quelqu\'un demande',
+        l1d: "« Quels sont les devoirs d'anglais ? » — rien n'est encore enregistré, la question reste ouverte.",
+        l2s: 'Claw attend 15 minutes',
+        l2d: 'Ce qui se dit ensuite dans ce groupe est lu comme une réponse possible.',
+        l3s: 'Un camarade répond',
+        l3d: "« Faire la page 12. » Claw le reconnaît comme l'information manquante et l'enregistre.",
+        l4s: 'N\'importe qui peut redemander',
+        l4d: "La réponse vient de la base, et une correction ultérieure remplace l'ancienne entrée.",
+        qkK: 'Installation',
+        qkH: 'Du clone au groupe lié.',
+        qkP: 'Trois commandes. Le premier lancement ouvre une page de configuration pour choisir la langue, puis affiche le QR code qui lie votre compte WhatsApp.',
+        q1t: 'Cloner et installer',
+        q1d: 'Node.js 22 ou plus est requis. Sous Windows, vous pouvez aussi double-cliquer sur <code>arrancar.bat</code>.',
+        q2t: 'Télécharger les modèles',
+        q2d: 'Avec Ollama installé, téléchargez le modèle de conversation et son secours. Comptez plusieurs Go la première fois.',
+        q3t: 'Démarrer et lier un groupe',
+        q3d: 'Scannez le QR code depuis <em>Appareils connectés</em>, puis tapez <code>!claw aqui</code> dans le groupe.',
+        cmdK: 'Commandes',
+        cmdH: 'Tout commence par <span style="color:var(--brand)">!claw</span>.',
+        cmdP: "Les mêmes commandes marchent dans le groupe et dans le simulateur. Les commandes d'administration ne répondent qu'au propriétaire et aux administrateurs autorisés.",
+        gt: 'Pour tout le monde',
+        gtag: 'groupe',
+        gs: 'Consulter et corriger ce qui est enregistré.',
+        ot: 'Pour le propriétaire',
+        otag: 'admin',
+        os: 'Réglages, accès et entretien.',
+        c1: 'État du bot',
+        c2: 'Devoirs en attente',
+        c3: 'Contrôles à venir',
+        c4: 'Informations enregistrées',
+        c5: 'Prochain contrôle ou devoir',
+        c6: 'Ajouter ou corriger un devoir',
+        c7: 'Marquer quelque chose comme fait',
+        c8: 'Résumé des dernières infos',
+        c9: 'Exporter les contrôles en .ics',
+        c10: 'Recherche web (désactivable)',
+        c11: 'Jouer aux échecs',
+        c12: 'Analyser une position',
+        a1: 'Lier ou délier un groupe',
+        a2: 'Voir et changer les réglages',
+        a3: 'Choisir le modèle d\'IA',
+        a4: 'Changer la langue',
+        a5: 'Bloquer un utilisateur',
+        a6: 'Débloquer un utilisateur',
+        a7: 'Lister les utilisateurs bloqués',
+        a8: 'Mode maintenance',
+        a9: 'Supprimer des informations',
+        a10: 'Gérer les administrateurs',
+        stK: 'Sous le capot',
+        stH: 'Une petite pile, sans compte cloud.',
+        stP: "Un processus Node.js fait parler, SQLite garde les données et tout ce qui réfléchit passe par des modèles locaux. Python est facultatif et n'ajoute que la voix et les images plus rapides.",
+        r1v: '22 ou plus · 24 LTS recommandé',
+        r1d: 'Bot, serveur web et base de données',
+        r2v: 'Moteur d\'inférence local',
+        r2d: 'Les modèles de texte restent sur la machine',
+        r3v: 'Modèle de conversation principal',
+        r3d: 'Réponses et questions générales',
+        r4v: 'Secours et classifieur',
+        r4d: 'Enregistre devoirs et contrôles',
+        r5v: 'Données dans <code>data/picklebrain.db</code>',
+        r5d: 'Devoirs, contrôles, réglages et élèves',
+        r6v: 'Service facultatif sur le port 5050',
+        r6d: 'faster-whisper et diffusers',
+        r7v: 'Secours facultatif',
+        r7d: 'Ancien traitement vocal sous Node',
+        r8v: 'Facultatif',
+        r8d: 'Accéder à la page web hors du réseau local',
+        flT: 'Un message, simplifié',
+        flIn: 'message entrant',
+        flO1: 'mentionne <code>claw</code> ?',
+        flR1: 'modèle local',
+        flO2: 'question de devoirs ?',
+        flR2: 'base de données',
+        flO2s: 'sans réponse → ouvre une question de 15 min',
+        flO3: 'information de cours ?',
+        flR3: 'classifieur',
+        flR3s: 'oui : enregistrer en silence · non : ignorer',
+        prH: 'Privé par conception, pas par promesse.',
+        prP1: "La base de données, la transcription et les modèles tournent sur la machine qui héberge Claw. Le projet existe justement pour qu'une classe partage ses notes sans confier ses conversations à un tiers.",
+        prP2: "WhatsApp achemine toujours les messages et les fonctions facultatives demandent une connexion — mais la partie qui réfléchit ne quitte jamais l'ordinateur.",
+        pb1s: 'Inférence locale :',
+        pb1d: 'Les modèles Ollama et la classification fonctionnent hors ligne.',
+        pb2s: 'Voix locale :',
+        pb2d: "L'audio est transcrit avec Whisper sans être envoyé nulle part.",
+        pb3s: 'Données locales :',
+        pb3d: 'Tout vit dans <code>data/</code>, que Git ne suit jamais.',
+        pb4s: 'Réseau facultatif :',
+        pb4d: 'La recherche web est active et une commande la coupe.',
+        pb5s: 'Historique effaçable :',
+        pb5d: 'Les notes se suppriment par matière ou une par une.',
+        dkK: 'Documentation',
+        dkH: 'À lire avant d\'installer.',
+        dkP: 'Tout est dans le dépôt, en Markdown simple — pas de wiki externe à maintenir.',
+        d1t: 'Vue d\'ensemble',
+        d1d: 'Fonctions, commandes, configuration et FAQ.',
+        d2t: 'Guide d\'installation',
+        d2d: 'Pas à pas sous Windows et dépannage.',
+        d3t: 'Architecture',
+        d3d: 'Intérieur, API et modèle de sécurité.',
+        d4t: 'Service Python',
+        d4d: 'Voix avec faster-whisper, images avec diffusers.',
+        fqK: 'FAQ',
+        fqH: 'Les questions que l\'on pose vraiment.',
+        qa1q: 'Faut-il une connexion internet ?',
+        qa1a: 'WhatsApp oui, et les téléchargements de modèles du premier lancement aussi. Une fois en cache, réponses, classification et transcription fonctionnent hors ligne.',
+        qa2q: 'WhatsApp peut-il bannir mon numéro ?',
+        qa2a: "Le risque est réel. Claw utilise Baileys, une bibliothèque WhatsApp Web non officielle, et les conditions de WhatsApp encadrent l'automatisation non autorisée. Utiliser un numéro séparé est fortement conseillé.",
+        qa3q: 'Que se passe-t-il si j\'éteins l\'ordinateur ?',
+        qa3a: "Le bot s'arrête, mais rien n'est perdu : les données restent dans <code>data/picklebrain.db</code> et la session dans <code>data/auth/</code>. Au redémarrage, tout est là.",
+        qa4q: 'Enregistre-t-il toutes les images du groupe ?',
+        qa4a: 'Non. Par défaut, seules les images liées aux cours sont conservées, avec une limite de taille et une durée après laquelle les fichiers sont supprimés automatiquement.',
+        qa5q: 'Pourquoi ne répond-il pas dans le groupe ?',
+        qa5a: 'Vérifiez que le groupe est lié (<code>!claw aqui</code>), tapez <code>!claw</code> pour voir son état et lancez <code>npm run doctor</code>. Les logs de débogage indiquent pourquoi chaque message a été écarté.',
+        ftH: 'Hébergez-le, liez votre groupe, oubliez le défilement.',
+        ftP: 'Libre à lire, exécuter et modifier. Tout est dans le dépôt.',
+        ftC1: 'Aller sur GitHub',
+        ftC2: 'Guide d\'installation',
+        ftBy: 'Claw · par',
+        ftTop: 'Haut de page',
+        uiCopy: 'Copier',
+        uiCopied: 'Copié',
+      },
+      pt: {
+        skip: 'Ir para o conteúdo',
+        metaTitle: 'Claw — um assistente de WhatsApp auto-alojado para a vida escolar',
+        metaDesc: 'O Claw é um bot de WhatsApp com IA local que guarda os trabalhos de casa e os testes de um grupo de turma. Auto-alojado, privado e de código aberto.',
+        hNote: 'Código aberto',
+        hRepo: 'Repositório',
+        hLang: 'Idioma',
+        nFeat: 'Funcionalidades',
+        nHow: 'Como funciona',
+        nQuick: 'Instalação',
+        nCmd: 'Comandos',
+        nDocs: 'Documentação',
+        eEyebrow: 'Bot de WhatsApp auto-alojado · IA local',
+        eTitle: 'A memória da tua turma,<br><em>no teu próprio computador.</em>',
+        eLead: 'O Claw vive dentro de um grupo de WhatsApp da escola. Regista os trabalhos e os testes que por lá passam, guarda-os numa base de dados local e responde quando alguém pergunta — <strong>em silêncio, com privacidade e sem enviar uma única mensagem para uma IA na nuvem.</strong>',
+        eCta1: 'Ver o repositório',
+        eCta2: 'Instalar em cinco minutos',
+        eM1: 'Node 22+',
+        eM2: 'Ollama',
+        eM3: 'Python opcional',
+        eM4: 'Windows · Linux · macOS',
+        chGroup: '12.º ano · Turma B',
+        chSub: 'Grupo de WhatsApp · 34 membros',
+        chLocal: 'local',
+        chNote: 'O Claw abriu uma pergunta pendente · 15 min',
+        chM1: 'Que trabalhos há de matemática?',
+        chM2: 'Páginas 30 a 32 do caderno.',
+        chM3: 'Claw, quanto é 15 % de 240?',
+        chM4: '36.',
+        chFoot: 'Respondido a partir da base de dados local — sem usar o modelo',
+        b1v: '100',
+        b1t: 'idiomas disponíveis no primeiro arranque',
+        b2v: '15 min',
+        b2t: 'tempo para responder a uma pergunta pendente',
+        b3v: '0',
+        b3t: 'pedidos de IA que saem do teu computador',
+        b4v: '14 dias',
+        b4t: 'retenção predefinida das imagens guardadas',
+        featK: 'O que faz',
+        featH: 'Um assistente que ouve mais do que fala.',
+        featP: 'O Claw não responde a todas as mensagens. Lê a conversa, decide se algo merece ser guardado e fica de lado até alguém precisar.',
+        f1t: 'Trabalhos que não se perdem',
+        f1d: 'Deteta trabalhos e testes próximos na conversa do grupo e regista-os, para ninguém ter de subir trezentas mensagens.',
+        f2t: 'Silêncio por predefinição',
+        f2d: 'Só fala quando alguém pergunta ou menciona <code>Claw</code>. Sem saudações, sem respostas não pedidas e sem ruído no grupo.',
+        f3t: 'Perguntas pendentes',
+        f3d: 'Se uma pergunta sobre trabalhos ainda não tem resposta, o Claw abre uma janela de 15 minutos. A primeira resposta útil fica guardada e as correções seguintes substituem-na.',
+        f4t: 'Notas de voz transcritas localmente',
+        f4d: 'O Whisper transforma o áudio em texto no teu computador, mesmo que o nome seja mal pronunciado, como <code>Clau</code> ou <code>Clao</code>. O áudio nunca sai do equipamento.',
+        f5t: 'Imagens úteis, não memes',
+        f5d: 'As fotos de trabalhos e testes ficam guardadas e podem ser reenviadas mais tarde. As imagens sem relação são ignoradas e os ficheiros expirados são apagados automaticamente.',
+        f6t: 'Modelos locais, respostas reais',
+        f6d: 'O <code>qwen3:4b</code> conduz a conversa com o <code>qwen2.5:3b</code> como alternativa, enquanto um modelo mais pequeno classifica as mensagens. Tudo com Ollama no teu próprio hardware.',
+        f7t: 'Exportar para o calendário',
+        f7d: 'Os testes são exportados como ficheiro <code>.ics</code>, para que toda a turma os possa juntar ao seu calendário sem copiar datas à mão.',
+        f8t: 'Contexto que não se mistura',
+        f8d: 'As mensagens recentes do mesmo grupo dão sentido às respostas curtas, sem misturar conversas de sítios diferentes.',
+        f9t: 'Manutenção incluída',
+        f9d: 'A limpeza de ficheiros, as verificações e os lembretes funcionam sozinhos. O <code>npm run doctor</code> diz exatamente o que falta quando algo deixa de funcionar.',
+        howK: 'Como funciona',
+        howH: 'Cada mensagem segue um de quatro caminhos.',
+        howP: 'O Claw lê uma mensagem e decide: responder, guardar, abrir uma pergunta pendente ou ignorar. A maioria é ignorada — é esse o objetivo.',
+        s1t: 'Chega uma mensagem',
+        s1d: 'Texto, nota de voz ou imagem do grupo ligado. O áudio é transcrito primeiro, por isso tudo entra no mesmo processo do texto.',
+        s2t: 'Menciona <code>Claw</code>?',
+        s2d: 'Então é um pedido direto: uma pergunta geral vai para o assistente e a resposta é gerada com o modelo local.',
+        s3t: 'É uma pergunta de trabalhos ou testes?',
+        s3d: 'O Claw responde diretamente da base de dados, o que é instantâneo e dispensa o modelo. Se faltar a resposta, abre-se uma pergunta pendente.',
+        s4t: 'Pode ser informação da escola?',
+        s4d: 'Um classificador pequeno decide. A informação é guardada em silêncio; o resto — piadas, planos, links, memes — fica como está.',
+        tlT: 'Uma pergunta pendente, do início ao fim',
+        l1s: 'Alguém pergunta',
+        l1d: '«Que trabalhos há de inglês?» — ainda não há nada guardado, por isso a pergunta fica aberta.',
+        l2s: 'O Claw espera 15 minutos',
+        l2d: 'O que for dito a seguir nesse grupo é lido como uma possível resposta.',
+        l3s: 'Um colega responde',
+        l3d: '«Fazer a página 12.» O Claw reconhece-a como a informação que faltava e guarda-a.',
+        l4s: 'Qualquer pessoa pode perguntar depois',
+        l4d: 'A resposta vem da base de dados, e uma correção posterior substitui a anterior.',
+        qkK: 'Instalação',
+        qkH: 'Do clone ao grupo ligado.',
+        qkP: 'Três comandos. O primeiro arranque abre uma página de configuração para escolher o idioma e depois mostra o código QR que liga a tua conta de WhatsApp.',
+        q1t: 'Clonar e instalar',
+        q1d: 'É preciso Node.js 22 ou superior. No Windows também podes fazer duplo clique em <code>arrancar.bat</code>.',
+        q2t: 'Descarregar os modelos',
+        q2d: 'Com o Ollama instalado, descarrega o modelo de conversa e a alternativa. Da primeira vez são vários GB.',
+        q3t: 'Arrancar e ligar um grupo',
+        q3d: 'Lê o código QR em <em>Dispositivos ligados</em> e escreve <code>!claw aqui</code> dentro do grupo.',
+        cmdK: 'Comandos',
+        cmdH: 'Tudo começa por <span style="color:var(--brand)">!claw</span>.',
+        cmdP: 'Os mesmos comandos funcionam no grupo e no simulador. Os de administração só respondem ao proprietário e aos administradores autorizados.',
+        gt: 'Para todos',
+        gtag: 'grupo',
+        gs: 'Consultar e corrigir o que está registado.',
+        ot: 'Para o proprietário',
+        otag: 'admin',
+        os: 'Definições, acessos e manutenção.',
+        c1: 'Estado do bot',
+        c2: 'Trabalhos pendentes',
+        c3: 'Próximos testes',
+        c4: 'Informação guardada',
+        c5: 'Próximo teste ou trabalho',
+        c6: 'Adicionar ou corrigir um trabalho',
+        c7: 'Marcar algo como feito',
+        c8: 'Resumo do que é recente',
+        c9: 'Exportar testes em .ics',
+        c10: 'Pesquisar na web (pode ser desligado)',
+        c11: 'Jogar xadrez',
+        c12: 'Analisar uma posição',
+        a1: 'Ligar ou desligar um grupo',
+        a2: 'Ver e alterar definições',
+        a3: 'Escolher o modelo de IA',
+        a4: 'Mudar o idioma',
+        a5: 'Bloquear um utilizador',
+        a6: 'Desbloquear um utilizador',
+        a7: 'Listar utilizadores bloqueados',
+        a8: 'Modo de manutenção',
+        a9: 'Apagar informação guardada',
+        a10: 'Gerir administradores',
+        stK: 'Debaixo do capô',
+        stH: 'Stack pequena, sem contas na nuvem.',
+        stP: 'Um processo Node.js fala, o SQLite guarda os dados e tudo o que pensa passa por modelos locais. O Python é opcional e só acrescenta voz e imagens mais rápidas.',
+        r1v: '22 ou superior · 24 LTS recomendado',
+        r1d: 'Bot, servidor web e base de dados',
+        r2v: 'Motor de inferência local',
+        r2d: 'Os modelos de texto ficam no equipamento',
+        r3v: 'Modelo principal de conversa',
+        r3d: 'Respostas e perguntas gerais',
+        r4v: 'Alternativa e classificador',
+        r4d: 'Regista trabalhos e testes',
+        r5v: 'Dados em <code>data/picklebrain.db</code>',
+        r5d: 'Trabalhos, testes, definições e alunos',
+        r6v: 'Serviço opcional no porto 5050',
+        r6d: 'faster-whisper e diffusers',
+        r7v: 'Alternativa opcional',
+        r7d: 'Voz antiga processada em Node',
+        r8v: 'Opcional',
+        r8d: 'Ver a página fora da rede local',
+        flT: 'Uma mensagem, simplificada',
+        flIn: 'mensagem recebida',
+        flO1: 'menciona <code>claw</code>?',
+        flR1: 'modelo local',
+        flO2: 'pergunta de trabalhos?',
+        flR2: 'base de dados',
+        flO2s: 'sem resposta → abre uma pergunta de 15 min',
+        flO3: 'informação da escola?',
+        flR3: 'classificador',
+        flR3s: 'sim: guardar em silêncio · não: ignorar',
+        prH: 'Privado por arquitetura, não por promessa.',
+        prP1: 'A base de dados, a transcrição e os modelos correm no computador que aloja o Claw. O projeto existe precisamente para que uma turma partilhe apontamentos sem entregar as conversas a terceiros.',
+        prP2: 'O WhatsApp continua a entregar as mensagens e as funções opcionais precisam de ligação, mas a parte que pensa nunca sai do computador.',
+        pb1s: 'Inferência local:',
+        pb1d: 'Os modelos do Ollama e a classificação funcionam sem ligação.',
+        pb2s: 'Voz local:',
+        pb2d: 'O áudio é transcrito com Whisper sem ser enviado para lado nenhum.',
+        pb3s: 'Dados locais:',
+        pb3d: 'Tudo vive em <code>data/</code>, que o Git nunca segue.',
+        pb4s: 'Rede opcional:',
+        pb4d: 'A pesquisa web está ligada e um comando desliga-a.',
+        pb5s: 'Histórico apagável:',
+        pb5d: 'Os apontamentos podem ser apagados por disciplina ou um a um.',
+        dkK: 'Documentação',
+        dkH: 'Lê antes de instalar.',
+        dkP: 'Está tudo no repositório, em Markdown simples — sem wikis externas para manter.',
+        d1t: 'A visão geral',
+        d1d: 'Funcionalidades, comandos, configuração e FAQ.',
+        d2t: 'Guia de instalação',
+        d2d: 'Passo a passo no Windows e resolução de problemas.',
+        d3t: 'Arquitetura',
+        d3d: 'Interior, API e modelo de segurança.',
+        d4t: 'Serviço Python',
+        d4d: 'Voz com faster-whisper, imagens com diffusers.',
+        fqK: 'FAQ',
+        fqH: 'As perguntas que as pessoas fazem mesmo.',
+        qa1q: 'Precisa de ligação à internet?',
+        qa1a: 'O WhatsApp sim, e os downloads de modelos do primeiro arranque também. Depois de estarem em cache, respostas, classificação e transcrição funcionam sem ligação.',
+        qa2q: 'O WhatsApp pode banir o meu número?',
+        qa2a: 'O risco é real. O Claw usa Baileys, uma biblioteca não oficial do WhatsApp Web, e os termos do WhatsApp restringem a automatização não autorizada. Recomenda-se usar um número à parte.',
+        qa3q: 'O que acontece se desligar o computador?',
+        qa3a: 'O bot para, mas nada se perde: os dados ficam em <code>data/picklebrain.db</code> e a sessão em <code>data/auth/</code>. Ao arrancar de novo, está tudo onde estava.',
+        qa4q: 'Guarda todas as imagens do grupo?',
+        qa4a: 'Não. Por predefinição só ficam as imagens relacionadas com a escola, com um limite de tamanho e um período após o qual os ficheiros são apagados automaticamente.',
+        qa5q: 'Porque não responde no grupo?',
+        qa5a: 'Confirma que o grupo está ligado (<code>!claw aqui</code>), escreve <code>!claw</code> para ver o estado e corre <code>npm run doctor</code>. Os registos de depuração mostram porque cada mensagem foi descartada.',
+        ftH: 'Aloja-o, liga o teu grupo e esquece o scroll.',
+        ftP: 'Livre para ler, correr e alterar. Tudo o que precisas está no repositório.',
+        ftC1: 'Ir para o GitHub',
+        ftC2: 'Guia de instalação',
+        ftBy: 'Claw · feito por',
+        ftTop: 'Voltar ao topo',
+        uiCopy: 'Copiar',
+        uiCopied: 'Copiado',
+      },
+      de: {
+        skip: 'Zum Inhalt springen',
+        metaTitle: 'Claw — ein selbst gehosteter WhatsApp-Assistent für den Schulalltag',
+        metaDesc: 'Claw ist ein WhatsApp-Bot mit lokaler KI, der Hausaufgaben und Klausuren einer Klassengruppe merkt. Selbst gehostet, privat und quelloffen.',
+        hNote: 'Open Source',
+        hRepo: 'Repository',
+        hLang: 'Sprache',
+        nFeat: 'Funktionen',
+        nHow: 'So funktioniert es',
+        nQuick: 'Schnellstart',
+        nCmd: 'Befehle',
+        nDocs: 'Doku',
+        eEyebrow: 'Selbst gehosteter WhatsApp-Bot · Lokale KI',
+        eTitle: 'Das Gedächtnis deiner Klasse,<br><em>auf deinem eigenen Rechner.</em>',
+        eLead: 'Claw lebt in einer WhatsApp-Gruppe der Schule. Es merkt sich Hausaufgaben und Klausurankündigungen, speichert sie in einer lokalen Datenbank und antwortet, wenn jemand fragt — <strong>still, privat und ohne eine einzige Nachricht an eine Cloud-KI zu schicken.</strong>',
+        eCta1: 'Zum Repository',
+        eCta2: 'In fünf Minuten installieren',
+        eM1: 'Node 22+',
+        eM2: 'Ollama',
+        eM3: 'Python optional',
+        eM4: 'Windows · Linux · macOS',
+        chGroup: '12. Klasse · Gruppe B',
+        chSub: 'WhatsApp-Gruppe · 34 Mitglieder',
+        chLocal: 'lokal',
+        chNote: 'Claw hat eine offene Frage gestartet · 15 Min.',
+        chM1: 'Was sind die Mathe-Hausaufgaben?',
+        chM2: 'Seite 30 bis 32 im Arbeitsheft.',
+        chM3: 'Claw, wie viel sind 15 % von 240?',
+        chM4: '36.',
+        chFoot: 'Aus der lokalen Datenbank beantwortet — ganz ohne Modell',
+        b1v: '100',
+        b1t: 'Sprachen beim ersten Start',
+        b2v: '15 Min.',
+        b2t: 'Zeit, um eine offene Frage zu beantworten',
+        b3v: '0',
+        b3t: 'KI-Anfragen, die deinen Rechner verlassen',
+        b4v: '14 Tage',
+        b4t: 'Standard-Aufbewahrung für gespeicherte Bilder',
+        featK: 'Was es kann',
+        featH: 'Ein Assistent, der mehr zuhört als redet.',
+        featP: 'Claw antwortet nicht auf jede Nachricht. Es liest mit, entscheidet, ob etwas erinnernswert ist, und hält sich raus, bis jemand es braucht.',
+        f1t: 'Hausaufgaben, die nicht verloren gehen',
+        f1d: 'Erkennt Aufgaben und anstehende Klausuren im Gruppenchat und notiert sie, damit niemand dreihundert Nachrichten zurückscrollen muss.',
+        f2t: 'Standardmäßig still',
+        f2d: 'Es spricht nur, wenn jemand fragt oder <code>Claw</code> erwähnt. Keine Begrüßungen, keine ungefragten Antworten, kein Lärm in der Gruppe.',
+        f3t: 'Offene Fragen',
+        f3d: 'Hat eine Frage zu Hausaufgaben noch keine Antwort, öffnet Claw ein 15-Minuten-Fenster. Die erste brauchbare Antwort wird gespeichert, spätere Korrekturen ersetzen sie.',
+        f4t: 'Sprachnachrichten, lokal transkribiert',
+        f4d: 'Whisper macht aus Audio Text auf deinem Rechner, auch bei falscher Aussprache des Namens wie <code>Clau</code> oder <code>Clao</code>. Das Audio verlässt den Rechner nie.',
+        f5t: 'Nützliche Bilder, keine Memes',
+        f5d: 'Fotos zu Hausaufgaben und Klausuren werden gespeichert und später wieder verschickt. Alles andere wird ignoriert, abgelaufene Dateien werden automatisch gelöscht.',
+        f6t: 'Lokale Modelle, echte Antworten',
+        f6d: '<code>qwen3:4b</code> führt das Gespräch, <code>qwen2.5:3b</code> springt als Ausweichmodell ein, und ein kleineres Modell sortiert die Nachrichten. Alles über Ollama auf deiner Hardware.',
+        f7t: 'Kalender-Export',
+        f7d: 'Klausuren lassen sich als <code>.ics</code>-Datei exportieren, sodass die ganze Klasse sie ohne Abtippen in den eigenen Kalender übernimmt.',
+        f8t: 'Kontext, der im Chat bleibt',
+        f8d: 'Aktuelle Nachrichten derselben Gruppe geben kurzen Antworten ihren Sinn, ohne Gespräche aus anderen Gruppen zu vermischen.',
+        f9t: 'Wartung eingebaut',
+        f9d: 'Medienaufräumen, Prüfungen und Erinnerungen laufen von selbst. <code>npm run doctor</code> sagt genau, was fehlt, wenn etwas nicht mehr läuft.',
+        howK: 'So funktioniert es',
+        howH: 'Jede Nachricht nimmt einen von vier Wegen.',
+        howP: 'Claw liest eine Nachricht und entscheidet: antworten, merken, eine offene Frage starten oder ignorieren. Die meisten werden ignoriert — genau darum geht es.',
+        s1t: 'Eine Nachricht kommt an',
+        s1d: 'Text, Sprachnachricht oder Bild aus der verknüpften Gruppe. Audio wird zuerst transkribiert, damit alles denselben Weg wie Text nimmt.',
+        s2t: 'Wird <code>Claw</code> erwähnt?',
+        s2d: 'Dann ist es eine direkte Anfrage: eine allgemeine Frage geht an den Assistenten und wird mit dem lokalen Modell beantwortet.',
+        s3t: 'Ist es eine Frage zu Hausaufgaben oder Klausuren?',
+        s3d: 'Claw antwortet direkt aus der Datenbank — sofort und ohne Modell. Fehlt die Antwort, öffnet sich eine offene Frage.',
+        s4t: 'Könnte es Schulinformation sein?',
+        s4d: 'Ein kleines Modell entscheidet. Informationen werden still gespeichert; alles andere — Witze, Pläne, Links, Memes — bleibt unberührt.',
+        tlT: 'Eine offene Frage, von Anfang bis Ende',
+        l1s: 'Jemand fragt',
+        l1d: '„Was sind die Englisch-Hausaufgaben?“ — noch ist nichts gespeichert, also bleibt die Frage offen.',
+        l2s: 'Claw wartet 15 Minuten',
+        l2d: 'Was in dieser Gruppe als Nächstes gesagt wird, gilt als mögliche Antwort.',
+        l3s: 'Eine Mitschülerin antwortet',
+        l3d: '„Seite 12 machen.“ Claw erkennt die fehlende Information und speichert sie.',
+        l4s: 'Alle können später fragen',
+        l4d: 'Die Antwort kommt aus der Datenbank, und eine spätere Korrektur ersetzt den alten Eintrag.',
+        qkK: 'Schnellstart',
+        qkH: 'Vom Klon zur verknüpften Gruppe.',
+        qkP: 'Drei Befehle. Beim ersten Start öffnet sich eine Einrichtungsseite für die Sprache, danach erscheint der QR-Code für dein WhatsApp-Konto.',
+        q1t: 'Klonen und installieren',
+        q1d: 'Node.js 22 oder neuer wird benötigt. Unter Windows geht auch ein Doppelklick auf <code>arrancar.bat</code>.',
+        q2t: 'Lokale Modelle laden',
+        q2d: 'Mit installiertem Ollama das Chat-Modell und sein Ausweichmodell herunterladen. Beim ersten Mal sind es einige GB.',
+        q3t: 'Starten und Gruppe verknüpfen',
+        q3d: 'Scanne den QR-Code unter <em>Verknüpfte Geräte</em> und tippe <code>!claw aqui</code> in der Gruppe.',
+        cmdK: 'Befehle',
+        cmdH: 'Alles beginnt mit <span style="color:var(--brand)">!claw</span>.',
+        cmdP: 'Dieselben Befehle funktionieren in der Gruppe und im Simulator. Verwaltungsbefehle hören nur auf den Besitzer und autorisierte Admins.',
+        gt: 'Für alle',
+        gtag: 'Gruppe',
+        gs: 'Nachlesen und korrigieren, was notiert ist.',
+        ot: 'Für den Besitzer',
+        otag: 'Admin',
+        os: 'Einstellungen, Zugriff und Wartung.',
+        c1: 'Bot-Status',
+        c2: 'Offene Hausaufgaben',
+        c3: 'Anstehende Klausuren',
+        c4: 'Gespeicherte Infos',
+        c5: 'Nächste Klausur oder Aufgabe',
+        c6: 'Aufgabe hinzufügen oder korrigieren',
+        c7: 'Etwas als erledigt markieren',
+        c8: 'Zusammenfassung der letzten Infos',
+        c9: 'Klausuren als .ics exportieren',
+        c10: 'Websuche (abschaltbar)',
+        c11: 'Schach spielen',
+        c12: 'Stellung analysieren',
+        a1: 'Gruppe verknüpfen oder trennen',
+        a2: 'Einstellungen ansehen und ändern',
+        a3: 'KI-Modell wählen',
+        a4: 'Sprache ändern',
+        a5: 'Nutzer sperren',
+        a6: 'Nutzer entsperren',
+        a7: 'Gesperrte Nutzer anzeigen',
+        a8: 'Wartungsmodus',
+        a9: 'Gespeicherte Infos löschen',
+        a10: 'Admins verwalten',
+        stK: 'Unter der Haube',
+        stH: 'Kleiner Stack, kein Cloud-Konto.',
+        stP: 'Ein Node.js-Prozess redet, SQLite hält die Daten, und alles Intelligente läuft über lokale Modelle. Python ist optional und bringt nur schnellere Stimme und Bilder.',
+        r1v: '22 oder neuer · 24 LTS empfohlen',
+        r1d: 'Bot, Webserver und Datenbank',
+        r2v: 'Lokale Inferenz',
+        r2d: 'Textmodelle bleiben auf dem Rechner',
+        r3v: 'Hauptmodell für Gespräche',
+        r3d: 'Antworten und allgemeine Fragen',
+        r4v: 'Ausweichmodell und Klassifizierer',
+        r4d: 'Notiert Hausaufgaben und Klausuren',
+        r5v: 'Daten in <code>data/picklebrain.db</code>',
+        r5d: 'Hausaufgaben, Klausuren, Einstellungen, Schüler',
+        r6v: 'Optionaler Dienst auf Port 5050',
+        r6d: 'faster-whisper und diffusers',
+        r7v: 'Optionale Ausweichlösung',
+        r7d: 'Alte Sprachverarbeitung in Node',
+        r8v: 'Optional',
+        r8d: 'Webansicht von außerhalb des LANs erreichen',
+        flT: 'Eine Nachricht, vereinfacht',
+        flIn: 'eingehende Nachricht',
+        flO1: 'nennt <code>claw</code>?',
+        flR1: 'lokales Modell',
+        flO2: 'Hausaufgabenfrage?',
+        flR2: 'Datenbank',
+        flO2s: 'keine Antwort → öffnet eine 15-Minuten-Frage',
+        flO3: 'Schulinformation?',
+        flR3: 'Klassifizierer',
+        flR3s: 'ja: still speichern · nein: ignorieren',
+        prH: 'Privat durch Architektur, nicht durch Versprechen.',
+        prP1: 'Datenbank, Transkription und Sprachmodelle laufen auf dem Rechner, der Claw hostet. Das Projekt gibt es genau dafür: eine Klasse teilt Notizen, ohne ihre Gespräche an Dritte zu geben.',
+        prP2: 'WhatsApp stellt die Nachrichten weiterhin zu, und optionale Funktionen brauchen eine Verbindung — aber der denkende Teil verlässt den Rechner nie.',
+        pb1s: 'Lokale Inferenz:',
+        pb1d: 'Ollama-Modelle und Klassifizierung laufen offline.',
+        pb2s: 'Lokale Stimme:',
+        pb2d: 'Audio wird mit Whisper transkribiert, ohne Upload.',
+        pb3s: 'Lokale Daten:',
+        pb3d: 'Alles liegt in <code>data/</code>, das Git nie verfolgt.',
+        pb4s: 'Optionales Netz:',
+        pb4d: 'Die Websuche ist an, ein Befehl schaltet sie ab.',
+        pb5s: 'Löschbarer Verlauf:',
+        pb5d: 'Notizen lassen sich pro Fach oder einzeln löschen.',
+        dkK: 'Dokumentation',
+        dkH: 'Lies das vor der Installation.',
+        dkP: 'Alles liegt im Repository, in einfachem Markdown — kein externes Wiki zu pflegen.',
+        d1t: 'Die Übersicht',
+        d1d: 'Funktionen, Befehle, Konfiguration und FAQ.',
+        d2t: 'Installationsanleitung',
+        d2d: 'Schritt für Schritt unter Windows, plus Fehlersuche.',
+        d3t: 'Architektur',
+        d3d: 'Innenleben, API und Sicherheitsmodell.',
+        d4t: 'Python-Dienst',
+        d4d: 'Stimme mit faster-whisper, Bilder mit diffusers.',
+        fqK: 'FAQ',
+        fqH: 'Die Fragen, die wirklich gestellt werden.',
+        qa1q: 'Braucht es eine Internetverbindung?',
+        qa1a: 'WhatsApp ja, und die Modell-Downloads beim ersten Start auch. Sind die Modelle im Cache, funktionieren Antworten, Klassifizierung und Transkription offline.',
+        qa2q: 'Kann WhatsApp meine Nummer sperren?',
+        qa2a: 'Das Risiko ist real. Claw nutzt Baileys, eine inoffizielle WhatsApp-Web-Bibliothek, und die WhatsApp-Bedingungen begrenzen unautorisierte Automatisierung. Eine separate Nummer wird dringend empfohlen.',
+        qa3q: 'Was passiert, wenn der Rechner ausgeht?',
+        qa3a: 'Der Bot stoppt, aber nichts geht verloren: Daten bleiben in <code>data/picklebrain.db</code>, die Sitzung in <code>data/auth/</code>. Beim nächsten Start ist alles da.',
+        qa4q: 'Werden alle Bilder der Gruppe gespeichert?',
+        qa4a: 'Nein. Standardmäßig bleiben nur schulbezogene Bilder, mit Größenlimit und einer Frist, nach der Dateien automatisch gelöscht werden.',
+        qa5q: 'Warum antwortet es nicht in der Gruppe?',
+        qa5a: 'Prüfe, ob die Gruppe verknüpft ist (<code>!claw aqui</code>), tippe <code>!claw</code> für den Status und starte <code>npm run doctor</code>. Debug-Logs zeigen, warum eine Nachricht verworfen wurde.',
+        ftH: 'Selbst hosten, Gruppe verknüpfen, Scrollen vergessen.',
+        ftP: 'Frei zu lesen, auszuführen und zu ändern. Alles Nötige steht im Repository.',
+        ftC1: 'Zu GitHub',
+        ftC2: 'Installationsanleitung',
+        ftBy: 'Claw · von',
+        ftTop: 'Nach oben',
+        uiCopy: 'Kopieren',
+        uiCopied: 'Kopiert',
+      },
+      it: {
+        skip: 'Vai al contenuto',
+        metaTitle: 'Claw — un assistente WhatsApp self-hosted per la vita scolastica',
+        metaDesc: 'Claw è un bot WhatsApp con IA locale che ricorda compiti e verifiche di un gruppo di classe. Self-hosted, privato e open source.',
+        hNote: 'Open source',
+        hRepo: 'Repository',
+        hLang: 'Lingua',
+        nFeat: 'Funzioni',
+        nHow: 'Come funziona',
+        nQuick: 'Installazione',
+        nCmd: 'Comandi',
+        nDocs: 'Documentazione',
+        eEyebrow: 'Bot WhatsApp self-hosted · IA locale',
+        eTitle: 'La memoria della tua classe,<br><em>sul tuo computer.</em>',
+        eLead: 'Claw vive dentro un gruppo WhatsApp della scuola. Annota compiti e verifiche che passano di lì, li salva in un database locale e risponde quando qualcuno chiede — <strong>in silenzio, in privato e senza inviare un solo messaggio a un’IA nel cloud.</strong>',
+        eCta1: 'Vedi il repository',
+        eCta2: 'Installa in cinque minuti',
+        eM1: 'Node 22+',
+        eM2: 'Ollama',
+        eM3: 'Python opzionale',
+        eM4: 'Windows · Linux · macOS',
+        chGroup: 'Quinta superiore · B',
+        chSub: 'Gruppo WhatsApp · 34 membri',
+        chLocal: 'locale',
+        chNote: 'Claw ha aperto una domanda in sospeso · 15 min',
+        chM1: 'Quali sono i compiti di matematica?',
+        chM2: 'Pagine da 30 a 32 del quaderno.',
+        chM3: 'Claw, quanto fa il 15 % di 240?',
+        chM4: '36.',
+        chFoot: 'Risposto dal database locale — senza usare il modello',
+        b1v: '100',
+        b1t: 'lingue proposte al primo avvio',
+        b2v: '15 min',
+        b2t: 'tempo per rispondere a una domanda in sospeso',
+        b3v: '0',
+        b3t: 'richieste IA che escono dal tuo computer',
+        b4v: '14 giorni',
+        b4t: 'conservazione predefinita delle immagini salvate',
+        featK: 'Cosa fa',
+        featH: 'Un assistente che ascolta più di quanto parla.',
+        featP: 'Claw non risponde a ogni messaggio. Legge la conversazione, decide se qualcosa vale la pena ricordarlo e resta in disparte finché qualcuno non ne ha bisogno.',
+        f1t: 'Compiti che non si perdono',
+        f1d: 'Riconosce compiti e verifiche in arrivo nella conversazione del gruppo e li annota, così nessuno deve risalire trecento messaggi.',
+        f2t: 'Silenzioso per default',
+        f2d: 'Parla solo se qualcuno chiede o menziona <code>Claw</code>. Niente saluti, niente risposte non richieste, niente rumore nel gruppo.',
+        f3t: 'Domande in sospeso',
+        f3d: 'Se una domanda sui compiti non ha ancora risposta, Claw apre una finestra di 15 minuti. La prima risposta utile viene salvata e le correzioni successive la sostituiscono.',
+        f4t: 'Messaggi vocali trascritti in locale',
+        f4d: 'Whisper trasforma l’audio in testo sul tuo computer, anche se il nome è pronunciato male, come <code>Clau</code> o <code>Clao</code>. L’audio non lascia mai il computer.',
+        f5t: 'Immagini utili, non meme',
+        f5d: 'Le foto di compiti e verifiche vengono salvate e possono essere reinviate più tardi. Le immagini senza rapporto vengono ignorate e i file scaduti cancellati automaticamente.',
+        f6t: 'Modelli locali, risposte vere',
+        f6d: '<code>qwen3:4b</code> gestisce la conversazione con <code>qwen2.5:3b</code> come riserva, mentre un modello più piccolo classifica i messaggi. Tutto tramite Ollama sul tuo hardware.',
+        f7t: 'Esportazione nel calendario',
+        f7d: 'Le verifiche si esportano come file <code>.ics</code>, così tutta la classe può aggiungerle al proprio calendario senza copiare le date a mano.',
+        f8t: 'Contesto che resta nella sua chat',
+        f8d: 'I messaggi recenti dello stesso gruppo danno senso alle risposte brevi, senza mescolare conversazioni di posti diversi.',
+        f9t: 'Manutenzione inclusa',
+        f9d: 'Pulizia dei file, controlli e promemoria funzionano da soli. <code>npm run doctor</code> dice esattamente cosa manca quando qualcosa smette di funzionare.',
+        howK: 'Come funziona',
+        howH: 'Ogni messaggio prende una di quattro strade.',
+        howP: 'Claw legge un messaggio e decide: rispondere, ricordarlo, aprire una domanda in sospeso o ignorarlo. La maggior parte viene ignorata — è proprio questo il punto.',
+        s1t: 'Arriva un messaggio',
+        s1d: 'Testo, vocale o immagine dal gruppo collegato. L’audio viene trascritto prima, così tutto passa dallo stesso percorso del testo.',
+        s2t: 'Menziona <code>Claw</code>?',
+        s2d: 'Allora è una richiesta diretta: una domanda generale va all’assistente e la risposta viene generata con il modello locale.',
+        s3t: 'È una domanda su compiti o verifiche?',
+        s3d: 'Claw risponde direttamente dal database, è istantaneo e non serve un modello. Se la risposta manca, si apre una domanda in sospeso.',
+        s4t: 'Potrebbe essere un’informazione scolastica?',
+        s4d: 'Decide un piccolo classificatore. L’informazione viene salvata in silenzio; il resto — battute, programmi, link, meme — resta dov’è.',
+        tlT: 'Una domanda in sospeso, dall’inizio alla fine',
+        l1s: 'Qualcuno chiede',
+        l1d: '«Quali sono i compiti di inglese?» — non c’è ancora nulla di salvato, quindi la domanda resta aperta.',
+        l2s: 'Claw aspetta 15 minuti',
+        l2d: 'Quello che viene detto dopo in quel gruppo viene letto come possibile risposta.',
+        l3s: 'Un compagno risponde',
+        l3d: '«Fare pagina 12.» Claw lo riconosce come l’informazione mancante e la salva.',
+        l4s: 'Chiunque può chiedere dopo',
+        l4d: 'La risposta arriva dal database e una correzione successiva sostituisce quella vecchia.',
+        qkK: 'Installazione',
+        qkH: 'Dal clone al gruppo collegato.',
+        qkP: 'Tre comandi. Al primo avvio si apre una pagina di configurazione per scegliere la lingua, poi compare il codice QR che collega il tuo account WhatsApp.',
+        q1t: 'Clonare e installare',
+        q1d: 'Serve Node.js 22 o successivo. Su Windows puoi anche fare doppio clic su <code>arrancar.bat</code>.',
+        q2t: 'Scaricare i modelli',
+        q2d: 'Con Ollama installato, scarica il modello di conversazione e la sua riserva. La prima volta sono diversi GB.',
+        q3t: 'Avviare e collegare un gruppo',
+        q3d: 'Scansiona il codice QR da <em>Dispositivi collegati</em> e scrivi <code>!claw aqui</code> nel gruppo.',
+        cmdK: 'Comandi',
+        cmdH: 'Tutto inizia con <span style="color:var(--brand)">!claw</span>.',
+        cmdP: 'Gli stessi comandi funzionano nel gruppo e nel simulatore. I comandi di amministrazione rispondono solo al proprietario e agli amministratori autorizzati.',
+        gt: 'Per tutti',
+        gtag: 'gruppo',
+        gs: 'Leggere e correggere ciò che è annotato.',
+        ot: 'Per il proprietario',
+        otag: 'admin',
+        os: 'Impostazioni, accessi e manutenzione.',
+        c1: 'Stato del bot',
+        c2: 'Compiti in sospeso',
+        c3: 'Prossime verifiche',
+        c4: 'Informazioni salvate',
+        c5: 'Prossima verifica o compito',
+        c6: 'Aggiungere o correggere un compito',
+        c7: 'Segnare qualcosa come fatto',
+        c8: 'Riepilogo delle novità',
+        c9: 'Esportare verifiche in .ics',
+        c10: 'Cerca sul web (disattivabile)',
+        c11: 'Giocare a scacchi',
+        c12: 'Analizzare una posizione',
+        a1: 'Collegare o scollegare un gruppo',
+        a2: 'Vedere e cambiare le impostazioni',
+        a3: 'Scegliere il modello di IA',
+        a4: 'Cambiare la lingua',
+        a5: 'Bloccare un utente',
+        a6: 'Sbloccare un utente',
+        a7: 'Elencare gli utenti bloccati',
+        a8: 'Modalità manutenzione',
+        a9: 'Cancellare informazioni salvate',
+        a10: 'Gestire gli amministratori',
+        stK: 'Sotto il cofano',
+        stH: 'Stack piccolo, nessun account cloud.',
+        stP: 'Un processo Node.js parla, SQLite conserva i dati e tutto ciò che pensa passa da modelli locali. Python è opzionale e aggiunge solo voce e immagini più veloci.',
+        r1v: '22 o successivo · 24 LTS consigliato',
+        r1d: 'Bot, server web e database',
+        r2v: 'Motore di inferenza locale',
+        r2d: 'I modelli di testo restano sul computer',
+        r3v: 'Modello principale di conversazione',
+        r3d: 'Risposte e domande generali',
+        r4v: 'Riserva e classificatore',
+        r4d: 'Annota compiti e verifiche',
+        r5v: 'Dati in <code>data/picklebrain.db</code>',
+        r5d: 'Compiti, verifiche, impostazioni e studenti',
+        r6v: 'Servizio opzionale sulla porta 5050',
+        r6d: 'faster-whisper e diffusers',
+        r7v: 'Riserva opzionale',
+        r7d: 'Vecchia gestione vocale in Node',
+        r8v: 'Opzionale',
+        r8d: 'Raggiungere la pagina web fuori dalla rete locale',
+        flT: 'Un messaggio, semplificato',
+        flIn: 'messaggio in arrivo',
+        flO1: 'menziona <code>claw</code>?',
+        flR1: 'modello locale',
+        flO2: 'domanda sui compiti?',
+        flR2: 'database',
+        flO2s: 'senza risposta → apre una domanda di 15 min',
+        flO3: 'informazione scolastica?',
+        flR3: 'classificatore',
+        flR3s: 'sì: salvare in silenzio · no: ignorare',
+        prH: 'Privato per architettura, non per promessa.',
+        prP1: 'Database, trascrizione e modelli girano sul computer che ospita Claw. Il progetto esiste proprio perché una classe condivida gli appunti senza consegnare le conversazioni a terzi.',
+        prP2: 'WhatsApp consegna comunque i messaggi e le funzioni opzionali richiedono una connessione, ma la parte che pensa non lascia mai il computer.',
+        pb1s: 'Inferenza locale:',
+        pb1d: 'I modelli di Ollama e la classificazione funzionano offline.',
+        pb2s: 'Voce locale:',
+        pb2d: 'L’audio viene trascritto con Whisper senza caricarlo da nessuna parte.',
+        pb3s: 'Dati locali:',
+        pb3d: 'Tutto vive in <code>data/</code>, che Git non traccia mai.',
+        pb4s: 'Rete opzionale:',
+        pb4d: 'La ricerca web è attiva e un comando la disattiva.',
+        pb5s: 'Cronologia cancellabile:',
+        pb5d: 'Gli appunti si possono cancellare per materia o uno alla volta.',
+        dkK: 'Documentazione',
+        dkH: 'Leggila prima di installare.',
+        dkP: 'Tutto è nel repository, in Markdown semplice — nessuna wiki esterna da mantenere.',
+        d1t: 'La panoramica',
+        d1d: 'Funzioni, comandi, configurazione e FAQ.',
+        d2t: 'Guida all’installazione',
+        d2d: 'Passo passo su Windows e risoluzione dei problemi.',
+        d3t: 'Architettura',
+        d3d: 'Interni, API e modello di sicurezza.',
+        d4t: 'Servizio Python',
+        d4d: 'Voce con faster-whisper, immagini con diffusers.',
+        fqK: 'FAQ',
+        fqH: 'Le domande che la gente fa davvero.',
+        qa1q: 'Serve una connessione a internet?',
+        qa1a: 'WhatsApp sì, e anche i download dei modelli al primo avvio. Una volta in cache, risposte, classificazione e trascrizione funzionano offline.',
+        qa2q: 'WhatsApp può bannare il mio numero?',
+        qa2a: 'Il rischio è reale. Claw usa Baileys, una libreria non ufficiale di WhatsApp Web, e i termini di WhatsApp limitano l’automazione non autorizzata. Si consiglia un numero separato.',
+        qa3q: 'Cosa succede se spengo il computer?',
+        qa3a: 'Il bot si ferma, ma non si perde nulla: i dati restano in <code>data/picklebrain.db</code> e la sessione in <code>data/auth/</code>. Al riavvio è tutto dov’era.',
+        qa4q: 'Salva tutte le immagini del gruppo?',
+        qa4a: 'No. Per default restano solo le immagini legate alla scuola, con un limite di dimensione e un periodo dopo il quale i file vengono cancellati automaticamente.',
+        qa5q: 'Perché non risponde nel gruppo?',
+        qa5a: 'Controlla che il gruppo sia collegato (<code>!claw aqui</code>), scrivi <code>!claw</code> per lo stato ed esegui <code>npm run doctor</code>. I log di debug mostrano perché ogni messaggio è stato scartato.',
+        ftH: 'Ospitalo, collega il gruppo e dimentica lo scroll.',
+        ftP: 'Libero di leggere, eseguire e modificare. Tutto il necessario è nel repository.',
+        ftC1: 'Vai su GitHub',
+        ftC2: 'Guida all’installazione',
+        ftBy: 'Claw · di',
+        ftTop: 'Torna su',
+        uiCopy: 'Copia',
+        uiCopied: 'Copiato',
+      },
+      ru: {
+        skip: 'Перейти к содержимому',
+        metaTitle: 'Claw — самостоятельный WhatsApp-ассистент для школьной жизни',
+        metaDesc: 'Claw — это WhatsApp-бот с локальным ИИ, который запоминает домашние задания и контрольные класса. Работает на вашем компьютере, приватно и с открытым кодом.',
+        hNote: 'Открытый код',
+        hRepo: 'Репозиторий',
+        hLang: 'Язык',
+        nFeat: 'Возможности',
+        nHow: 'Как это работает',
+        nQuick: 'Быстрый старт',
+        nCmd: 'Команды',
+        nDocs: 'Документация',
+        eEyebrow: 'Свой WhatsApp-бот · Локальный ИИ',
+        eTitle: 'Память вашего класса,<br><em>на вашем компьютере.</em>',
+        eLead: 'Claw живёт в школьной группе WhatsApp. Он подмечает домашние задания и объявления о контрольных, хранит их в локальной базе и отвечает, когда спрашивают — <strong>тихо, приватно и без единого запроса к ИИ в облаке.</strong>',
+        eCta1: 'Открыть репозиторий',
+        eCta2: 'Установить за пять минут',
+        eM1: 'Node 22+',
+        eM2: 'Ollama',
+        eM3: 'Python по желанию',
+        eM4: 'Windows · Linux · macOS',
+        chGroup: '11 класс · Б',
+        chSub: 'Группа WhatsApp · 34 участника',
+        chLocal: 'локально',
+        chNote: 'Claw открыл ожидающий вопрос · 15 мин',
+        chM1: 'Какое домашнее задание по математике?',
+        chM2: 'Страницы с 30 по 32 в рабочей тетради.',
+        chM3: 'Claw, сколько будет 15 % от 240?',
+        chM4: '36.',
+        chFoot: 'Ответ из локальной базы — модель не использовалась',
+        b1v: '100',
+        b1t: 'языков при первом запуске',
+        b2v: '15 мин',
+        b2t: 'время на ответ по ожидающему вопросу',
+        b3v: '0',
+        b3t: 'запросов к ИИ, покидающих ваш компьютер',
+        b4v: '14 дней',
+        b4t: 'срок хранения сохранённых изображений по умолчанию',
+        featK: 'Что он умеет',
+        featH: 'Ассистент, который больше слушает, чем говорит.',
+        featP: 'Claw не отвечает на каждое сообщение. Он читает переписку, решает, стоит ли что-то запомнить, и не мешает, пока не понадобится.',
+        f1t: 'Домашние задания не теряются',
+        f1d: 'Находит задания и ближайшие контрольные в переписке группы и записывает их, чтобы никому не приходилось листать триста сообщений.',
+        f2t: 'Молчит по умолчанию',
+        f2d: 'Говорит только когда спрашивают или упоминают <code>Claw</code>. Без приветствий, без непрошеных ответов и без шума в группе.',
+        f3t: 'Ожидающие вопросы',
+        f3d: 'Если на вопрос о домашнем задании ещё нет ответа, Claw открывает окно на 15 минут. Первый полезный ответ сохраняется, а более поздние правки его заменяют.',
+        f4t: 'Голосовые — с локальной расшифровкой',
+        f4d: 'Whisper превращает аудио в текст прямо на компьютере, даже если имя произносят неверно — <code>Clau</code> или <code>Clao</code>. Аудио не покидает машину.',
+        f5t: 'Нужные картинки, а не мемы',
+        f5d: 'Фотографии заданий и контрольных сохраняются и могут быть отправлены позже. Посторонние изображения игнорируются, а устаревшие файлы удаляются автоматически.',
+        f6t: 'Локальные модели, настоящие ответы',
+        f6d: '<code>qwen3:4b</code> ведёт разговор, <code>qwen2.5:3b</code> подстраховывает, а модель поменьше классифицирует сообщения. Всё через Ollama на вашем железе.',
+        f7t: 'Экспорт в календарь',
+        f7d: 'Контрольные выгружаются файлом <code>.ics</code>, чтобы весь класс добавил их в свой календарь без ручного копирования дат.',
+        f8t: 'Контекст не смешивается',
+        f8d: 'Недавние сообщения той же группы придают смысл коротким ответам и не смешивают разговоры из разных мест.',
+        f9t: 'Обслуживание встроено',
+        f9d: 'Очистка файлов, проверки и напоминания работают сами. <code>npm run doctor</code> точно показывает, чего не хватает, когда что-то перестаёт работать.',
+        howK: 'Как это работает',
+        howH: 'Каждое сообщение идёт одним из четырёх путей.',
+        howP: 'Claw читает сообщение и решает: ответить, запомнить, открыть ожидающий вопрос или проигнорировать. Большинство игнорируется — в этом и смысл.',
+        s1t: 'Приходит сообщение',
+        s1d: 'Текст, голосовое или картинка из привязанной группы. Аудио сначала расшифровывается, поэтому всё идёт тем же путём, что и текст.',
+        s2t: 'Упоминается <code>Claw</code>?',
+        s2d: 'Значит, это прямой запрос: общий вопрос уходит ассистенту, и ответ генерирует локальная модель.',
+        s3t: 'Это вопрос о заданиях или контрольных?',
+        s3d: 'Claw отвечает сразу из базы — мгновенно и без модели. Если ответа нет, открывается ожидающий вопрос.',
+        s4t: 'Это может быть школьная информация?',
+        s4d: 'Решает небольшая модель-классификатор. Информация сохраняется молча; всё остальное — шутки, планы, ссылки, мемы — остаётся как есть.',
+        tlT: 'Ожидающий вопрос от начала до конца',
+        l1s: 'Кто-то спрашивает',
+        l1d: '«Какое задание по английскому?» — пока ничего не сохранено, поэтому вопрос остаётся открытым.',
+        l2s: 'Claw ждёт 15 минут',
+        l2d: 'Всё, что скажут в этой группе дальше, читается как возможный ответ.',
+        l3s: 'Одноклассник отвечает',
+        l3d: '«Сделать страницу 12.» Claw распознаёт недостающую информацию и сохраняет её.',
+        l4s: 'Спросить можно позже',
+        l4d: 'Ответ берётся из базы, а поздняя правка заменяет старую запись.',
+        qkK: 'Быстрый старт',
+        qkH: 'От клонирования до привязанной группы.',
+        qkP: 'Три команды. При первом запуске открывается страница настройки, где вы выбираете язык, затем появляется QR-код для привязки WhatsApp.',
+        q1t: 'Клонировать и установить',
+        q1d: 'Нужен Node.js 22 или новее. В Windows можно также дважды щёлкнуть <code>arrancar.bat</code>.',
+        q2t: 'Скачать локальные модели',
+        q2d: 'С установленным Ollama скачайте модель для разговора и запасную. В первый раз это несколько ГБ.',
+        q3t: 'Запустить и привязать группу',
+        q3d: 'Отсканируйте QR-код в разделе <em>Связанные устройства</em> и напишите <code>!claw aqui</code> в группе.',
+        cmdK: 'Команды',
+        cmdH: 'Всё начинается с <span style="color:var(--brand)">!claw</span>.',
+        cmdP: 'Одни и те же команды работают в группе и в симуляторе. Административные команды слушают только владельца и назначенных админов.',
+        gt: 'Для всех',
+        gtag: 'группа',
+        gs: 'Посмотреть и исправить записи.',
+        ot: 'Для владельца',
+        otag: 'админ',
+        os: 'Настройки, доступ и обслуживание.',
+        c1: 'Состояние бота',
+        c2: 'Домашние задания',
+        c3: 'Ближайшие контрольные',
+        c4: 'Сохранённая информация',
+        c5: 'Следующая контрольная или задание',
+        c6: 'Добавить или исправить задание',
+        c7: 'Отметить как выполненное',
+        c8: 'Сводка за последнее время',
+        c9: 'Выгрузить контрольные в .ics',
+        c10: 'Поиск в интернете (можно отключить)',
+        c11: 'Играть в шахматы',
+        c12: 'Разобрать позицию',
+        a1: 'Привязать или отвязать группу',
+        a2: 'Смотреть и менять настройки',
+        a3: 'Выбрать модель ИИ',
+        a4: 'Сменить язык',
+        a5: 'Заблокировать пользователя',
+        a6: 'Разблокировать пользователя',
+        a7: 'Список заблокированных',
+        a8: 'Режим обслуживания',
+        a9: 'Удалить сохранённую информацию',
+        a10: 'Управлять админами',
+        stK: 'Под капотом',
+        stH: 'Небольшой стек, без облачных аккаунтов.',
+        stP: 'Процесс Node.js говорит, SQLite хранит данные, а всё «умное» проходит через локальные модели. Python необязателен и добавляет только более быстрый голос и картинки.',
+        r1v: '22 или новее · рекомендуется 24 LTS',
+        r1d: 'Бот, веб-сервер и база данных',
+        r2v: 'Локальный движок вывода',
+        r2d: 'Текстовые модели остаются на машине',
+        r3v: 'Основная модель для разговора',
+        r3d: 'Ответы и общие вопросы',
+        r4v: 'Запасная модель и классификатор',
+        r4d: 'Записывает задания и контрольные',
+        r5v: 'Данные в <code>data/picklebrain.db</code>',
+        r5d: 'Задания, контрольные, настройки, ученики',
+        r6v: 'Необязательный сервис на порту 5050',
+        r6d: 'faster-whisper и diffusers',
+        r7v: 'Необязательный резерв',
+        r7d: 'Старая обработка голоса в Node',
+        r8v: 'По желанию',
+        r8d: 'Доступ к веб-странице вне локальной сети',
+        flT: 'Одно сообщение, упрощённо',
+        flIn: 'входящее сообщение',
+        flO1: 'упоминает <code>claw</code>?',
+        flR1: 'локальная модель',
+        flO2: 'вопрос о заданиях?',
+        flR2: 'база данных',
+        flO2s: 'нет ответа → открывается вопрос на 15 мин',
+        flO3: 'школьная информация?',
+        flR3: 'классификатор',
+        flR3s: 'да: сохранить молча · нет: игнорировать',
+        prH: 'Приватность за счёт архитектуры, а не обещаний.',
+        prP1: 'База данных, расшифровка и модели работают на компьютере, где живёт Claw. Проект существует именно для того, чтобы класс делился записями, не отдавая переписку третьим лицам.',
+        prP2: 'WhatsApp по-прежнему доставляет сообщения, а необязательным функциям нужна связь, но «думающая» часть никогда не покидает компьютер.',
+        pb1s: 'Локальный вывод:',
+        pb1d: 'Модели Ollama и классификация работают без сети.',
+        pb2s: 'Локальный голос:',
+        pb2d: 'Аудио расшифровывается Whisper без загрузки куда-либо.',
+        pb3s: 'Локальные данные:',
+        pb3d: 'Всё лежит в <code>data/</code>, который Git не отслеживает.',
+        pb4s: 'Сеть по желанию:',
+        pb4d: 'Поиск в интернете включён, и одна команда его отключает.',
+        pb5s: 'История удаляется:',
+        pb5d: 'Записи можно удалять по предмету или по одной.',
+        dkK: 'Документация',
+        dkH: 'Прочитайте перед установкой.',
+        dkP: 'Всё в репозитории, обычным Markdown — без внешней вики, которую нужно синхронизировать.',
+        d1t: 'Обзор',
+        d1d: 'Возможности, команды, настройка и FAQ.',
+        d2t: 'Руководство по установке',
+        d2d: 'Пошагово для Windows и решение проблем.',
+        d3t: 'Архитектура',
+        d3d: 'Внутреннее устройство, API и модель безопасности.',
+        d4t: 'Сервис Python',
+        d4d: 'Голос на faster-whisper, картинки на diffusers.',
+        fqK: 'Вопросы',
+        fqH: 'То, о чём действительно спрашивают.',
+        qa1q: 'Нужен ли интернет?',
+        qa1a: 'WhatsApp — да, и загрузка моделей при первом запуске тоже. После кеширования ответы, классификация и расшифровка работают без сети.',
+        qa2q: 'Могут ли заблокировать мой номер в WhatsApp?',
+        qa2a: 'Риск реальный. Claw использует Baileys — неофициальную библиотеку WhatsApp Web, а правила WhatsApp ограничивают неавторизованную автоматизацию. Отдельный номер настоятельно рекомендуется.',
+        qa3q: 'Что будет, если компьютер выключится?',
+        qa3a: 'Бот остановится, но ничего не потеряется: данные остаются в <code>data/picklebrain.db</code>, сессия — в <code>data/auth/</code>. После запуска всё на месте.',
+        qa4q: 'Сохраняются ли все картинки из группы?',
+        qa4a: 'Нет. По умолчанию остаются только изображения по учёбе, с ограничением размера и сроком, после которого файлы удаляются автоматически.',
+        qa5q: 'Почему он не отвечает в группе?',
+        qa5a: 'Проверьте, привязана ли группа (<code>!claw aqui</code>), напишите <code>!claw</code> для статуса и запустите <code>npm run doctor</code>. Отладочные логи покажут, почему сообщение отброшено.',
+        ftH: 'Разверните у себя, привяжите группу и забудьте про прокрутку.',
+        ftP: 'Свободно читать, запускать и менять. Всё нужное — в репозитории.',
+        ftC1: 'Перейти на GitHub',
+        ftC2: 'Руководство по установке',
+        ftBy: 'Claw · автор',
+        ftTop: 'Наверх',
+        uiCopy: 'Копировать',
+        uiCopied: 'Скопировано',
+      },
+      ar: {
+        skip: 'انتقل إلى المحتوى',
+        metaTitle: 'Claw — مساعد واتساب مستضاف ذاتيًا للحياة المدرسية',
+        metaDesc: 'Claw بوت واتساب بذكاء اصطناعي محلي يتذكّر الواجبات والامتحانات لمجموعة صفية. مستضاف ذاتيًا، خاص ومفتوح المصدر.',
+        hNote: 'مفتوح المصدر',
+        hRepo: 'المستودع',
+        hLang: 'اللغة',
+        nFeat: 'المزايا',
+        nHow: 'كيف يعمل',
+        nQuick: 'البدء السريع',
+        nCmd: 'الأوامر',
+        nDocs: 'التوثيق',
+        eEyebrow: 'بوت واتساب مستضاف ذاتيًا · ذكاء اصطناعي محلي',
+        eTitle: 'ذاكرة صفّك،<br><em>على جهازك أنت.</em>',
+        eLead: 'يعيش Claw داخل مجموعة واتساب مدرسية. يلتقط الواجبات وإعلانات الامتحانات، يحفظها في قاعدة بيانات محلية ويجيب عندما يسأل أحد — <strong>بهدوء وخصوصية ودون إرسال رسالة واحدة إلى ذكاء اصطناعي في السحابة.</strong>',
+        eCta1: 'عرض المستودع',
+        eCta2: 'التثبيت في خمس دقائق',
+        eM1: 'Node 22+',
+        eM2: 'Ollama',
+        eM3: 'Python اختياري',
+        eM4: 'Windows · Linux · macOS',
+        chGroup: 'الصف الثاني عشر · ب',
+        chSub: 'مجموعة واتساب · 34 عضوًا',
+        chLocal: 'محلي',
+        chNote: 'فتح Claw سؤالًا معلّقًا · 15 دقيقة',
+        chM1: 'ما واجب الرياضيات؟',
+        chM2: 'الصفحات 30 إلى 32 من كتاب التمارين.',
+        chM3: 'Claw، كم يساوي 15 % من 240؟',
+        chM4: '36.',
+        chFoot: 'أُجيب من قاعدة البيانات المحلية — دون استخدام النموذج',
+        b1v: '100',
+        b1t: 'لغة متاحة عند أول تشغيل',
+        b2v: '15 دقيقة',
+        b2t: 'مهلة الإجابة على سؤال معلّق',
+        b3v: '0',
+        b3t: 'طلبات ذكاء اصطناعي تغادر جهازك',
+        b4v: '14 يومًا',
+        b4t: 'مدة الاحتفاظ الافتراضية بالصور المحفوظة',
+        featK: 'ما يفعله',
+        featH: 'مساعد يستمع أكثر مما يتكلم.',
+        featP: 'لا يجيب Claw عن كل رسالة. يقرأ المحادثة، يقرر ما يستحق التذكّر، ويبقى بعيدًا حتى يحتاجه أحد.',
+        f1t: 'واجبات لا تضيع',
+        f1d: 'يكتشف الواجبات والامتحانات القادمة في محادثة المجموعة ويسجّلها، حتى لا يضطر أحد للرجوع ثلاثمئة رسالة.',
+        f2t: 'صمت افتراضي',
+        f2d: 'يتكلم فقط عندما يسأل أحد أو يذكر <code>Claw</code>. لا تحيات، لا ردود غير مطلوبة، ولا ضجيج في المجموعة.',
+        f3t: 'أسئلة معلّقة',
+        f3d: 'إذا لم يكن لسؤال الواجب جواب بعد، يفتح Claw نافذة 15 دقيقة. أول ردّ مفيد يُحفظ، والتعديلات اللاحقة تستبدله.',
+        f4t: 'رسائل صوتية تُفرّغ محليًا',
+        f4d: 'يحوّل Whisper الصوت إلى نص على جهازك، حتى مع نطق خاطئ للاسم مثل <code>Clau</code> أو <code>Clao</code>. الصوت لا يغادر الجهاز.',
+        f5t: 'صور مفيدة، لا ميمز',
+        f5d: 'تُحفظ صور الواجبات والامتحانات ويمكن إعادة إرسالها لاحقًا. تُهمل الصور غير المتعلقة، وتُحذف الملفات المنتهية تلقائيًا.',
+        f6t: 'نماذج محلية وإجابات حقيقية',
+        f6d: 'يدير <code>qwen3:4b</code> المحادثة مع <code>qwen2.5:3b</code> كبديل، بينما يصنّف نموذج أصغر الرسائل. كل ذلك عبر Ollama على عتادك.',
+        f7t: 'تصدير إلى التقويم',
+        f7d: 'يمكن تصدير الامتحانات كملف <code>.ics</code> ليضيفها الصف كله إلى تقويمه دون نسخ التواريخ يدويًا.',
+        f8t: 'سياق لا يختلط',
+        f8d: 'رسائل المجموعة نفسها الأخيرة تمنح الردود القصيرة معناها، دون خلط محادثات من أماكن مختلفة.',
+        f9t: 'صيانة مدمجة',
+        f9d: 'تنظيف الوسائط والفحوصات والتذكيرات تعمل وحدها. يخبرك <code>npm run doctor</code> بما ينقص بالضبط عندما يتوقف شيء.',
+        howK: 'كيف يعمل',
+        howH: 'كل رسالة تسلك واحدًا من أربعة مسارات.',
+        howP: 'يقرأ Claw الرسالة ثم يقرر: يجيب، يحفظ، يفتح سؤالًا معلّقًا، أو يتجاهل. معظم الرسائل تُتجاهل — وهذا هو المقصود.',
+        s1t: 'تصل رسالة',
+        s1d: 'نص أو رسالة صوتية أو صورة من المجموعة المرتبطة. يُفرّغ الصوت أولًا، فتصل كلها إلى المسار نفسه للنص.',
+        s2t: 'هل تذكر <code>Claw</code>؟',
+        s2d: 'إذن هو طلب مباشر: السؤال العام يذهب إلى المساعد، وتُولّد الإجابة بالنموذج المحلي.',
+        s3t: 'هل هو سؤال عن واجب أو امتحان؟',
+        s3d: 'يجيب Claw مباشرة من قاعدة البيانات، فورًا ودون نموذج. وإذا غاب الجواب يُفتح سؤال معلّق.',
+        s4t: 'هل قد تكون معلومة مدرسية؟',
+        s4d: 'يقرر مصنّف صغير. تُحفظ المعلومة بهدوء؛ وما عداها — نكات وخطط وروابط وميمز — يبقى كما هو.',
+        tlT: 'سؤال معلّق من البداية إلى النهاية',
+        l1s: 'أحدهم يسأل',
+        l1d: '«ما واجب الإنجليزية؟» — لا شيء محفوظ بعد، فيبقى السؤال مفتوحًا.',
+        l2s: 'ينتظر Claw 15 دقيقة',
+        l2d: 'ما يُقال بعد ذلك في تلك المجموعة يُقرأ كردّ محتمل.',
+        l3s: 'يرد أحد الزملاء',
+        l3d: '«أنجزوا الصفحة 12.» يتعرف Claw على المعلومة الناقصة ويحفظها.',
+        l4s: 'يمكن السؤال لاحقًا',
+        l4d: 'تأتي الإجابة من قاعدة البيانات، وأي تصحيح لاحق يستبدل الإدخال القديم.',
+        qkK: 'البدء السريع',
+        qkH: 'من النسخ إلى مجموعة مرتبطة.',
+        qkP: 'ثلاثة أوامر. عند أول تشغيل تُفتح صفحة إعداد لاختيار اللغة، ثم يظهر رمز QR الذي يربط حساب واتساب.',
+        q1t: 'النسخ والتثبيت',
+        q1d: 'يلزم Node.js 22 أو أحدث. في Windows يمكنك أيضًا النقر المزدوج على <code>arrancar.bat</code>.',
+        q2t: 'تنزيل النماذج المحلية',
+        q2d: 'مع تثبيت Ollama، نزّل نموذج المحادثة وبديله. المرة الأولى عدة جيجابايت.',
+        q3t: 'التشغيل وربط مجموعة',
+        q3d: 'امسح رمز QR من <em>الأجهزة المرتبطة</em>، ثم اكتب <code>!claw aqui</code> داخل المجموعة.',
+        cmdK: 'الأوامر',
+        cmdH: 'كل شيء يبدأ بـ <span style="color:var(--brand)">!claw</span>.',
+        cmdP: 'الأوامر نفسها تعمل في المجموعة وفي المحاكي. أوامر الإدارة تستجيب فقط للمالك والمسؤولين المصرّح لهم.',
+        gt: 'للجميع',
+        gtag: 'المجموعة',
+        gs: 'قراءة وتصحيح ما هو مسجّل.',
+        ot: 'للمالك',
+        otag: 'مسؤول',
+        os: 'الإعدادات والوصول والصيانة.',
+        c1: 'حالة البوت',
+        c2: 'الواجبات المعلّقة',
+        c3: 'الامتحانات القادمة',
+        c4: 'المعلومات المحفوظة',
+        c5: 'الامتحان أو الواجب التالي',
+        c6: 'إضافة واجب أو تصحيحه',
+        c7: 'وضع علامة منجز',
+        c8: 'ملخص ما استجد',
+        c9: 'تصدير الامتحانات بصيغة .ics',
+        c10: 'البحث في الويب (قابل للإيقاف)',
+        c11: 'لعب الشطرنج',
+        c12: 'تحليل وضعية',
+        a1: 'ربط مجموعة أو فصلها',
+        a2: 'عرض الإعدادات وتغييرها',
+        a3: 'اختيار نموذج الذكاء الاصطناعي',
+        a4: 'تغيير اللغة',
+        a5: 'حجب مستخدم',
+        a6: 'رفع الحجب عن مستخدم',
+        a7: 'عرض المحجوبين',
+        a8: 'وضع الصيانة',
+        a9: 'حذف المعلومات المحفوظة',
+        a10: 'إدارة المسؤولين',
+        stK: 'تحت الغطاء',
+        stH: 'مكدّس صغير بلا حسابات سحابية.',
+        stP: 'عملية Node.js تتحدث، وSQLite تحفظ البيانات، وكل ما هو ذكي يمر عبر نماذج محلية. Python اختياري ويضيف فقط صوتًا وصورًا أسرع.',
+        r1v: '22 أو أحدث · يُنصح بـ 24 LTS',
+        r1d: 'البوت وخادم الويب وقاعدة البيانات',
+        r2v: 'محرك استدلال محلي',
+        r2d: 'نماذج النص تبقى على الجهاز',
+        r3v: 'نموذج المحادثة الأساسي',
+        r3d: 'الردود والأسئلة العامة',
+        r4v: 'البديل والمصنّف',
+        r4d: 'يسجّل الواجبات والامتحانات',
+        r5v: 'البيانات في <code>data/picklebrain.db</code>',
+        r5d: 'واجبات وامتحانات وإعدادات وطلاب',
+        r6v: 'خدمة اختيارية على المنفذ 5050',
+        r6d: 'faster-whisper وdiffusers',
+        r7v: 'بديل اختياري',
+        r7d: 'معالجة صوت قديمة في Node',
+        r8v: 'اختياري',
+        r8d: 'الوصول إلى الويب من خارج الشبكة المحلية',
+        flT: 'رسالة واحدة، بتبسيط',
+        flIn: 'رسالة واردة',
+        flO1: 'تذكر <code>claw</code>؟',
+        flR1: 'نموذج محلي',
+        flO2: 'سؤال واجب؟',
+        flR2: 'قاعدة البيانات',
+        flO2s: 'بلا جواب → يُفتح سؤال 15 دقيقة',
+        flO3: 'معلومة مدرسية؟',
+        flR3: 'مصنّف',
+        flR3s: 'نعم: حفظ صامت · لا: تجاهل',
+        prH: 'خصوصية بالتصميم، لا بالوعود.',
+        prP1: 'قاعدة البيانات والتفريغ والنماذج كلها تعمل على الجهاز الذي يستضيف Claw. المشروع موجود تحديدًا لتتبادل مجموعة صفية الملاحظات دون تسليم محادثاتها لطرف ثالث.',
+        prP2: 'يبقى واتساب هو من يوصّل الرسائل، وتحتاج الميزات الاختيارية اتصالًا — لكن الجزء الذي يفكر لا يغادر الجهاز أبدًا.',
+        pb1s: 'استدلال محلي:',
+        pb1d: 'نماذج Ollama والتصنيف تعمل دون اتصال.',
+        pb2s: 'صوت محلي:',
+        pb2d: 'يُفرّغ الصوت بـ Whisper دون رفعه إلى أي مكان.',
+        pb3s: 'بيانات محلية:',
+        pb3d: 'كل شيء في <code>data/</code>، ولا يتتبعه Git أبدًا.',
+        pb4s: 'شبكة اختيارية:',
+        pb4d: 'البحث في الويب مفعّل، وأمر واحد يوقفه.',
+        pb5s: 'سجل قابل للحذف:',
+        pb5d: 'يمكن حذف الملاحظات حسب المادة أو واحدة واحدة.',
+        dkK: 'التوثيق',
+        dkH: 'اقرأه قبل التثبيت.',
+        dkP: 'كل شيء في المستودع بصيغة Markdown بسيطة — دون ويكي خارجي يجب مزامنته.',
+        d1t: 'نظرة عامة',
+        d1d: 'المزايا والأوامر والإعدادات والأسئلة الشائعة.',
+        d2t: 'دليل التثبيت',
+        d2d: 'خطوة بخطوة في Windows مع حل المشكلات.',
+        d3t: 'البنية',
+        d3d: 'الداخل وواجهة API ونموذج الأمان.',
+        d4t: 'خدمة Python',
+        d4d: 'صوت بـ faster-whisper وصور بـ diffusers.',
+        fqK: 'الأسئلة الشائعة',
+        fqH: 'الأسئلة التي تُطرح فعلًا.',
+        qa1q: 'هل يحتاج اتصالًا بالإنترنت؟',
+        qa1a: 'واتساب نعم، وكذلك تنزيل النماذج عند أول تشغيل. وبعد تخزينها مؤقتًا تعمل الردود والتصنيف والتفريغ دون اتصال.',
+        qa2q: 'هل يمكن أن يُحجب رقمي في واتساب؟',
+        qa2a: 'الخطر حقيقي. يستخدم Claw مكتبة Baileys غير الرسمية لواتساب ويب، وشروط واتساب تقيّد الأتمتة غير المصرّح بها. يُنصح بشدة برقم منفصل.',
+        qa3q: 'ماذا يحدث إذا أُغلق الجهاز؟',
+        qa3a: 'يتوقف البوت لكن لا يضيع شيء: تبقى البيانات في <code>data/picklebrain.db</code> والجلسة في <code>data/auth/</code>. وبعد التشغيل يعود كل شيء مكانه.',
+        qa4q: 'هل يحفظ كل صور المجموعة؟',
+        qa4a: 'لا. افتراضيًا تُحفظ الصور المتعلقة بالدراسة فقط، مع حد للحجم ومدة تُحذف بعدها الملفات تلقائيًا.',
+        qa5q: 'لماذا لا يجيب في المجموعة؟',
+        qa5a: 'تأكد من ربط المجموعة (<code>!claw aqui</code>)، واكتب <code>!claw</code> لرؤية الحالة، وشغّل <code>npm run doctor</code>. تُظهر سجلات التصحيح سبب تجاهل كل رسالة.',
+        ftH: 'استضفه، اربط مجموعتك، وانسَ التمرير.',
+        ftP: 'حر للقراءة والتشغيل والتعديل. كل ما تحتاجه في المستودع.',
+        ftC1: 'الذهاب إلى GitHub',
+        ftC2: 'دليل التثبيت',
+        ftBy: 'Claw · من',
+        ftTop: 'إلى الأعلى',
+        uiCopy: 'نسخ',
+        uiCopied: 'تم النسخ',
+      },
+      zh: {
+        skip: '跳到内容',
+        metaTitle: 'Claw — 自托管的校园 WhatsApp 助手',
+        metaDesc: 'Claw 是一个基于本地 AI 的 WhatsApp 机器人，帮班级群记住作业和考试。自托管、私密、开源。',
+        hNote: '开源',
+        hRepo: '仓库',
+        hLang: '语言',
+        nFeat: '功能',
+        nHow: '工作原理',
+        nQuick: '快速开始',
+        nCmd: '命令',
+        nDocs: '文档',
+        eEyebrow: '自托管 WhatsApp 机器人 · 本地 AI',
+        eTitle: '全班的记忆，<br><em>就在你自己的电脑上。</em>',
+        eLead: 'Claw 生活在一个学校 WhatsApp 群里。它会记下群里提到的作业和考试，存进本地数据库，需要时再回答 — <strong>安静、私密，一条消息都不会发到云端 AI。</strong>',
+        eCta1: '查看仓库',
+        eCta2: '五分钟完成安装',
+        eM1: 'Node 22+',
+        eM2: 'Ollama',
+        eM3: 'Python 可选',
+        eM4: 'Windows · Linux · macOS',
+        chGroup: '高二 · B 班',
+        chSub: 'WhatsApp 群 · 34 位成员',
+        chLocal: '本地',
+        chNote: 'Claw 开启了一个待回答问题 · 15 分钟',
+        chM1: '数学作业是什么？',
+        chM2: '练习册第 30 到 32 页。',
+        chM3: 'Claw，240 的 15% 是多少？',
+        chM4: '36。',
+        chFoot: '直接来自本地数据库 — 不需要调用模型',
+        b1v: '100',
+        b1t: '首次启动可选语言',
+        b2v: '15 分钟',
+        b2t: '回答待提问的等待时间',
+        b3v: '0',
+        b3t: '离开你电脑的 AI 请求',
+        b4v: '14 天',
+        b4t: '已保存图片的默认保留时间',
+        featK: '它能做什么',
+        featH: '一个听得多、说得少的助手。',
+        featP: 'Claw 不会回复每条消息。它阅读对话，判断什么值得记住，然后安静待命，直到有人需要。',
+        f1t: '作业不会丢',
+        f1d: '从群聊里识别作业和临近的考试并记录下来，谁都不用往上翻三百条消息。',
+        f2t: '默认沉默',
+        f2d: '只有有人提问或提到 <code>Claw</code> 时才开口。不打招呼、不主动回复、不刷屏。',
+        f3t: '待回答问题',
+        f3d: '作业问题暂时没有答案时，Claw 会开启 15 分钟窗口。第一条有用的回复会被保存，之后的更正会替换它。',
+        f4t: '语音消息本地转写',
+        f4d: 'Whisper 在你的电脑上把语音转成文字，即使名字念错也没关系，比如 <code>Clau</code> 或 <code>Clao</code>。音频从不离开电脑。',
+        f5t: '留下有用的图片，而不是表情包',
+        f5d: '与作业和考试有关的照片会被保存，之后可以再发出来。无关图片会被忽略，过期文件自动删除。',
+        f6t: '本地模型，真实回答',
+        f6d: '<code>qwen3:4b</code> 负责对话，<code>qwen2.5:3b</code> 作为备用，另一个更小的模型负责分类。全部通过 Ollama 跑在你自己的硬件上。',
+        f7t: '导出到日历',
+        f7d: '考试可以导出为 <code>.ics</code> 文件，全班直接加入自己的日历，不用手抄日期。',
+        f8t: '上下文不会串群',
+        f8d: '同一群最近的几条消息能让简短回答有意义，同时不会把不同群的对话混在一起。',
+        f9t: '自带维护',
+        f9d: '媒体清理、健康检查和提醒都会自动运行。<code>npm run doctor</code> 会明确告诉你缺了什么。',
+        howK: '工作原理',
+        howH: '每条消息只走四条路之一。',
+        howP: 'Claw 读到消息后决定：回答、记住、开启待提问，或者忽略。大多数消息都会被忽略 — 这正是重点。',
+        s1t: '消息到达',
+        s1d: '来自已绑定群的文字、语音或图片。语音先转写，所以都会走和文字一样的流程。',
+        s2t: '提到了 <code>Claw</code> 吗？',
+        s2d: '那就是直接请求：一般问题交给助手，用本地模型生成回答。',
+        s3t: '是作业或考试的问题吗？',
+        s3d: 'Claw 直接从数据库回答，瞬间完成且不需要模型。如果没有答案，就开启一个待提问。',
+        s4t: '可能是学校信息吗？',
+        s4d: '由一个小分类器判断。信息被安静地保存；其它内容 — 玩笑、计划、链接、表情包 — 一律不管。',
+        tlT: '一个待提问的完整过程',
+        l1s: '有人提问',
+        l1d: '「英语作业是什么？」— 还没有记录，问题保持开放。',
+        l2s: 'Claw 等待 15 分钟',
+        l2d: '这个群里接下来说的内容会被当作可能的回答。',
+        l3s: '同学回答',
+        l3d: '「做完第 12 页。」Claw 认出这是缺失的信息并保存。',
+        l4s: '谁都可以再问',
+        l4d: '答案来自数据库，之后若有更正会替换旧记录。',
+        qkK: '快速开始',
+        qkH: '从克隆到绑定群组。',
+        qkP: '三条命令。首次运行会打开设置页选择语言，然后显示用于绑定 WhatsApp 的二维码。',
+        q1t: '克隆并安装',
+        q1d: '需要 Node.js 22 或更高版本。Windows 上也可以双击 <code>arrancar.bat</code>。',
+        q2t: '下载本地模型',
+        q2d: '安装 Ollama 后，下载对话模型和备用模型。第一次需要几 GB。',
+        q3t: '启动并绑定群',
+        q3d: '在 <em>已连接的设备</em> 中扫描二维码，然后在群里输入 <code>!claw aqui</code>。',
+        cmdK: '命令',
+        cmdH: '一切都以 <span style="color:var(--brand)">!claw</span> 开头。',
+        cmdP: '同样的命令在群里和模拟器里都能用。管理命令只响应群主和授权管理员。',
+        gt: '所有人',
+        gtag: '群内',
+        gs: '查看并更正已记录的内容。',
+        ot: '群主',
+        otag: '管理',
+        os: '设置、权限与维护。',
+        c1: '机器人状态',
+        c2: '待完成作业',
+        c3: '即将到来的考试',
+        c4: '已保存的信息',
+        c5: '下一个考试或作业',
+        c6: '添加或更正作业',
+        c7: '标记为完成',
+        c8: '最近内容摘要',
+        c9: '导出考试为 .ics',
+        c10: '网页搜索（可关闭）',
+        c11: '下棋',
+        c12: '分析局面',
+        a1: '绑定或解绑群组',
+        a2: '查看和修改设置',
+        a3: '选择 AI 模型',
+        a4: '更改语言',
+        a5: '封禁用户',
+        a6: '解除封禁',
+        a7: '列出已封禁用户',
+        a8: '维护模式',
+        a9: '删除已保存的信息',
+        a10: '管理管理员',
+        stK: '技术细节',
+        stH: '小技术栈，无需云账号。',
+        stP: 'Node.js 进程负责对话，SQLite 保存数据，所有智能部分都走本地模型。Python 是可选的，只带来更快的语音和绘图。',
+        r1v: '22 或更高 · 建议 24 LTS',
+        r1d: '机器人、Web 服务与数据库',
+        r2v: '本地推理引擎',
+        r2d: '文本模型留在本机',
+        r3v: '主要对话模型',
+        r3d: '回复与一般问题',
+        r4v: '备用与分类模型',
+        r4d: '记录作业与考试',
+        r5v: '数据位于 <code>data/picklebrain.db</code>',
+        r5d: '作业、考试、设置与学生',
+        r6v: '可选服务，端口 5050',
+        r6d: 'faster-whisper 与 diffusers',
+        r7v: '可选后备方案',
+        r7d: 'Node 中的旧版语音处理',
+        r8v: '可选',
+        r8d: '从局域网外访问网页',
+        flT: '一条消息，简化版',
+        flIn: '收到的消息',
+        flO1: '提到 <code>claw</code>？',
+        flR1: '本地模型',
+        flO2: '作业问题？',
+        flR2: '数据库',
+        flO2s: '没有答案 → 开启 15 分钟提问',
+        flO3: '学校信息？',
+        flR3: '分类器',
+        flR3s: '是：安静保存 · 否：忽略',
+        prH: '靠架构保密，而不是靠承诺。',
+        prP1: '数据库、转写和语言模型都运行在托管 Claw 的电脑上。这个项目的意义就在于：一个班可以共享笔记，而不用把对话交给第三方。',
+        prP2: 'WhatsApp 仍负责投递消息，可选功能也需要联网 — 但「思考」的部分从不离开电脑。',
+        pb1s: '本地推理：',
+        pb1d: 'Ollama 模型和分类完全离线运行。',
+        pb2s: '本地语音：',
+        pb2d: '音频用 Whisper 转写，不会上传。',
+        pb3s: '本地数据：',
+        pb3d: '一切都放在 <code>data/</code>，Git 从不跟踪。',
+        pb4s: '可选联网：',
+        pb4d: '网页搜索默认开启，一条命令即可关闭。',
+        pb5s: '可删历史：',
+        pb5d: '记录可以按科目或逐条删除。',
+        dkK: '文档',
+        dkH: '安装前先读一下。',
+        dkP: '全部在仓库里，用普通 Markdown 写成 — 没有需要同步的外部 wiki。',
+        d1t: '总览',
+        d1d: '功能、命令、配置与常见问题。',
+        d2t: '安装指南',
+        d2d: 'Windows 分步说明与排错。',
+        d3t: '架构',
+        d3d: '内部实现、API 与安全模型。',
+        d4t: 'Python 服务',
+        d4d: 'faster-whisper 负责语音，diffusers 负责绘图。',
+        fqK: '常见问题',
+        fqH: '大家真正会问的问题。',
+        qa1q: '需要联网吗？',
+        qa1a: 'WhatsApp 需要，首次下载模型也需要。模型缓存之后，回答、分类和转写都能离线运行。',
+        qa2q: 'WhatsApp 会封我的号吗？',
+        qa2a: '风险确实存在。Claw 使用非官方的 WhatsApp Web 库 Baileys，而 WhatsApp 条款限制未经授权的自动化。强烈建议使用单独的号码。',
+        qa3q: '如果电脑关机了会怎样？',
+        qa3a: '机器人会停止，但不会丢数据：记录留在 <code>data/picklebrain.db</code>，会话留在 <code>data/auth/</code>。重新启动就还在原处。',
+        qa4q: '群里的图片都会保存吗？',
+        qa4a: '不会。默认只保留与学习相关的图片，并设有大小上限和保留期限，到期文件会自动删除。',
+        qa5q: '为什么它在群里不回答？',
+        qa5a: '确认群已绑定（<code>!claw aqui</code>），输入 <code>!claw</code> 查看状态，并运行 <code>npm run doctor</code>。调试日志会显示每条消息为什么被丢弃。',
+        ftH: '自己托管，绑定群组，忘掉往上翻。',
+        ftP: '可以自由阅读、运行和修改。你需要的一切都在仓库里。',
+        ftC1: '前往 GitHub',
+        ftC2: '安装指南',
+        ftBy: 'Claw · 作者',
+        ftTop: '回到顶部',
+        uiCopy: '复制',
+        uiCopied: '已复制',
+      },
+      /* -- more locales -- */
+    };
+
+    const NAMES = { en: 'English', es: 'Español', ca: 'Català', fr: 'Français', pt: 'Português', de: 'Deutsch', it: 'Italiano', ru: 'Русский', ar: 'العربية', zh: '中文' };
+    const ORDER = ['en', 'es', 'ca', 'fr', 'pt', 'de', 'it', 'ru', 'ar', 'zh'];
+    const STORE = 'claw-page-lang';
+
+    const nodes = [...document.querySelectorAll('[data-i18n]')];
+    const ORIGINAL = new Map(nodes.map((el) => [el, el.innerHTML]));
+    const metaDesc = document.querySelector('meta[name="description"]');
+    const ORIGINAL_TITLE = document.title;
+    const ORIGINAL_DESC = metaDesc ? metaDesc.content : '';
+
+    const select = document.getElementById('lang');
+    ORDER.filter((code) => code === 'en' || LOCALES[code]).forEach((code) => {
+      const option = document.createElement('option');
+      option.value = code;
+      option.textContent = NAMES[code] || code;
+      select.appendChild(option);
+    });
+
+    // Picks the language for this visit, in this order:
+    //   1. ?lang=xx in the URL, so a link can force a language
+    //   2. the choice saved on the last visit
+    //   3. the browser's own language list, most preferred first (pt-BR -> pt)
+    //   4. English
+    function detect() {
+      const asked = new URLSearchParams(location.search).get('lang');
+      if (asked) {
+        const code = String(asked).toLowerCase().replace('_', '-').split('-')[0];
+        if (code === 'en' || LOCALES[code]) return code;
+      }
+      let saved = null;
+      try { saved = localStorage.getItem(STORE); } catch {}
+      if (saved && (saved === 'en' || LOCALES[saved])) return saved;
+      const wanted = [].concat(navigator.languages || [], navigator.language || [], navigator.userLanguage || []);
+      for (const tag of wanted) {
+        const code = String(tag || '').toLowerCase().replace('_', '-').split('-')[0];
+        if (code && (code === 'en' || LOCALES[code])) return code;
+      }
+      return 'en';
+    }
+
+    function translate(code) {
+      const dict = LOCALES[code];
+      nodes.forEach((el) => {
+        const key = el.dataset.i18n;
+        el.innerHTML = dict && dict[key] ? dict[key] : ORIGINAL.get(el);
+      });
+      document.documentElement.lang = code;
+      document.documentElement.dir = code === 'ar' ? 'rtl' : 'ltr';
+      document.title = (dict && dict.metaTitle) || ORIGINAL_TITLE;
+      if (metaDesc) metaDesc.content = (dict && dict.metaDesc) || ORIGINAL_DESC;
+      select.setAttribute('aria-label', (dict && dict.hLang) || 'Language');
+    }
+
+    function setLang(code) {
+      translate(code);
+      select.value = code;
+      try { localStorage.setItem(STORE, code); } catch {}
+    }
+
+    select.addEventListener('change', () => setLang(select.value));
+    setLang(detect());
+
+    // header shadow
+    const header = document.getElementById('site-header');
+    const onScroll = () => header.classList.toggle('scrolled', window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    // mobile menu
+    const menuBtn = document.getElementById('menu-btn');
+    const nav = document.getElementById('nav');
+    const closeMenu = () => { header.classList.remove('nav-open'); menuBtn.setAttribute('aria-expanded', 'false'); };
+    menuBtn.addEventListener('click', () => {
+      const open = header.classList.toggle('nav-open');
+      menuBtn.setAttribute('aria-expanded', String(open));
+    });
+    nav.addEventListener('click', (event) => { if (event.target.closest('a')) closeMenu(); });
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeMenu(); });
+
+    // copy buttons
+    document.querySelectorAll('.copy').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const source = document.getElementById(button.dataset.copy);
+        if (!source) return;
+        const text = source.innerText.replace(/^\$\s?/gm, '').replace(/^#.*$/gm, '').trim();
+        const label = button.querySelector('span');
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch {
+          const area = document.createElement('textarea');
+          area.value = text; area.style.position = 'fixed'; area.style.opacity = '0';
+          document.body.appendChild(area); area.select(); document.execCommand('copy'); area.remove();
+        }
+        const original = label.textContent;
+        const dict = LOCALES[document.documentElement.lang];
+        button.classList.add('done');
+        label.textContent = (dict && dict.uiCopied) || 'Copied';
+        setTimeout(() => { button.classList.remove('done'); label.textContent = original; }, 1600);
+      });
+    });
+
+    // reveal on scroll
+    const items = document.querySelectorAll('.reveal');
+    if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      items.forEach((item) => item.classList.add('in'));
+    } else {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) { entry.target.classList.add('in'); observer.unobserve(entry.target); }
+        });
+      }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+      items.forEach((item) => observer.observe(item));
+    }
+
+    window.__claw = { LOCALES, NAMES, ORDER, setLang, translate, detect };
+  </script>
+
+
+</body></html>
