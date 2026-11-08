@@ -10,19 +10,13 @@ const PORT = Number(process.env.PORT || 3000);
 function abrirNavegador(url) {
   if (process.env.CLAW_SKIP_SETUP_BROWSER === '1') return;
   try {
-    let child;
-    if (process.platform === 'win32') {
-      // `start` is a cmd.exe built-in; the first "" is the window title.
-      child = spawn('cmd', ['/c', 'start', '', url], {
-        detached: true,
-        stdio: 'ignore',
-        windowsHide: true
-      });
-    } else if (process.platform === 'darwin') {
-      child = spawn('open', [url], { detached: true, stdio: 'ignore' });
-    } else {
-      child = spawn('xdg-open', [url], { detached: true, stdio: 'ignore' });
-    }
+    // Claw only runs on Windows: `start` is a cmd.exe built-in and the first ""
+    // is the window title.
+    const child = spawn('cmd', ['/c', 'start', '', url], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true
+    });
     child.once('error', (err) => log.warn(`No pude abrir el navegador: ${err.message}`));
     child.unref();
   } catch (err) {

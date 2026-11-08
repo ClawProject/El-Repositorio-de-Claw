@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Claw's local AI service: voice (faster-whisper) and images (diffusers).
 
 It runs separately from the Node bot and listens ONLY on 127.0.0.1. Node calls
@@ -35,6 +34,7 @@ from urllib.parse import urlparse
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, Response
+from PIL import Image
 from pydantic import BaseModel, Field
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -43,7 +43,7 @@ try:
     from dotenv import load_dotenv
 
     load_dotenv(ROOT / ".env")
-    # With Homebrew the .env lives in the data folder, not next to the code.
+    # The .env can also live in the data folder instead of next to the code.
     _data_dir = os.getenv("PICKLEBRAIN_DATA_DIR", "").strip()
     if _data_dir:
         _data_path = Path(_data_dir).expanduser()
@@ -101,9 +101,11 @@ MAX_UPLOAD_MB = _int("PYTHON_MAX_UPLOAD_MB", 64)
 MAX_UPLOAD_BYTES = max(1, MAX_UPLOAD_MB) * 1024 * 1024
 
 # ---------------------------------------------------------------- images
+# DreamShaper 8 is a Stable Diffusion 1.5 fine-tune: same pipeline, same size
+# (~2 GB in fp16) and far better faces and detail than the plain base model.
 IMAGE_MODEL = (
-    os.getenv("PYTHON_IMAGE_MODEL", "stable-diffusion-v1-5/stable-diffusion-v1-5").strip()
-    or "stable-diffusion-v1-5/stable-diffusion-v1-5"
+    os.getenv("PYTHON_IMAGE_MODEL", "Lykon/dreamshaper-8").strip()
+    or "Lykon/dreamshaper-8"
 )
 IMAGE_DEVICE = os.getenv("PYTHON_IMAGE_DEVICE", "auto").strip().lower()
 # On a 4 GB GPU it is best to release the model after each image so Ollama can
@@ -111,6 +113,32 @@ IMAGE_DEVICE = os.getenv("PYTHON_IMAGE_DEVICE", "auto").strip().lower()
 IMAGE_UNLOAD = _bool("PYTHON_IMAGE_UNLOAD", True)
 IMAGE_MAX_SIDE = _int("PYTHON_IMAGE_MAX_SIDE", 1024)
 IMAGE_CPU_FALLBACK = _bool("PYTHON_IMAGE_CPU_FALLBACK", False)
+# How the pipeline sits on the GPU. SD 1.5 in fp16 takes ~2.5 GB, so a 4 GB card
+# fits 512x512 but not much more. "model" offload keeps only the module that is
+# running on the GPU (and "sequential" only its layers), which is what lets a
+# 4 GB card draw at 768 without running out of memory. It is slower.
+#   auto (model offload when VRAM < 6 GB) | model | sequential | none
+IMAGE_OFFLOAD = os.getenv("PYTHON_IMAGE_OFFLOAD", "auto").strip().lower()
+# Quality tags appended to the prompt: they are what SD 1.5 was trained with to
+# get a sharp, well lit picture. They go last, so a very long prompt loses them
+# first instead of losing the actual subject.
+IMAGE_QUALITY_TAGS = os.getenv(
+    "PYTHON_IMAGE_QUALITY_TAGS",
+    "masterpiece, best quality, highly detailed, sharp focus, professional lighting",
+).strip()
+# Extra negatives merged into the ones Node sends (repeated ones are skipped).
+IMAGE_NEGATIVE_EXTRA = os.getenv(
+    "PYTHON_IMAGE_NEGATIVE_EXTRA",
+    "low quality, worst quality, blurry, lowres, jpeg artifacts, watermark, "
+    "signature, text, deformed, bad anatomy, extra fingers",
+).strip()
+# Second pass at a larger size (hires fix): the 512x512 pass cannot draw small
+# detail, this one redraws the picture with room to spare. Costs ~1 extra pass.
+IMAGE_HIRES = _bool("PYTHON_IMAGE_HIRES", True)
+IMAGE_HIRES_SCALE = max(1.0, min(2.0, _float("PYTHON_IMAGE_HIRES_SCALE", 1.5)))
+IMAGE_HIRES_STRENGTH = max(0.05, min(0.9, _float("PYTHON_IMAGE_HIRES_STRENGTH", 0.35)))
+# 0 = same number of steps as the first pass.
+IMAGE_HIRES_STEPS = _int("PYTHON_IMAGE_HIRES_STEPS", 0)
 
 logging.basicConfig(
     level=os.getenv("PYTHON_LOG_LEVEL", "info").upper(),
@@ -285,6 +313,9 @@ async def transcribe(
 
 _image_pipe = None
 _image_device: Optional[str] = None
+_image_offload: Optional[str] = None
+_image_hires_pipe = None
+_hires_disponible = True
 _image_load_lock = threading.Lock()
 _image_gen_lock = threading.Lock()
 
@@ -292,7 +323,9 @@ _image_gen_lock = threading.Lock()
 class ImageRequest(BaseModel):
     prompt: str = Field(min_length=1, max_length=2000)
     negative_prompt: str = Field(default="", max_length=2000)
-    steps: int = Field(default=20, ge=1, le=100)
+    # 28 steps is where DPM++ 2M + Karras stops improving on SD 1.5; below ~20
+    # the result is soft and faces are mush.
+    steps: int = Field(default=28, ge=1, le=100)
     width: int = Field(default=512, ge=256, le=1024)
     height: int = Field(default=512, ge=256, le=1024)
     seed: int = -1
@@ -305,6 +338,91 @@ def _dims_validas(valor: int) -> int:
     """Rounds to a multiple of 8 and caps the size so the VRAM is not blown."""
     valor = max(256, min(IMAGE_MAX_SIDE, int(valor)))
     return max(256, (valor // 8) * 8)
+
+
+def _vram_gb(torch) -> Optional[float]:
+    """Total VRAM in GB, or None when there is no CUDA device."""
+    try:
+        if not torch.cuda.is_available():
+            return None
+        return round(torch.cuda.get_device_properties(0).total_memory / (1024**3), 1)
+    except Exception:
+        return None
+
+
+def _modo_offload(torch, device: str) -> str:
+    """Picks how to place the model: none | model | sequential."""
+    pedido = (IMAGE_OFFLOAD or "auto").lower()
+    if device != "cuda" or pedido == "none":
+        return "none"
+    if pedido in {"model", "sequential"}:
+        return pedido
+    vram = _vram_gb(torch)
+    if vram is None:
+        return "model"
+    if vram < 3.5:
+        return "sequential"
+    if vram < 6.0:
+        return "model"
+    return "none"
+
+
+def _colocar_en_gpu(pipe, modo: str):
+    """Applies the offload, degrading to a simpler one if accelerate complains."""
+    intentos = [modo] if modo == "sequential" else []
+    intentos.append("model")
+    for intento in intentos:
+        try:
+            if intento == "sequential":
+                pipe.enable_sequential_cpu_offload()
+            else:
+                pipe.enable_model_cpu_offload()
+            return pipe
+        except Exception:
+            log.warning(
+                "No pude activar el offload '%s'; pruebo de otra forma.", intento, exc_info=True
+            )
+    return pipe.to("cuda")
+
+
+def _activar_ajustes(pipe, agresivo: bool = False):
+    """Cheap settings that avoid VRAM peaks without touching the quality."""
+    for nombre, args in (
+        ("enable_attention_slicing", ("max",) if agresivo else ("auto",)),
+        ("enable_vae_slicing", ()),
+        ("enable_vae_tiling", ()),
+    ):
+        try:
+            getattr(pipe, nombre)(*args)
+        except Exception:
+            pass
+    pipe.set_progress_bar_config(disable=True)
+
+
+def _tags_de_calidad(prompt: str) -> str:
+    """Appends the SD 1.5 quality tags, skipping the ones already in the prompt."""
+    texto = str(prompt or "").strip().rstrip(",. ")
+    tags = [t.strip() for t in (IMAGE_QUALITY_TAGS or "").split(",") if t.strip()]
+    if not tags:
+        return texto
+    presentes = texto.lower()
+    nuevos = [t for t in tags if t.lower() not in presentes]
+    if not nuevos:
+        return texto
+    return ", ".join([texto, *nuevos]) if texto else ", ".join(nuevos)
+
+
+def _negativos_completos(negativo: str) -> Optional[str]:
+    """Merges the negatives from Node with the extra ones, without repeats."""
+    partes: list[str] = []
+    vistos: set[str] = set()
+    for bloque in (negativo or "", IMAGE_NEGATIVE_EXTRA or ""):
+        for trozo in str(bloque).split(","):
+            clave = trozo.strip().lower()
+            if clave and clave not in vistos:
+                vistos.add(clave)
+                partes.append(trozo.strip())
+    return ", ".join(partes) if partes else None
 
 
 def _aplicar_scheduler(pipe, sampler: str, scheduler: str):
@@ -370,28 +488,79 @@ def get_image_pipeline():
             requires_safety_checker=False,
             cache_dir=str(MODELS_DIR / "diffusers"),
         )
-        pipe = pipe.to(device)
-        try:
-            pipe.enable_attention_slicing()
-        except Exception:
-            pass
-        try:
-            pipe.enable_vae_slicing()
-        except Exception:
-            pass
-        pipe.set_progress_bar_config(disable=True)
+        modo = _modo_offload(torch, device)
+        pipe = pipe.to(device) if modo == "none" else _colocar_en_gpu(pipe, modo)
+        _activar_ajustes(pipe, agresivo=(modo == "sequential"))
         _image_pipe = pipe
         _image_device = device
-        log.info("Modelo de imágenes listo en %.1f s", time.time() - t0)
+        _image_offload = modo
+        log.info(
+            "Modelo de imágenes listo en %.1f s (%s, VRAM %s GB)",
+            time.time() - t0,
+            modo,
+            _vram_gb(torch),
+        )
         return _image_pipe, _image_device
+
+
+def _pipeline_hires(pipe):
+    """img2img pipeline that REUSES the loaded weights (no second model)."""
+    global _image_hires_pipe, _hires_disponible
+    if _image_hires_pipe is not None:
+        return _image_hires_pipe
+    if not _hires_disponible:
+        return None
+    try:
+        from diffusers import AutoPipelineForImage2Image
+
+        _image_hires_pipe = AutoPipelineForImage2Image.from_pipe(pipe)
+        _image_hires_pipe.set_progress_bar_config(disable=True)
+        return _image_hires_pipe
+    except Exception:
+        _hires_disponible = False
+        log.warning(
+            "No pude preparar el segundo pase (hires); dibujo solo la primera pasada.",
+            exc_info=True,
+        )
+        return None
+
+
+def _segundo_pase(pipe, imagen, device, prompt, negativo, cfg, seed, ancho, alto, pasos):
+    """Redraws the image larger (hires fix). It never raises: returns None on failure."""
+    hires = _pipeline_hires(pipe)
+    if hires is None:
+        return None
+    destino_ancho = _dims_validas(round(ancho * IMAGE_HIRES_SCALE))
+    destino_alto = _dims_validas(round(alto * IMAGE_HIRES_SCALE))
+    if destino_ancho <= ancho and destino_alto <= alto:
+        return None
+    try:
+        import torch
+
+        subida = imagen.resize((destino_ancho, destino_alto), Image.LANCZOS)
+        generador = torch.Generator(device=device).manual_seed(seed)
+        resultado = hires(
+            prompt=prompt,
+            negative_prompt=negativo,
+            image=subida,
+            strength=IMAGE_HIRES_STRENGTH,
+            num_inference_steps=max(8, IMAGE_HIRES_STEPS or pasos),
+            guidance_scale=cfg,
+            generator=generador,
+        )
+        return resultado.images[0]
+    except Exception as exc:
+        log.warning("El segundo pase falló (%s); devuelvo la primera pasada.", exc)
+        return None
 
 
 def _descargar_pipeline():
     """Releases the image model to give the VRAM back to Ollama."""
-    global _image_pipe, _image_device
+    global _image_pipe, _image_device, _image_hires_pipe
     with _image_load_lock:
         _image_pipe = None
         _image_device = None
+        _image_hires_pipe = None
         gc.collect()
         try:
             import torch
@@ -414,21 +583,33 @@ def generate(req: ImageRequest):
         if seed < 0:
             seed = random.randint(0, 2**31 - 1)
 
+        prompt = _tags_de_calidad(req.prompt)
+        negativo = _negativos_completos(req.negative_prompt)
+        pasos = max(1, min(100, int(req.steps)))
+
         try:
             import torch
 
             generator = torch.Generator(device=device).manual_seed(seed)
             _aplicar_scheduler(pipe, req.sampler, req.scheduler)
             resultado = pipe(
-                prompt=req.prompt,
-                negative_prompt=req.negative_prompt or None,
-                num_inference_steps=max(1, int(req.steps)),
+                prompt=prompt,
+                negative_prompt=negativo,
+                num_inference_steps=pasos,
                 width=ancho,
                 height=alto,
                 guidance_scale=float(req.cfg),
                 generator=generator,
             )
             imagen = resultado.images[0]
+            # Second pass at a larger size: it is what really fixes the soft SD 1.5
+            # look, because faces and small details get redrawn with room for them.
+            if IMAGE_HIRES and IMAGE_HIRES_SCALE > 1.0:
+                refinada = _segundo_pase(
+                    pipe, imagen, device, prompt, negativo, float(req.cfg), seed, ancho, alto, pasos
+                )
+                if refinada is not None:
+                    imagen = refinada
             buffer = io.BytesIO()
             imagen.save(buffer, format="PNG")
         except Exception as exc:
@@ -439,7 +620,8 @@ def generate(req: ImageRequest):
                     status_code=507,
                     content={
                         "error": "sin memoria de GPU para generar la imagen. "
-                        "Prueba menos pasos o un tamaño menor, o libera VRAM."
+                        "Prueba menos pasos o un tamaño menor, o pon "
+                        "PYTHON_IMAGE_OFFLOAD=model (o sequential) en el .env."
                     },
                 ) from exc
             log.exception("Fallo generando la imagen")
@@ -475,6 +657,12 @@ def health():
             "model": IMAGE_MODEL,
             "loaded": _image_pipe is not None,
             "device": _image_device,
+            "offload": _image_offload,
+            "hires": {
+                "enabled": IMAGE_HIRES,
+                "scale": IMAGE_HIRES_SCALE,
+                "strength": IMAGE_HIRES_STRENGTH,
+            },
         },
     }
 

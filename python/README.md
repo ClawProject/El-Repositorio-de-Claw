@@ -12,38 +12,37 @@ It listens only on `127.0.0.1:5050` and is not exposed to the internet.
 
 From the project root:
 
-```bash
-python3.12 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r python/requirements.txt
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\activate
+pip install -r python\requirements.txt
 ```
 
 For images (heavy: torch, diffusers and their dependencies):
 
-```bash
-pip install -r python/requirements-images.txt
+```powershell
+pip install -r python\requirements-images.txt
 ```
 
 > If you do not have an NVIDIA GPU, install the CPU build of torch first:
 >
-> ```bash
+> ```powershell
 > pip install torch --index-url https://download.pytorch.org/whl/cpu
-> pip install -r python/requirements-images.txt
+> pip install -r python\requirements-images.txt
 > ```
 
 ## Starting the service
 
 In a separate terminal, with the virtual environment activated:
 
-```bash
-python python/server.py
+```powershell
+python python\server.py
 ```
 
 Or without activating it:
 
-```bash
-.venv/bin/python python/server.py       # Linux/macOS
-.venv\Scripts\python.exe python\server.py   # Windows
+```powershell
+.venv\Scripts\python.exe python\server.py
 ```
 
 The Node bot detects it automatically. If the service is not running, Claw keeps
@@ -51,8 +50,8 @@ using the legacy engines (transformers.js and sd-cli/HTTP).
 
 ## Checking that it works
 
-```bash
-curl http://127.0.0.1:5050/health
+```powershell
+curl.exe http://127.0.0.1:5050/health
 ```
 
 It must return `ok: true` plus the status of `voice` and `images`. If
@@ -61,16 +60,16 @@ It must return `ok: true` plus the status of `voice` and `images`. If
 
 Test a transcription:
 
-```bash
-curl -F "file=@path/to/note.ogg" http://127.0.0.1:5050/transcribe
+```powershell
+curl.exe -F "file=@ruta\nota.ogg" http://127.0.0.1:5050/transcribe
 ```
 
 Test an image (needs the image dependencies):
 
-```bash
-curl -X POST http://127.0.0.1:5050/generate \
-  -H "Content-Type: application/json" \
-  -d '{"prompt":"a penguin wearing sunglasses","steps":20,"width":512,"height":512}' \
+```powershell
+curl.exe -X POST http://127.0.0.1:5050/generate `
+  -H "Content-Type: application/json" `
+  -d '{"prompt":"a penguin wearing sunglasses","steps":28,"width":512,"height":512}' `
   --output image.png
 ```
 
@@ -104,11 +103,35 @@ installed).
 
 | Variable | Default | What it does |
 |---|---|---|
-| `PYTHON_IMAGE_MODEL` | `stable-diffusion-v1-5/stable-diffusion-v1-5` | Hugging Face model or local path |
+| `PYTHON_IMAGE_MODEL` | `Lykon/dreamshaper-8` | Hugging Face model or local path |
 | `PYTHON_IMAGE_DEVICE` | `auto` | `auto`, `cuda`, `cpu` |
 | `PYTHON_IMAGE_UNLOAD` | `true` | frees the GPU after every image |
+| `PYTHON_IMAGE_OFFLOAD` | `auto` | `auto`, `model`, `sequential`, `none` |
+| `PYTHON_IMAGE_QUALITY_TAGS` | `masterpiece, best quality, ...` | tags appended to the prompt |
+| `PYTHON_IMAGE_NEGATIVE_EXTRA` | `low quality, worst quality, ...` | negatives merged with the ones Node sends |
+| `PYTHON_IMAGE_HIRES` | `true` | second, larger pass to recover detail |
+| `PYTHON_IMAGE_HIRES_SCALE` | `1.5` | how much bigger the second pass is |
+| `PYTHON_IMAGE_HIRES_STRENGTH` | `0.35` | how much of the picture is redrawn |
+| `PYTHON_IMAGE_HIRES_STEPS` | `0` | steps for the second pass (`0` = same as the first) |
 | `PYTHON_IMAGE_MAX_SIDE` | `1024` | maximum allowed side |
 | `PYTHON_IMAGE_CPU_FALLBACK` | `false` | reserved for future versions |
 
-With a 4 GB GTX 1650, leave `PYTHON_IMAGE_UNLOAD=true`: that way Ollama gets its
-VRAM back once the drawing is done.
+## Image quality on a 4 GB GPU
+
+Stable Diffusion 1.5 in fp16 needs about 2.5 GB, so it fits in 4 GB at 512x512
+but there is no room to spare. Three things make the pictures look bad, and each
+one has a switch:
+
+1. **The base model.** `stable-diffusion-v1-5` draws poorly. `Lykon/dreamshaper-8`
+   is a 1.5 fine-tune (same pipeline, same size) with much better faces and detail,
+   and it is the default now.
+2. **Too few steps.** At 15-20 steps faces are mush. The bot now asks for 28, which
+   is where DPM++ 2M + Karras stops improving.
+3. **Too small.** 512x512 cannot hold eyes and hands. The second pass (`hires`)
+   redraws the picture at 1.5x, which is the biggest single jump in quality.
+
+On a 4 GB card leave `PYTHON_IMAGE_OFFLOAD=auto`: below 6 GB it switches to model
+CPU offload, so only the module being used sits on the GPU and the 1.5x pass fits
+in memory. It is slower (roughly twice the time) but it does not run out of memory.
+If the card is 3 GB or less, `sequential` offload is used instead: even slower, but
+it is the only way it fits. With 6 GB or more, offload is not needed at all.

@@ -1,10 +1,10 @@
 # Claw voice and image service (light part: server + voice).
 # Installation:
 #   python -m venv .venv
-#   .venv/bin/pip install -r python/requirements.txt
+#   .venv\Scripts\pip.exe install -r python\requirements.txt
 #
 # Images additionally need torch and diffusers:
-#   .venv/bin/pip install -r python/requirements-images.txt
+#   .venv\Scripts\pip.exe install -r python\requirements-images.txt
 fastapi>=0.115
 uvicorn[standard]>=0.32
 python-multipart>=0.0.12

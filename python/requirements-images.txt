@@ -1,11 +1,11 @@
 # Heavy dependencies for generating images with diffusers.
 # Requires the basic part first:
-#   .venv/bin/pip install -r python/requirements.txt
+#   .venv\Scripts\pip.exe install -r python\requirements.txt
 # and then:
-#   .venv/bin/pip install -r python/requirements-images.txt
+#   .venv\Scripts\pip.exe install -r python\requirements-images.txt
 #
 # If you do not have an NVIDIA GPU, install the CPU build of torch first:
-#   .venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   .venv\Scripts\pip.exe install torch --index-url https://download.pytorch.org/whl/cpu
 -r requirements.txt
 torch>=2.4
 diffusers>=0.31

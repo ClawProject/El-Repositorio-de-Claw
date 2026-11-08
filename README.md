@@ -6,7 +6,7 @@ Claw is a local AI-powered WhatsApp assistant designed to keep track of homework
 
 It works quietly in the background, understands text messages, voice notes and relevant images, and answers questions whenever someone needs information.
 
-> **Installation:** See [INSTALL.md](INSTALL.md) for detailed instructions for Linux, macOS and Windows.
+> **Installation:** See [INSTALL.md](INSTALL.md) for detailed instructions for Windows.
 >
 > **Technical documentation:** [Architecture, API and Security](docs/arquitectura.md).
 
@@ -161,9 +161,9 @@ The Python service provides improved voice processing and local image generation
 
 Create a virtual environment:
 
-```bash
-python3.12 -m venv .venv
-source .venv/bin/activate
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\activate
 ```
 
 Install dependencies:
@@ -426,7 +426,7 @@ The `.env` file contains the main configuration options.
 | `PYTHON_AI_URL`         | `http://127.0.0.1:5050`                       |
 | `PYTHON_WHISPER_MODEL`  | `base`                                        |
 | `PYTHON_WHISPER_DEVICE` | `auto`                                        |
-| `PYTHON_IMAGE_MODEL`    | `stable-diffusion-v1-5/stable-diffusion-v1-5` |
+| `PYTHON_IMAGE_MODEL`    | `Lykon/dreamshaper-8`                          |
 
 Most runtime settings can also be changed using `!claw ajustes`.
 

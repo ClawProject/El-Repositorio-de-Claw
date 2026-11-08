@@ -22,7 +22,6 @@
     "test:i18n": "node src/tools/i18n-test.mjs",
     "test:python": "node --test src/tools/python-ai-test.js",
     "ia": "python python/server.py",
-    "ia:linux": "python3 python/server.py",
     "qr": "node src/tools/qr-test.js",
     "enviar": "node src/tools/enviar.js",
     "smoke": "node src/tools/smoke.js",

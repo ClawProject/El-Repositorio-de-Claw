@@ -40,12 +40,11 @@ and the project follows [Semantic Versioning](https://semver.org/).
   Portuguese, German, Italian, Russian, Arabic and Chinese; for the rest English
   is used as a fallback and the AI still replies in the chosen language.
 - **Installation guide and configuration template.** New `INSTALL.md` with the
-  steps for Linux, macOS and Windows, `git clone`, Node, Ollama, the Python
-  service, Homebrew and troubleshooting. `.env.example` is added and `.env` is
-  now ignored by Git.
+  steps for Windows, `git clone`, Node, Ollama, the Python service and
+  troubleshooting. `.env.example` is added and `.env` is now ignored by Git.
 - **Configurable data folder.** `PICKLEBRAIN_DATA_DIR` allows keeping the
-  session, SQLite, photos and models outside the code (useful with Homebrew).
-  The `.env` can also be placed inside that folder.
+  session, SQLite, photos and models outside the code. The `.env` can also be
+  placed inside that folder.
 - **Python service for voice and images.** `python/server.py` (FastAPI) uses
   faster-whisper to transcribe voice notes and diffusers to draw. Node calls it
   over HTTP on `127.0.0.1:5050`; if it is not running, the bot keeps using the

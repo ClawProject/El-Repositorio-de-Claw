@@ -33,7 +33,7 @@ function loadEnvFile(file) {
 
 loadEnvFile(path.join(rootDir, '.env'));
 
-// The data folder can also have its own .env (useful with Homebrew).
+// The data folder can also have its own .env, which takes precedence.
 export const dataDir = resolverDataDir();
 loadEnvFile(path.join(dataDir, '.env'));
 
@@ -203,8 +203,10 @@ export const config = {
   // Paths for the "cli" engine (when relative, they hang from the project folder)
   imageGenBin: process.env.IMAGE_GEN_BIN || '',
   imageGenModelPath: process.env.IMAGE_GEN_MODEL_PATH || '',
-  // How many steps to take and at what size (512x512 works even with a small GPU)
-  imageGenSteps: num(process.env.IMAGE_GEN_STEPS, 20),
+  // How many steps to take and at what size (512x512 works even with a small GPU).
+  // 28 is where DPM++ 2M + Karras stops improving on SD 1.5: with fewer steps
+  // the image comes out soft and faces turn to mush.
+  imageGenSteps: num(process.env.IMAGE_GEN_STEPS, 28),
   imageGenWidth: num(process.env.IMAGE_GEN_WIDTH, 512),
   imageGenHeight: num(process.env.IMAGE_GEN_HEIGHT, 512),
   // What we do NOT want to appear in the image

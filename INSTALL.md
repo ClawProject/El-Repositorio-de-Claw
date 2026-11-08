@@ -7,8 +7,9 @@ Claw consists of two processes:
    generates images with diffusers. If it is not running, Node uses its
    legacy engines.
 
-This guide covers Linux, macOS, and Windows. For general information about how the bot
-works, see the [README](README.md); for the Python service, see [`python/README.md`](python/README.md).
+Claw runs on **Windows 10 or 11**. This guide only covers Windows. For general
+information about how the bot works, see the [README](README.md); for the Python
+service, see [`python/README.md`](python/README.md).
 
 ---
 
@@ -29,14 +30,7 @@ The text AI needs to download Ollama models. With a 4 GB GTX 1650,
 
 ## 2. Download the project (`git clone`)
 
-### Linux and macOS
-
-```bash
-git clone https://github.com/ClawProject/El-Repositorio-de-Claw.git
-cd El-Repositorio-de-Claw
-```
-
-### Windows (PowerShell)
+Open **PowerShell** and run:
 
 ```powershell
 git clone https://github.com/ClawProject/El-Repositorio-de-Claw.git
@@ -50,54 +44,22 @@ cd El-Repositorio-de-Claw
 
 ## 3. Install Node.js
 
-### Linux and macOS with nvm (recommended)
-
-```bash
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-# close and reopen the terminal, or run:
-export NVM_DIR="$HOME/.nvm"
-. "$NVM_DIR/nvm.sh"
-
-nvm install 22
-nvm alias default 22
-node --version       # should show v22.x or later
-npm --version
-```
-
-### macOS with Homebrew
-
-```bash
-brew install node
-```
-
-### Windows
-
 Download the LTS installer from [nodejs.org](https://nodejs.org/) or use:
 
 ```powershell
 winget install OpenJS.NodeJS.LTS
 ```
 
-Close and reopen PowerShell so that the `PATH` is updated.
+Close and reopen PowerShell so that the `PATH` is updated, then check it:
+
+```powershell
+node --version       # should show v22.x or later
+npm --version
+```
 
 ---
 
 ## 4. Install Ollama and the models
-
-### Linux and macOS
-
-```bash
-curl -fsSL https://ollama.com/install.sh | sh
-```
-
-Or with Homebrew:
-
-```bash
-brew install ollama
-brew services start ollama
-```
-
-### Windows
 
 ```powershell
 winget install Ollama.Ollama
@@ -105,16 +67,16 @@ winget install Ollama.Ollama
 
 Then, in any terminal:
 
-```bash
+```powershell
 ollama pull qwen3:4b
 ollama pull qwen2.5:3b
 ```
 
 Check that it responds:
 
-```bash
+```powershell
 ollama list
-curl http://127.0.0.1:11434/api/tags
+curl.exe http://127.0.0.1:11434/api/tags
 ```
 
 ---
@@ -123,26 +85,20 @@ curl http://127.0.0.1:11434/api/tags
 
 From the project root:
 
-```bash
+```powershell
 npm install
 ```
 
-On Windows, if PowerShell complains about `npm.ps1`, use `npm.cmd install`.
+If PowerShell complains about `npm.ps1`, use `npm.cmd install`.
 
-You can also double-click **`arrancar.bat`** (Windows): it installs any
-missing dependencies, creates `.env` if it does not exist, and starts the bot.
+You can also double-click **`arrancar.bat`**: it installs any missing
+dependencies, creates `.env` if it does not exist, and starts the bot.
 
 ---
 
 ## 6. Configure `.env`
 
 Copy the template and edit it:
-
-```bash
-cp .env.example .env
-```
-
-On Windows:
 
 ```powershell
 Copy-Item .env.example .env
@@ -182,74 +138,55 @@ images use `sd-cli` or an HTTP server. With Python, you get
 
 From the project root:
 
-```bash
-python3.12 -m venv .venv
-```
-
-If your system does not have `python3.12`, install it:
-
-```bash
-# Debian/Ubuntu
-sudo apt install python3.12 python3.12-venv
-
-# macOS with Homebrew
-brew install python@3.12
-```
-
-On Windows:
-
 ```powershell
 py -3.12 -m venv .venv
 ```
 
+If your system does not have Python 3.12:
+
+```powershell
+winget install Python.Python.3.12
+```
+
 ### 7.2 Install dependencies
 
-```bash
-# Linux/macOS
-.venv/bin/pip install -r python/requirements.txt
-
-# Windows
-.venv\Scripts\pip.exe install -r python/requirements.txt
+```powershell
+.venv\Scripts\pip.exe install -r python\requirements.txt
 ```
 
 Only if you want to generate images with diffusers:
 
-```bash
-.venv/bin/pip install -r python/requirements-images.txt
+```powershell
+.venv\Scripts\pip.exe install -r python\requirements-images.txt
 ```
 
 > Without an NVIDIA GPU, install the CPU version of torch first:
 >
-> ```bash
-> .venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
+> ```powershell
+> .venv\Scripts\pip.exe install torch --index-url https://download.pytorch.org/whl/cpu
 > ```
 >
 > With an NVIDIA GPU, torch must be the CUDA version. If Whisper detects CUDA but
-> `libcublas`/cuDNN are missing, the service automatically switches to CPU.
+> the CUDA libraries are missing, the service automatically switches to CPU.
 
 ### 7.3 Start the service
 
 In **another terminal**, from the project root:
 
-```bash
-# Linux/macOS
-.venv/bin/python python/server.py
-
-# Windows
+```powershell
 .venv\Scripts\python.exe python\server.py
 ```
 
 You can also use:
 
-```bash
-npm run ia          # Windows/macOS if "python" is in PATH
-npm run ia:linux    # Linux
+```powershell
+npm run ia          # if "python" is in PATH
 ```
 
 Check that it responds:
 
-```bash
-curl http://127.0.0.1:5050/health
+```powershell
+curl.exe http://127.0.0.1:5050/health
 ```
 
 It should return `"ok": true` and the status of `voice` and `images`. The bot detects it
@@ -258,8 +195,8 @@ automatically at startup and shows which voice engine it is using.
 ### 7.4 Models
 
 The first transcription downloads the Whisper model (~150 MB with `base`). The
-first image downloads the diffusers model (around 4 GB with SD 1.5). They are stored
-in `data/models/`, which is ignored by Git.
+first image downloads the diffusers model (around 2 GB with DreamShaper 8 in fp16).
+They are stored in `data/models/`, which is ignored by Git.
 
 Useful variables:
 
@@ -267,18 +204,24 @@ Useful variables:
 PYTHON_AI_URL=http://127.0.0.1:5050
 PYTHON_WHISPER_MODEL=base
 PYTHON_WHISPER_DEVICE=auto
-PYTHON_IMAGE_MODEL=stable-diffusion-v1-5/stable-diffusion-v1-5
+PYTHON_IMAGE_MODEL=Lykon/dreamshaper-8
 PYTHON_IMAGE_UNLOAD=true
+PYTHON_IMAGE_OFFLOAD=auto
+PYTHON_IMAGE_HIRES=true
 ```
 
-With a 4 GB GPU, leave `PYTHON_IMAGE_UNLOAD=true` so Ollama can reclaim
-VRAM after each image.
+With a 4 GB GPU, leave `PYTHON_IMAGE_UNLOAD=true` so Ollama can reclaim VRAM
+after each image, and leave `PYTHON_IMAGE_OFFLOAD=auto`: that keeps only the module
+being used on the GPU, which is what lets the second (larger) pass fit in memory.
+Drawing takes longer, but the picture has real detail instead of the usual soft
+Stable Diffusion 1.5 look. If it still runs out of memory, set
+`PYTHON_IMAGE_OFFLOAD=sequential` or lower `PYTHON_IMAGE_MAX_SIDE`.
 
 ---
 
 ## 8. Start Claw
 
-```bash
+```powershell
 npm start       # full bot: WhatsApp + web + reminders
 npm run web     # web/API only, without connecting to WhatsApp
 npm run sim     # console simulator, without WhatsApp
@@ -300,7 +243,7 @@ share this folder: it provides access to your account.
 
 ## 9. Verify the installation
 
-```bash
+```powershell
 npm run doctor      # Ollama, models, database, voice, etc.
 npm run test:python # Node <-> Python service contract (no models)
 npm run test:web    # authentication and API
@@ -313,7 +256,7 @@ npm run test:vetados # ban by number and by @lid (no Ollama)
 
 Quick test in the simulator:
 
-```bash
+```powershell
 npm run sim
 ```
 
@@ -327,86 +270,31 @@ Claw, what is 2+2?
 
 ---
 
-## 10. Installation with Homebrew (macOS and Linux)
-
-There is a tap with a formula to install the `claw` and `claw-ia` commands:
-
-```bash
-brew tap Uyruw3/claw
-brew trust Uyruw3/claw   # Homebrew 7 and later
-brew install claw
-```
-
-The first run downloads the Node dependencies to
-`~/.local/share/claw` and stores data in `~/.local/share/claw/data`.
-
-```bash
-claw
-```
-
-If you prefer to manage the folder yourself:
-
-```bash
-export CLAW_HOME="$HOME/Claw"
-export PICKLEBRAIN_DATA_DIR="$CLAW_HOME/data"
-claw
-```
-
-For the Python voice and image service:
-
-```bash
-CLAW_HOME="$HOME/.local/share/claw"
-PYTHON="$(brew --prefix python@3.12)/bin/python3.12"
-"$PYTHON" -m venv "$CLAW_HOME/.venv"
-"$CLAW_HOME/.venv/bin/pip" install -r "$(brew --prefix claw)/libexec/python/requirements.txt"
-
-# Only if you want image generation:
-"$CLAW_HOME/.venv/bin/pip" install -r "$(brew --prefix claw)/libexec/python/requirements-images.txt"
-
-claw-ia
-```
-
-To update:
-
-```bash
-brew update
-brew upgrade claw
-```
-
-> The tap is hosted at `Uyruw3/homebrew-claw` because the project's organization
-> does not allow repositories to be created from this account. It can be transferred to
-> `ClawProject` later; the command would then be `brew tap ClawProject/claw`.
->
-> The formula installs the latest published stable version. When a new version is
-> released, the tap is updated with `brew update && brew upgrade claw`.
-
----
-
-## 11. Update the project
+## 10. Update the project
 
 If you installed it with `git clone`:
 
-```bash
+```powershell
 git pull
 npm install
 ```
 
 If `python/requirements*.txt` has also changed:
 
-```bash
-.venv/bin/pip install -r python/requirements.txt
-.venv/bin/pip install -r python/requirements-images.txt
+```powershell
+.venv\Scripts\pip.exe install -r python\requirements.txt
+.venv\Scripts\pip.exe install -r python\requirements-images.txt
 ```
 
 Restart Node and the Python service after updating.
 
 ---
 
-## 12. Common issues
+## 11. Common issues
 
 **`npm start` cannot find Ollama.**
 Open the Ollama application or run `ollama serve`. Check with
-`curl http://127.0.0.1:11434/api/tags`.
+`curl.exe http://127.0.0.1:11434/api/tags`.
 
 **The bot does not say anything in the group.**
 1. Check that it is linked: type `!claw aqui` inside the group or set
@@ -415,22 +303,22 @@ Open the Ollama application or run `ollama serve`. Check with
 3. Start with `LOG_LEVEL=debug` to see why each message is discarded.
 
 **Voice messages do not work.**
-Start `python/server.py` and check `npm run doctor`. If you are not using Python, install
+Start `python\server.py` and check `npm run doctor`. If you are not using Python, install
 ffmpeg and reopen the terminal.
 
 **`faster-whisper` fails with `metadata_errors`.**
 You have `av` 19. Pin the version:
 
-```bash
-.venv/bin/pip install 'av<19'
+```powershell
+.venv\Scripts\pip.exe install "av<19"
 ```
 
-**CUDA does not load (`libcublas.so.12`).**
+**CUDA does not load (`cublas64_12.dll` not found).**
 Whisper automatically switches to CPU. If you want to use the GPU, install the CUDA
 runtime and a CUDA-enabled version of torch. In the meantime, voice works on the CPU.
 
 **The first image takes a long time.**
-The diffusers model is being downloaded (~4 GB). Subsequent images take only as long
+The diffusers model is being downloaded (~2 GB). Subsequent images take only as long
 as the generation itself.
 
 **The website does not send access codes.**
@@ -443,7 +331,7 @@ Use `npm.cmd` or run
 
 ---
 
-## 13. Minimal installed structure
+## 12. Minimal installed structure
 
 ```
 El-Repositorio-de-Claw/

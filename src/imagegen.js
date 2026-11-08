@@ -176,23 +176,19 @@ export function pistaDeError(ruido, code) {
 }
 
 /**
- * Really kills the engine process. On Windows `child.kill()` does not always
- * end a native executable, so taskkill is needed with /T (whole tree) and /F
- * (forced). Otherwise processes are left hanging, eating CPU and VRAM (which is
- * exactly what happened).
+ * Really kills the engine process. `child.kill()` does not always end a native
+ * executable, so taskkill is needed with /T (whole tree) and /F (forced).
+ * Otherwise processes are left hanging, eating CPU and VRAM (which is exactly
+ * what happened).
  */
 export function matarProceso(child) {
   if (!child || !child.pid) return;
   try {
-    if (process.platform === 'win32') {
-      const t = spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], {
-        windowsHide: true,
-        stdio: 'ignore'
-      });
-      t.on('error', () => {});
-    } else {
-      child.kill('SIGKILL');
-    }
+    const t = spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], {
+      windowsHide: true,
+      stdio: 'ignore'
+    });
+    t.on('error', () => {});
   } catch {
     /* try kill() anyway */
   }

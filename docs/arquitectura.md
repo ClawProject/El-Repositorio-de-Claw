@@ -42,7 +42,7 @@ included in this folder.
 | `npm test` | Bot integration suite. |
 | `npm run test:web` | Tests email authentication, API authorization, CORS and temporary sessions. |
 | `npm run test:python` | Contract between Node and the Python service, with a fake HTTP server (no models). |
-| `npm run ia` | Starts `python/server.py` (voice and images). On Linux also `npm run ia:linux`. |
+| `npm run ia` | Starts `python/server.py` (voice and images). |
 | `npm run smtp` | Checks the AsterMail SMTP credentials; with an email as argument it sends a test code. |
 
 The HTTP server listens on `127.0.0.1:3000`. If `NGROK_ENABLED=true`, it starts
