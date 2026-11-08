@@ -307,7 +307,6 @@ npm run doctor      # Ollama والنماذج وقاعدة البيانات وا
 npm run test:python # عقد Node <-> خدمة Python (بدون نماذج)
 npm run test:web    # المصادقة وAPI
 npm run test:subjects
-npm run test:i18n   # اللغات والترجمات (بدون Ollama)
 npm run test:vetados # الحظر بالرقم وبـ @lid (بدون Ollama)
 ```
 

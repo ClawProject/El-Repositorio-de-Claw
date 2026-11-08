@@ -307,7 +307,6 @@ npm run doctor      # Ollama, modelli, database, voce, ecc.
 npm run test:python # contratto Node <-> servizio Python (senza modelli)
 npm run test:web    # autenticazione e API
 npm run test:subjects
-npm run test:i18n   # lingue e traduzioni (senza Ollama)
 npm run test:vetados # blocco per numero e per @lid (senza Ollama)
 ```
 

@@ -307,7 +307,6 @@ npm run doctor      # Ollama、模型、数据库、语音等
 npm run test:python # Node 与 Python 服务之间的约定（不需要模型）
 npm run test:web    # 身份验证和 API
 npm run test:subjects
-npm run test:i18n   # 语言和翻译（不需要 Ollama）
 npm run test:vetados # 按号码和 @lid 屏蔽（不需要 Ollama）
 ```
 

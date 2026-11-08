@@ -295,7 +295,10 @@ export const config = {
     .filter(Boolean),
   // Código corto de depuración para el dueño: abre una sesión con acceso total
   // desde la pantalla de acceso. Vacío = desactivado.
-  debugCode: String(process.env.WEB_DEBUG_CODE === undefined ? '0912' : process.env.WEB_DEBUG_CODE).trim(),
+  // Vacío = acceso de depuración desactivado. Hay que definirlo a propósito:
+  // un código conocido por defecto sería una puerta trasera abierta en cualquier
+  // instalación publicada. Si lo usas, que sea largo y privado.
+  debugCode: String(process.env.WEB_DEBUG_CODE || '').trim(),
   smtpHost: String(process.env.SMTP_HOST || '').trim(),
   smtpPort: num(process.env.SMTP_PORT, 465),
   smtpSecure: bool(process.env.SMTP_SECURE, true),

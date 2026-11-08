@@ -365,7 +365,7 @@
       authMessage.classList.remove('error');
 
       // Modo debug: si en el correo se escribe solo un código corto (por
-      // ejemplo 0912), no hace falta correo ni esperar al OTP.
+      // el código que definas), no hace falta correo ni esperar al OTP.
       if (/^\d{4,8}$/.test(email)) {
         return debugLogin(email);
       }

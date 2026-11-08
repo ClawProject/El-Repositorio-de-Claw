@@ -108,11 +108,11 @@ apellidos, curso y grupo) y solicita un código por correo institucional. Tras
 entrar, permite chatear con Claw o gestionar apuntes compartidos. El token se
 guarda solo en `sessionStorage` y desaparece al cerrar la pestaña.
 
-Además, el dueño puede entrar en **modo debug** escribiendo el código corto de
-`WEB_DEBUG_CODE` (por defecto `0912`) en el campo del correo. Esa sesión lleva la
+Además, el dueño puede entrar en **modo debug** escribiendo el código de
+`WEB_DEBUG_CODE` en el campo del correo, solo si lo has definido. Esa sesión lleva la
 marca `debug: true` y muestra una pestaña de administración con estadísticas,
-ajustes del bot y alumnado. Los intentos se limitan por IP. Deja
-`WEB_DEBUG_CODE` vacío para desactivarlo.
+ajustes del bot y alumnado. Los intentos se limitan por IP. Si no defines
+`WEB_DEBUG_CODE`, el acceso de depuración está apagado.
 
 La API actual incluye:
 
@@ -161,9 +161,10 @@ por correo institucional.
   las solicitudes sin `Origin`. Solo solicitar el código, verificar el código y
   el acceso debug están abiertos para iniciar sesión; CORS restringe los sitios
   web autorizados, pero no sustituye la validación del token.
-- `WEB_DEBUG_CODE` es una puerta trasera deliberada para el dueño. Cámbialo por
-  un valor privado, no lo compartas y vacíalo para desactivarlo. Las sesiones
-  normales reciben 403 en `/api/admin/*`.
+- `WEB_DEBUG_CODE` es una puerta trasera deliberada para el dueño y viene
+  apagada: sin esa variable no hay forma de entrar con un código corto. Si la
+  defines, usa un valor largo y privado. Las sesiones normales reciben 403 en
+  `/api/admin/*`.
 - Abre siempre la web desde la misma dirección que sirve el servidor. Los
   archivos abiertos con `file://` no funcionan: usa la dirección del servidor.
 

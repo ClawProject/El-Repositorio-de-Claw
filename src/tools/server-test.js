@@ -233,6 +233,10 @@ test('la API exige sesión institucional y limita CORS al origen configurado', a
   });
   assert.equal(developerSettings.status, 403);
 
+  // La fecha del apunte se calcula para que nunca esté vencida: si fuera una
+  // fecha fija, el test empezaría a fallar el día después.
+  const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
   const created = await fetch(`${baseUrl}/api/context`, {
     method: 'POST',
     headers: sessionHeaders,
@@ -240,13 +244,13 @@ test('la API exige sesión institucional y limita CORS al origen configurado', a
       kind: 'deberes',
       subject: 'Historia',
       description: 'Leer el tema 3',
-      dateISO: '2026-11-02'
+      dateISO: futureDate
     })
   });
   assert.equal(created.status, 200);
   const createdData = await created.json();
   assert.equal(createdData.entry.content, 'Leer el tema 3');
-  assert.equal(createdData.entry.fecha, '2026-11-02');
+  assert.equal(createdData.entry.fecha, futureDate);
 
   const listed = await fetch(`${baseUrl}/api/context`, { headers: sessionHeaders });
   assert.equal((await listed.json()).deberes.length, 1);

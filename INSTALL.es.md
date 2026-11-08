@@ -307,7 +307,6 @@ npm run doctor      # Ollama, modelos, base de datos, voz, etc.
 npm run test:python # contrato entre Node y el servicio de Python (sin modelos)
 npm run test:web    # autenticación y API
 npm run test:subjects
-npm run test:i18n   # idiomas y traducciones (sin Ollama)
 npm run test:vetados # prohibir por número y por @lid (sin Ollama)
 ```
 

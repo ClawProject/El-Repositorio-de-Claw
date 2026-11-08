@@ -14,6 +14,10 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 - **Sin túnel ngrok.** El servidor ya no lanza ngrok ni acepta dominios
   `*.ngrok`: la web se sirve en local y cualquier otro origen debe ir en
   `WEB_ALLOWED_ORIGINS`.
+- **Acceso de depuración apagado por defecto.** `WEB_DEBUG_CODE` ya no vale
+  `0912` si no se define: sin esa variable el código corto no abre nada. Antes,
+  cualquier instalación publicada quedaba con una puerta trasera de valor
+  conocido.
 - **Registro antes de entrar.** El acceso por correo pide nombre, apellidos,
   curso y grupo, y guarda el perfil en SQLite. El panel de administración puede
   consultarlo y borrarlo.
