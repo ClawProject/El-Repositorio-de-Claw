@@ -20,6 +20,7 @@ It works quietly in the background, understands text messages, voice notes and r
 - **Voice recognition:** Transcribes voice messages locally using Whisper.
 - **Image storage:** Saves relevant images associated with homework and exams, automatically removing expired files.
 - **Local AI processing:** Uses Ollama to run language models on your own computer.
+- **First-run language setup:** On the first start, Claw opens a web page to choose one of 100 languages. The choice is stored in the database, applied to the interface and AI replies, and can be changed later with `!claw language en`.
 - **Web interface:** Provides students with authenticated access to shared school information.
 - **Calendar integration:** Exports upcoming exams as `.ics` calendar files.
 - **Chess:** Play chess against Claw or analyze positions.
