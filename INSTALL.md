@@ -1,5 +1,7 @@
 # Installing Claw
 
+**English** · [Español](INSTALL.es.md) · [Català](INSTALL.ca.md) · [Français](INSTALL.fr.md) · [Português](INSTALL.pt.md) · [Deutsch](INSTALL.de.md) · [Italiano](INSTALL.it.md) · [Русский](INSTALL.ru.md) · [العربية](INSTALL.ar.md) · [中文](INSTALL.zh.md)
+
 Claw consists of two processes:
 
 1. **Node.js** (required): the WhatsApp bot, web interface, database, and logic.

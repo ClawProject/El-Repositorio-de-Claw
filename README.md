@@ -1,5 +1,7 @@
 # 🪝 Claw
 
+**English** · [Español](README.es.md) · [Català](README.ca.md) · [Français](README.fr.md) · [Português](README.pt.md) · [Deutsch](README.de.md) · [Italiano](README.it.md) · [Русский](README.ru.md) · [العربية](README.ar.md) · [中文](README.zh.md)
+
 **A self-hosted WhatsApp bot powered by local AI.**
 
 Claw is a local AI-powered WhatsApp assistant designed to keep track of homework, exams, school announcements and important information shared in group chats.
