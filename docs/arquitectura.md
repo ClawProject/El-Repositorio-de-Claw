@@ -11,8 +11,7 @@ personas desde WhatsApp o desde la interfaz web.
 flowchart LR
   WA[Grupo de WhatsApp] <-->|Baileys| BOT[PickleBrain · Node.js]
   WEB[Navegador · docs/index.html] -->|HTTPS + CORS/sesión| API[API local · puerto 3000]
-  APP[Claw Companion · Android] -->|HTTPS| NG[Ngrok · dominio configurado]
-  NG -->|reenvío a localhost:3000| API
+  APP[Claw Companion · Android] -->|HTTPS| API
   API --> BOT
   BOT --> ROUTER[Router y reglas]
   ROUTER --> BRAIN[Clasificador local · Ollama]
@@ -35,8 +34,8 @@ código fuente no está incluido en esta carpeta.
 
 | Comando | Qué inicia |
 |---|---|
-| `npm start` | `src/index.js`: base SQLite, servidor HTTP, túnel ngrok, conexión WhatsApp, limpieza y avisos programados. |
-| `npm run web` | `src/web.js`: base SQLite y servidor HTTP/ngrok, sin iniciar WhatsApp. |
+| `npm start` | `src/index.js`: base SQLite, servidor HTTP, conexión WhatsApp, limpieza y avisos programados. |
+| `npm run web` | `src/web.js`: base SQLite y servidor HTTP, sin iniciar WhatsApp. |
 | `npm run sim` | Simulador de mensajes que reutiliza el router sin conectarse a WhatsApp. |
 | `npm run doctor` | Diagnósticos de Ollama, modelos, base de datos y componentes disponibles. |
 | `npm test` | Suite de integración del bot. |
@@ -45,12 +44,9 @@ código fuente no está incluido en esta carpeta.
 | `npm run ia` | Arranca `python/server.py` (voz e imágenes). En Linux también `npm run ia:linux`. |
 | `npm run smtp` | Comprueba las credenciales SMTP de AsterMail; con un correo como argumento envía un código de prueba. |
 
-El servidor HTTP escucha en `127.0.0.1:3000`. Si `NGROK_ENABLED=true`, inicia
-`ngrok http 3000 --url https://dawn-greeter-grazing.ngrok-free.dev` y reintenta
-cada cinco segundos si el proceso del túnel termina. Al cerrar el servidor,
-cierra ngrok también. El dominio es fijo y la web lo usa por defecto; puede
-sobreescribirse con `NGROK_DOMAIN`, pero no es necesario. Ngrok debe estar
-instalado y autenticado en el equipo anfitrión.
+El servidor HTTP escucha en `127.0.0.1:3000`. Solo se aceptan los orígenes
+locales y los de `WEB_ALLOWED_ORIGINS`: si publicas la web en otro dominio
+(un proxy inverso con HTTPS, por ejemplo), añádelo ahí separado por comas.
 
 ## Recorrido de un mensaje de WhatsApp
 
@@ -106,7 +102,7 @@ actualiza el apunte anterior.
 `docs/index.html` es la portada que el servidor entrega en `/` y
 `docs/entrar/index.html` contiene el acceso de estudiantes en `/entrar/`. También
 pueden abrirse con el servidor local en `http://127.0.0.1:3000/` y
-`http://127.0.0.1:3000/entrar/`, o a través del túnel ngrok. El acceso usa la
+`http://127.0.0.1:3000/entrar/`. El acceso usa la
 misma URL de PickleBrain que el bot, pide los datos de registro (nombre,
 apellidos, curso y grupo) y solicita un código por correo institucional. Tras
 entrar, permite chatear con Claw o gestionar apuntes compartidos. El token se
@@ -140,7 +136,7 @@ La API actual incluye:
 | `/api/settings` y `/api/dev/*` | Rutas heredadas de administración, bloqueadas para cuentas de estudiantes. |
 | `GET /api/download-apk` | Redirige al APK `ClawCompanion.apk` adjunto a la última GitHub Release. |
 
-La app Android usa el túnel ngrok para consultar el servidor fuera de la red
+La app Android consulta el servidor por HTTPS fuera de la red
 doméstica. La API anuncia el enlace de descarga de la última release de
 `ClawBott/ClawRepository`; hay que publicar el APK en esa release con el nombre
 exacto `ClawCompanion.apk`. Este repositorio contiene el servidor/API, no el
@@ -152,10 +148,9 @@ por correo institucional.
 
 ### Publicación y seguridad
 
-- El servidor sirve la propia web, así que no hace falta configurar ningún
-  hosting. Los orígenes locales y los dominios `*.ngrok-free.app` / `*.ngrok.app`
-  se aceptan automáticamente; si usas otro dominio, añádelo a
-  `WEB_ALLOWED_ORIGINS` separado por comas y sin `/` final.
+- - El servidor sirve la propia web, así que no hace falta configurar ningún
+  hosting. Solo se aceptan los orígenes locales y los que añadas a
+  `WEB_ALLOWED_ORIGINS`, separados por comas y sin `/` final.
 - Configura `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER` y
   `SMTP_PASSWORD` en `.env`; el servidor envía los códigos como
   `clawbot@astermail.org`. Nunca publiques las credenciales SMTP.
@@ -169,13 +164,8 @@ por correo institucional.
 - `WEB_DEBUG_CODE` es una puerta trasera deliberada para el dueño. Cámbialo por
   un valor privado, no lo compartas y vacíalo para desactivarlo. Las sesiones
   normales reciben 403 en `/api/admin/*`.
-- Ngrok crea una dirección pública que reenvía al servidor. Mantén SMTP
-  configurado y usa HTTPS en el túnel. La app Android actual no implementa
-  este flujo y debe actualizarse antes de volver a llamar a la API.
-- La web y la API se sirven por HTTPS a través del túnel ngrok, así que el
-  navegador no necesita permisos especiales para hablar con el servidor. Abrir
-  los archivos con `file://` o llamar a `127.0.0.1` desde fuera no funciona: usa
-  siempre la URL del túnel.
+- Abre siempre la web desde la misma dirección que sirve el servidor. Los
+  archivos abiertos con `file://` no funcionan: usa la dirección del servidor.
 
 ## Datos y privacidad
 
@@ -193,8 +183,6 @@ excepciones de red que conviene conocer:
   primer uso.
 - Con `WEB_SEARCH=true`, la pregunta que requiere actualidad se envía a
   DuckDuckGo.
-- El túnel ngrok transporta tanto la web como las solicitudes de Android entre
-  Internet y el servidor local.
 
 Para evitar la búsqueda externa, configura `WEB_SEARCH=false`. Para revisar
 todas las opciones, consulta `.env.example`.
@@ -205,7 +193,7 @@ todas las opciones, consulta `.env.example`.
 |---|---|
 | `src/index.js` | Arranque completo, WhatsApp y tareas periódicas. |
 | `src/web.js` | Arranque solo de la API y la web local. |
-| `src/server.js` | HTTP, API, CORS, restricciones web y túnel ngrok. |
+| `src/server.js` | HTTP, API, CORS y restricciones web. |
 | `src/web-auth.js` | Códigos institucionales de un uso, límites y sesiones temporales. |
 | `src/whatsapp.js` | Sesión Baileys, eventos y envío de mensajes. |
 | `src/router.js` | Flujo de mensajes y decisiones del bot. |

@@ -38,7 +38,6 @@ KI-Inferenz, Klassifizierung und Datenbank laufen auf dem eigenen Rechner.
 Einige externe Verbindungen sind dennoch nötig:
 
 - WhatsApp: Senden und Empfangen von Nachrichten.
-- ngrok: Fernzugriff auf Weboberfläche und API.
 - Ollama und Whisper: Download der Modelle.
 - DuckDuckGo: optionale Websuchen.
 
@@ -350,16 +349,9 @@ Aktuelle Regeln:
 - Sitzungen laufen nach acht Stunden oder bei Serverneustart ab.
 - Angemeldete Schüler teilen dieselben Hausaufgaben- und Prüfungseinträge.
 
-### Externer Zugriff
+### Zugriff aus dem Netz
 
-Claw kann ngrok nutzen, um die Weboberfläche außerhalb des lokalen Netzes bereitzustellen.
-
-Konfiguration:
-
-```env
-NGROK_ENABLED=true
-NGROK_DOMAIN=your-ngrok-domain
-```
+Claw liefert die Weboberfläche selbst unter `http://127.0.0.1:3000` aus, ein Tunnel ist also nicht nötig. Wenn du sie unter einer anderen Domain veröffentlichst (etwa hinter einem HTTPS-Reverse-Proxy), trage sie in `WEB_ALLOWED_ORIGINS` ein, durch Kommas getrennt.
 
 Für die E-Mail-Bestätigung werden SMTP-Zugangsdaten benötigt.
 

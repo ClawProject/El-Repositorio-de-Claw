@@ -1,6 +1,8 @@
 # 🪝 Claw
 
-**English** · [Español](README.es.md) · [Català](README.ca.md) · [Français](README.fr.md) · [Português](README.pt.md) · [Deutsch](README.de.md) · [Italiano](README.it.md) · [Русский](README.ru.md) · [العربية](README.ar.md) · [中文](README.zh.md)
+> 🌍 **Read this in your language:** [English](README.md) · [Español](README.es.md) · [Català](README.ca.md) · [Français](README.fr.md) · [Português](README.pt.md) · [Deutsch](README.de.md) · [Italiano](README.it.md) · [Русский](README.ru.md) · [العربية](README.ar.md) · [中文](README.zh.md)
+>
+> 📘 **Installation guide:** [English](INSTALL.md) · [Español](INSTALL.es.md) · [Català](INSTALL.ca.md) · [Français](INSTALL.fr.md) · [Português](INSTALL.pt.md) · [Deutsch](INSTALL.de.md) · [Italiano](INSTALL.it.md) · [Русский](INSTALL.ru.md) · [العربية](INSTALL.ar.md) · [中文](INSTALL.zh.md)
 
 **A self-hosted WhatsApp bot powered by local AI.**
 
@@ -38,7 +40,6 @@ AI inference, classification and the database run on your computer.
 Some external connections are still required:
 
 - WhatsApp: Message delivery and reception.
-- ngrok: Remote access to the web interface and API.
 - Ollama and Whisper: Model downloads.
 - DuckDuckGo: Optional web searches.
 
@@ -350,16 +351,9 @@ Current authentication rules:
 - Sessions expire after eight hours or when the server restarts.
 - Authenticated students share the same homework and exam records.
 
-### External access
+### Access from the network
 
-Claw can use ngrok to expose its web interface outside the local network.
-
-Configuration is available through:
-
-```env
-NGROK_ENABLED=true
-NGROK_DOMAIN=your-ngrok-domain
-```
+Claw serves the web page itself at `http://127.0.0.1:3000`, so no tunnel is needed. If you publish it on another domain (an HTTPS reverse proxy, for example), add it to `WEB_ALLOWED_ORIGINS`, comma-separated.
 
 SMTP credentials are required for email verification.
 

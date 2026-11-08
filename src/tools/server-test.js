@@ -13,7 +13,6 @@ process.env.WEB_ALLOWED_ORIGINS = allowedOrigin;
 process.env.SMTP_HOST = '';
 process.env.SMTP_USER = '';
 process.env.SMTP_PASSWORD = '';
-process.env.NGROK_ENABLED = 'false';
 
 const memory = await import('../memory.js');
 const { config } = await import('../config.js');
@@ -55,7 +54,7 @@ test('la API exige sesión institucional y limita CORS al origen configurado', a
   assert.equal(loginPage.status, 200);
   const loginHtml = await loginPage.text();
   assert.match(loginHtml, /@alu\.edu\.gva\.es/);
-  assert.match(loginHtml, /Servidor PickleBrain \(ngrok\)/);
+  assert.match(loginHtml, /Servidor de Claw/);
 
   // El JS de ambas páginas debe compilar (un error de sintaxis dejaría la web muda).
   const vm = await import('node:vm');
@@ -73,18 +72,11 @@ test('la API exige sesión institucional y limita CORS al origen configurado', a
   });
   assert.equal(forbidden.status, 403);
 
-  // La web servida desde el túnel de ngrok también debe poder usar la API
-  // (401 por falta de sesión, nunca 403 por origen no autorizado).
-  const fromNgrok = await fetch(`${baseUrl}/api/health`, {
-    headers: { Origin: 'https://picklebrain-prueba.ngrok-free.app' }
+  // Un origen externo conocido solo entra si está en WEB_ALLOWED_ORIGINS.
+  const fromTunnel = await fetch(`${baseUrl}/api/health`, {
+    headers: { Origin: 'https://dominio-no-autorizado.example' }
   });
-  assert.equal(fromNgrok.status, 401);
-
-  // El dominio fijo del túnel también es siempre un origen válido.
-  const fixedNgrok = await fetch(`${baseUrl}/api/health`, {
-    headers: { Origin: 'https://dawn-greeter-grazing.ngrok-free.dev' }
-  });
-  assert.equal(fixedNgrok.status, 401);
+  assert.equal(fromTunnel.status, 403);
 
   for (const request of [
     fetch(`${baseUrl}/api/health`, { headers }),
@@ -181,7 +173,6 @@ test('la API exige sesión institucional y limita CORS al origen configurado', a
   const overviewData = await overview.json();
   assert.ok(overviewData.settings.length > 5);
   assert.ok(overviewData.students.some((student) => student.email === 'estudiante@alu.edu.gva.es'));
-  assert.equal(overviewData.ngrok, 'dawn-greeter-grazing.ngrok-free.dev');
 
   const settingChange = await fetch(`${baseUrl}/api/admin/settings`, {
     method: 'POST',

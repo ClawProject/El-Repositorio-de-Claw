@@ -3,7 +3,6 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { spawn } from 'node:child_process';
 import nodemailer from 'nodemailer';
 import { config, normalizarJid } from './config.js';
 import { log } from './logger.js';
@@ -80,62 +79,8 @@ const LOCAL_WEB_ORIGINS = new Set([
   `http://127.0.0.1:${PORT}`
 ]);
 
-// ngrok sirve la propia web, asi que el navegador envia su dominio como Origin.
-// Sin esto, cualquier peticion desde el tunel acabaria en un 403.
-const NGROK_ORIGIN = /^https:\/\/[a-z0-9-]+\.ngrok(?:-free)?\.(?:app|dev|io)$/i;
-
 function isAllowedOrigin(origin) {
-  if (LOCAL_WEB_ORIGINS.has(origin)) return true;
-  if (config.webAllowedOrigins.includes(origin)) return true;
-  if (config.ngrokDomain && origin === `https://${config.ngrokDomain}`) return true;
-  return NGROK_ORIGIN.test(origin);
-}
-
-function startNgrok(server) {
-  if (!config.ngrokEnabled) return;
-  if (!config.ngrokDomain) {
-    log.warn('NGROK_ENABLED está activo, pero NGROK_DOMAIN está vacío.');
-    return;
-  }
-
-  let tunnel = null;
-  let restartTimer = null;
-  let stopping = false;
-
-  const launch = () => {
-    if (stopping) return;
-    tunnel = spawn(
-      'ngrok',
-      ['http', String(PORT), '--url', `https://${config.ngrokDomain}`],
-      { windowsHide: true, stdio: 'ignore' }
-    );
-    tunnel.once('spawn', () => log.info(`Túnel ngrok activo en https://${config.ngrokDomain} → puerto ${PORT}.`));
-    tunnel.once('error', (err) => {
-      if (err.code === 'ENOENT') {
-        // Sin el binario no tiene sentido reintentar cada 5 s: avisa una vez.
-        stopping = true;
-        log.warn('No se encontró ngrok; el túnel público queda desactivado. Instálalo o pon NGROK_ENABLED=false.');
-        return;
-      }
-      log.error(`No se pudo iniciar ngrok: ${err.message}`);
-    });
-    tunnel.once('close', (code) => {
-      if (stopping) return;
-      log.warn(`ngrok terminó${code === null ? '' : ` con código ${code}`}; reintento en 5 segundos.`);
-      restartTimer = setTimeout(launch, 5000);
-      restartTimer.unref?.();
-    });
-  };
-
-  const stop = () => {
-    stopping = true;
-    if (restartTimer) clearTimeout(restartTimer);
-    if (tunnel && !tunnel.killed) tunnel.kill();
-  };
-
-  launch();
-  server.once('close', stop);
-  process.once('exit', stop);
+  return LOCAL_WEB_ORIGINS.has(origin) || config.webAllowedOrigins.includes(origin);
 }
 
 async function parseJsonBody(req) {
@@ -159,7 +104,7 @@ async function parseJsonBody(req) {
   });
 }
 
-/** IP real del cliente (ngrok añade X-Forwarded-For). */
+/** IP real del cliente (con un proxy inverso delante, X-Forwarded-For). */
 function clientAddressOf(req) {
   const forwardedFor = String(req.headers['x-forwarded-for'] || '').split(',').pop().trim();
   return forwardedFor || req.socket.remoteAddress || 'unknown';
@@ -291,7 +236,6 @@ export function startServer({ auth = webAuth } = {}) {
             node: process.version,
             platform: process.platform
           },
-          ngrok: config.ngrokDomain,
           model: config.ollamaModel
         });
       }
@@ -545,7 +489,6 @@ export function startServer({ auth = webAuth } = {}) {
 
   server.listen(PORT, '127.0.0.1', () => {
     log.info(`Servidor API HTTP y Web App de PickleBrain activo en http://127.0.0.1:${PORT}`);
-    startNgrok(server);
   });
 
   return server;

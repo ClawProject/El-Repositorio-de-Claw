@@ -11,8 +11,9 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 
 ### Cambiado
 
-- **Dominio fijo del túnel.** La web y el servidor usan siempre
-  `dawn-greeter-grazing.ngrok-free.dev`; ya no hay que configurarlo a mano.
+- **Sin túnel ngrok.** El servidor ya no lanza ngrok ni acepta dominios
+  `*.ngrok`: la web se sirve en local y cualquier otro origen debe ir en
+  `WEB_ALLOWED_ORIGINS`.
 - **Registro antes de entrar.** El acceso por correo pide nombre, apellidos,
   curso y grupo, y guarda el perfil en SQLite. El panel de administración puede
   consultarlo y borrarlo.

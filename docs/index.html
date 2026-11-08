@@ -890,7 +890,7 @@
           <div class="how-copy reveal">
             <span class="section-label">Cómo funciona</span>
             <h3>Una conexión.<br>Todo tu Claw.</h3>
-            <p>La web y el bot se conectan al mismo servidor PickleBrain de tu ordenador. Si accedes desde fuera de casa, usa la URL HTTPS de ngrok que te hayan facilitado.</p>
+            <p>La web y el bot se conectan al mismo servidor PickleBrain de tu ordenador.</p>
             <span class="server-pill"><span aria-hidden="true">●</span> Tu servidor · tu Claw</span>
           </div>
           <div class="steps">
@@ -1046,10 +1046,9 @@
     let history = [];
 
     function defaultApiBase() {
-      // Si la web se sirve desde el propio PickleBrain (o desde ngrok), el
-      // servidor es el mismo origen. Solo al abrir el archivo en local se usa
-      // la dirección por defecto.
-      return /^https?:$/.test(location.protocol) ? location.origin : 'https://dawn-greeter-grazing.ngrok-free.dev';
+      // Si la web se sirve desde el propio PickleBrain, el servidor es el mismo
+      // origen. Solo al abrir el archivo en local se usa la dirección por defecto.
+      return /^https?:$/.test(location.protocol) ? location.origin : 'http://127.0.0.1:3000';
     }
 
     function apiBase() {

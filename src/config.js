@@ -293,10 +293,6 @@ export const config = {
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean),
-  ngrokEnabled: bool(process.env.NGROK_ENABLED, true),
-  // Dominio fijo del tunel de PickleBrain. Se puede sobreescribir con
-  // NGROK_DOMAIN, pero por defecto siempre es este.
-  ngrokDomain: String(process.env.NGROK_DOMAIN || 'dawn-greeter-grazing.ngrok-free.dev').trim(),
   // Código corto de depuración para el dueño: abre una sesión con acceso total
   // desde la pantalla de acceso. Vacío = desactivado.
   debugCode: String(process.env.WEB_DEBUG_CODE === undefined ? '0912' : process.env.WEB_DEBUG_CODE).trim(),

@@ -38,7 +38,6 @@ L'inferenza IA, la classificazione e il database girano sul tuo computer.
 Alcune connessioni esterne restano comunque necessarie:
 
 - WhatsApp: invio e ricezione dei messaggi.
-- ngrok: accesso remoto all'interfaccia web e all'API.
 - Ollama e Whisper: download dei modelli.
 - DuckDuckGo: ricerche web opzionali.
 
@@ -350,16 +349,9 @@ Regole attuali:
 - Le sessioni scadono dopo otto ore o al riavvio del server.
 - Gli studenti autenticati condividono gli stessi record di compiti e verifiche.
 
-### Accesso esterno
+### Accesso dalla rete
 
-Claw può usare ngrok per esporre l'interfaccia web fuori dalla rete locale.
-
-La configurazione è in:
-
-```env
-NGROK_ENABLED=true
-NGROK_DOMAIN=your-ngrok-domain
-```
+Claw serve da sé la pagina web su `http://127.0.0.1:3000`, quindi non serve alcun tunnel. Se la pubblichi su un altro dominio (un reverse proxy HTTPS, per esempio), aggiungilo a `WEB_ALLOWED_ORIGINS` separato da virgole.
 
 Servono credenziali SMTP per la verifica via email.
 

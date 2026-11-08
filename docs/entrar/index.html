@@ -230,8 +230,8 @@
         <p id="auth-description" class="subtitle">Regístrate con tus datos y tu correo del instituto. Te enviaremos un código de un solo uso.</p>
 
         <form id="email-form">
-          <label>Servidor PickleBrain (ngrok)
-            <input id="api-url" type="url" autocomplete="url" value="https://dawn-greeter-grazing.ngrok-free.dev" placeholder="https://dawn-greeter-grazing.ngrok-free.dev" required>
+          <label>Servidor de Claw
+            <input id="api-url" type="url" autocomplete="url" value="http://127.0.0.1:3000" placeholder="http://127.0.0.1:3000" required>
           </label>
           <div class="split">
             <label>Nombre
@@ -279,14 +279,14 @@
   <script>
     const URL_KEY = 'picklebrain.web.apiUrl';
     const SESSION_KEY = 'picklebrain.web.session';
-    const FIXED_SERVER = 'https://dawn-greeter-grazing.ngrok-free.dev';
+    const LOCAL_SERVER = 'http://127.0.0.1:3000';
     const apiUrlInput = document.getElementById('api-url');
     const authMessage = document.getElementById('auth-message');
     const otpInputs = Array.from(document.querySelectorAll('.otp-digit'));
     const hiddenCode = document.getElementById('auth-code');
     const emailInput = document.getElementById('auth-email');
     apiUrlInput.value = localStorage.getItem(URL_KEY)
-      || (/^https?:$/.test(location.protocol) ? location.origin : FIXED_SERVER);
+      || (/^https?:$/.test(location.protocol) ? location.origin : LOCAL_SERVER);
     const logoutNotice = sessionStorage.getItem('picklebrain.web.logoutNotice');
     if (logoutNotice) {
       authMessage.textContent = logoutNotice;

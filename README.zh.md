@@ -38,7 +38,6 @@ AI 推理、分类和数据库都在你的电脑上运行。
 但仍然需要一些外部连接：
 
 - WhatsApp：收发消息。
-- ngrok：远程访问网页界面和 API。
 - Ollama 与 Whisper：下载模型。
 - DuckDuckGo：可选的联网搜索。
 
@@ -350,16 +349,9 @@ npm start
 - 会话在八小时后或服务器重启时过期。
 - 已登录的学生共享相同的作业和考试记录。
 
-### 外部访问
+### 从网络访问
 
-Claw 可以使用 ngrok 在局域网之外提供网页界面。
-
-配置：
-
-```env
-NGROK_ENABLED=true
-NGROK_DOMAIN=your-ngrok-domain
-```
+Claw 自己在 `http://127.0.0.1:3000` 提供网页，因此不需要隧道。如果你把它发布到其他域名（例如 HTTPS 反向代理），请把它加入 `WEB_ALLOWED_ORIGINS`，用逗号分隔。
 
 邮箱验证需要 SMTP 凭据。
 
