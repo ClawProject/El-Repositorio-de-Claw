@@ -90,7 +90,7 @@ export function createWebAuth({
       await sendCode(email, code);
     } catch (error) {
       onSendError?.(error);
-      // Si falta configurar el correo, decirlo claro: no es un fallo temporal.
+      // If email is not configured, say so plainly: it is not a temporary failure.
       const sinSmtp = /SMTP no est[áa] configurado/i.test(String(error?.message || ''));
       throw new AuthError(
         503,
@@ -137,9 +137,9 @@ export function createWebAuth({
   }
 
   /**
-   * Acceso de depuración: un código corto que abre una sesión con permisos de
-   * administración, sin pasar por el correo. Pensado para el dueño del bot.
-   * Se limita por IP para que no se pueda probar a ciegas.
+   * Debug access: a short code that opens a session with administrator
+   * permissions, without going through email. Meant for the bot owner.
+   * It is rate limited per IP so it cannot be brute-forced.
    */
   function loginDebug(codeValue, clientKey = 'unknown') {
     const configured = String(debugCode || '').trim();

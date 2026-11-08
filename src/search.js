@@ -1,9 +1,9 @@
-// Búsqueda en internet con DuckDuckGo (sin dependencias: usa fetch).
+// Web search with DuckDuckGo (no dependencies: it uses fetch).
 //
-// OJO: esto SÍ sale a internet, pero solo cuando hace falta: cuando alguien
-// pide explícitamente una búsqueda ("!claw busca ...") o cuando la pregunta
-// pide información actual (noticias, precios, resultados...). El resto del
-// tiempo el bot sigue siendo 100% local y no manda nada fuera.
+// CAREFUL: this DOES go to the internet, but only when needed: when someone
+// explicitly asks for a search ("!claw busca ...") or when the question asks
+// for current information (news, prices, results...). The rest of the time the
+// bot stays 100% local and sends nothing out.
 import { log } from './logger.js';
 
 const UA =
@@ -19,14 +19,14 @@ function sinAcentos(s) {
     .toLowerCase();
 }
 
-// Palabras que indican que la pregunta pide algo que conviene mirar en internet.
-// Ojo con pasarse: solo cosas que de verdad cambian (noticias, precios, clima,
-// resultados deportivos...). Palabras como "hoy" o "resultado" a secas darian
-// demasiados falsos positivos y el bot saldria a internet sin necesidad.
+// Words that indicate the question asks for something worth checking online.
+// Be careful not to overdo it: only things that really change (news, prices,
+// weather, sports results...). Words like "hoy" or "resultado" on their own
+// would give too many false positives and the bot would go online needlessly.
 const RE_BUSCAR =
   /\b(busca|buscame|buscar|busquemos|googlea|google|internet|en la web|en internet|noticias|actualidad|ultima hora|quien gano|quien va ganando|marcador|clasificacion|resultado del|resultado de la|resultados del|precio|cuanto cuesta|cuanto vale|a como esta|clima|temperatura|tiempo que hace|cotizacion|bitcoin|dolar|euro esta|tipo de cambio|inflacion|cartelera|taquilla|estreno de|horario de)\b/;
 
-/** ¿Esta pregunta pide información que conviene buscar en internet? */
+/** Does this question ask for information worth searching online? */
 export function necesitaBuscar(texto) {
   return RE_BUSCAR.test(sinAcentos(texto));
 }
@@ -45,7 +45,7 @@ function quitarHtml(s) {
     .trim();
 }
 
-/** Convierte un enlace de DuckDuckGo (//duckduckgo.com/l/?uddg=...) en la URL real. */
+/** Turns a DuckDuckGo link (//duckduckgo.com/l/?uddg=...) into the real URL. */
 function urlReal(href) {
   let h = String(href || '');
   const m = h.match(/[?&]uddg=([^&]+)/);
@@ -53,7 +53,7 @@ function urlReal(href) {
     try {
       h = decodeURIComponent(m[1]);
     } catch {
-      /* se queda como está */
+      /* leave it as is */
     }
   }
   if (h.startsWith('//')) h = `https:${h}`;
@@ -122,7 +122,7 @@ function parsearInstant(data, max) {
   return out.slice(0, max);
 }
 
-/** Reconoce los dos formatos (html y lite) para poder testearlo sin red. */
+/** Recognises both formats (html and lite) so it can be tested without network. */
 export function parsearResultadosDDG(html, max = 6) {
   const text = String(html || '');
   if (text.includes('result__a')) return parsearHtml(text, max);
@@ -141,15 +141,15 @@ async function pedir(url, opts = {}, timeoutMs = 8000) {
 }
 
 /**
- * Busca en DuckDuckGo. Devuelve [{title, url, snippet}] (posiblemente vacío).
- * Prueba el buscador HTML, luego el "lite" y, si falla todo, la API de
- * respuestas instantáneas. Nunca lanza: si no hay red, devuelve [].
+ * Searches DuckDuckGo. Returns [{title, url, snippet}] (possibly empty).
+ * It tries the HTML search, then "lite" and, if everything fails, the instant
+ * answers API. It never throws: with no network it returns [].
  */
 export async function buscarWeb(consulta, { max = 5, timeoutMs = 8000 } = {}) {
   const q = String(consulta || '').trim();
   if (!q) return [];
 
-  // 1) Buscador HTML (POST, el que mejor devuelve resultados reales).
+  // 1) HTML search (POST, the one that returns real results best).
   try {
     const res = await pedir(
       DDG_HTML,
@@ -172,7 +172,7 @@ export async function buscarWeb(consulta, { max = 5, timeoutMs = 8000 } = {}) {
     log.warn(`DuckDuckGo (html) fallo: ${err.message}`);
   }
 
-  // 2) Versión ligera (GET).
+  // 2) Lightweight version (GET).
   try {
     const res = await pedir(
       `${DDG_LITE}?q=${encodeURIComponent(q)}&kl=es-es`,
@@ -187,7 +187,7 @@ export async function buscarWeb(consulta, { max = 5, timeoutMs = 8000 } = {}) {
     log.warn(`DuckDuckGo (lite) fallo: ${err.message}`);
   }
 
-  // 3) API de respuestas instantáneas (sin scraping).
+  // 3) Instant answers API (no scraping).
   try {
     const res = await pedir(
       `${DDG_API}?q=${encodeURIComponent(q)}&format=json&no_html=1&skip_disambig=1`,

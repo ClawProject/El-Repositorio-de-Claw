@@ -1,11 +1,11 @@
-// El router decide que hacer con cada mensaje del grupo:
-//   - ignorarlo (lo normal)
-//   - guardar deberes/examenes que alguien menciona
-//   - responder cuando alguien pregunta
-//   - activar el modo Claw como asistente general
+// The router decides what to do with each group message:
+//   - ignore it (the usual case)
+//   - save homework/exams that someone mentions
+//   - answer when someone asks
+//   - switch on Claw mode as a general assistant
 //
-// Es independiente de WhatsApp: recibe texto y devuelve las respuestas a enviar.
-// Asi el simulador (npm run sim) usa exactamente la misma logica que el bot real.
+// It is independent from WhatsApp: it takes text and returns the replies to send.
+// That way the simulator (npm run sim) uses exactly the same logic as the real bot.
 import { config, listaDeJids } from './config.js';
 import { log } from './logger.js';
 import * as memory from './memory.js';
@@ -28,17 +28,18 @@ import * as presence from './presence.js';
 import { textoNovedades } from './changelog.js';
 import * as ajedrez from './chess.js';
 import * as replies from './replies.js';
+import * as i18n from './i18n.js';
 import { ping as ollamaPing } from './ollama.js';
 
-// ---------------------------------------------------------------- estado
+// ---------------------------------------------------------------- state
 
-const lastReplyAt = new Map(); // clave -> timestamp
-const lastReplySignature = new Map(); // clave -> firma de los datos enviados
+const lastReplyAt = new Map(); // key -> timestamp
+const lastReplySignature = new Map(); // key -> signature of the data sent
 const clawCalls = new Map(); // chatJid -> [timestamps]
 const clawHistory = new Map(); // chatJid -> [{role, content}]
-const lastSwearAlertAt = new Map(); // chatJid -> timestamp del último aviso de palabrotas
+const lastSwearAlertAt = new Map(); // chatJid -> timestamp of the last swear notice
 const botMessageIds = new Set();
-const warnedUnbound = new Set(); // grupos ajenos de los que ya avisamos en el log
+const warnedUnbound = new Set(); // foreign groups we already warned about in the log
 
 export function rememberBotMessage(msgId) {
   if (!msgId) return;
@@ -48,7 +49,7 @@ export function rememberBotMessage(msgId) {
   }
 }
 
-/** Firma del contenido enviado: si cambia, merece la pena volver a responder. */
+/** Signature of the content sent: when it changes, it is worth answering again. */
 function entriesSignature(entries) {
   return entries.map((e) => `${e.id}:${e.updatedAt || e.createdAt}`).join('|');
 }
@@ -58,7 +59,7 @@ function replyAllowed(chatJid, key, signature = null) {
   const now = Date.now();
   const last = lastReplyAt.get(composite) ?? 0;
   const previous = lastReplySignature.get(composite);
-  // Si los datos han cambiado desde la ultima vez, respondemos aunque sea pronto.
+  // If the data changed since last time, we answer even if it is too soon.
   const dataChanged = signature !== null && previous !== undefined && previous !== signature;
   if (!dataChanged && now - last < config.minSecondsBetweenReplies * 1000) {
     log.debug(`Silencio preventivo (${key}) en ${chatJid}`);
@@ -81,12 +82,12 @@ function clawAllowed(chatJid) {
   return true;
 }
 
-// ---------------------------------------------------------------- vinculacion
+// ---------------------------------------------------------------- binding
 
 /**
- * Grupos a los que está asignado el bot.
- *  - Si el .env fija grupos (WHATSAPP_GROUP_JID), esos son los únicos.
- *  - Si no, se van guardando con "!claw aqui" (y se quitan con "!claw fuera").
+ * Groups the bot is assigned to.
+ *  - If the .env fixes groups (WHATSAPP_GROUP_JID), those are the only ones.
+ *  - Otherwise they are saved with "!claw aqui" (and removed with "!claw fuera").
  */
 export function boundGroups() {
   const fijos = (config.groupJids || []).filter(Boolean);
@@ -99,10 +100,10 @@ export function boundGroups() {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) guardados = parsed.filter((g) => g && g.jid);
     } catch {
-      /* formato antiguo: lo ignoramos y abajo miramos group_jid */
+      /* old format: we ignore it and look at group_jid below */
     }
   }
-  // Compatibilidad con la base de datos de cuando solo había un grupo.
+  // Compatibility with the database from when there was only one group.
   if (!guardados.length) {
     const uno = memory.getSetting('group_jid');
     if (uno) guardados = [{ jid: uno, name: memory.getSetting('group_name') || null }];
@@ -126,18 +127,18 @@ export function boundGroupJids() {
   return boundGroups().map((g) => g.jid);
 }
 
-/** ¿Este chat está en la lista de grupos asignados? */
+/** Is this chat in the list of assigned groups? */
 export function groupAllowed(chatJid) {
   if (!chatJid) return false;
   return boundGroups().some((g) => g.jid === chatJid);
 }
 
-/** ¿Tengo los grupos fijados desde el .env (no se pueden cambiar de WhatsApp)? */
+/** Are the groups fixed from the .env (so they cannot be changed from WhatsApp)? */
 export function gruposFijos() {
   return (config.groupJids || []).filter(Boolean);
 }
 
-/** Añade un grupo a la lista (si el .env no lo tiene fijado). */
+/** Adds a group to the list (when the .env does not fix it). */
 export function bindGroup(chatJid) {
   const fijos = gruposFijos();
   if (fijos.length) return fijos.map((jid) => ({ jid, name: null }));
@@ -148,7 +149,7 @@ export function bindGroup(chatJid) {
   return lista;
 }
 
-/** Quita un grupo de la lista (no se puede si el .env lo fija). */
+/** Removes a group from the list (impossible when the .env fixes it). */
 export function unbindGroup(chatJid) {
   if (gruposFijos().length) return boundGroups();
   const lista = boundGroups().filter((g) => g.jid !== chatJid);
@@ -157,18 +158,18 @@ export function unbindGroup(chatJid) {
 }
 
 function guardarGrupos(lista) {
-  // Solo se guarda el identificador. El nombre ya no se usa para nada y no se
-  // apunta: es un dato del grupo, no del bot.
+  // Only the identifier is stored. The name is no longer used and is not
+  // recorded: it is data of the group, not of the bot.
   const limpia = lista.map((g) => ({ jid: g.jid, name: null }));
   memory.setSetting('group_jids', JSON.stringify(limpia));
-  // El primer grupo sigue "a mano" por si algún código espera group_jid.
+  // The first group is still kept "by hand" in case some code expects group_jid.
   memory.setSetting('group_jid', limpia[0]?.jid || null);
   memory.setSetting('group_name', null);
 }
 
-// ---------------------------------------------------------------- principal
+// ---------------------------------------------------------------- main
 
-/** ¿Puede esta persona escribirle por privado, según el ajuste "privado"? */
+/** Can this person write to it privately, according to the "privado" setting? */
 function puedeEscribirPrivado(...jids) {
   switch (config.privateMode) {
     case 'todos':
@@ -209,10 +210,10 @@ export async function handleMessage(
     media: incoming = null
   } = input;
 
-  // Dónde se guardan y se leen los deberes y los exámenes. En el grupo, el propio
-  // grupo. En un mensaje privado (directo o el chat contigo mismo) es el grupo
-  // asignado: así puedes dejar deberes/exámenes por privado y preguntar por ellos,
-  // y quedan apuntados en el grupo. Si no hay ningún grupo, se usa el chat privado.
+  // Where homework and exams are stored and read. In the group, the group itself.
+  // In a private message (direct or the chat with yourself) it is the assigned
+  // group: that way you can leave homework/exams privately and ask about them, and
+  // they are noted in the group. With no group, the private chat is used.
   const chatJid = !isGroup ? boundGroupJid() || convJid : convJid;
 
   const out = {
@@ -227,28 +228,29 @@ export async function handleMessage(
   };
 
   let text = String(input.text || '').trim();
-  if (msgId && botMessageIds.has(msgId)) return out; // es un mensaje nuestro
+  if (msgId && botMessageIds.has(msgId)) return out; // it is one of our messages
 
-  // --- Comandos: "!claw ..." (y "!pickle ...", que sigue funcionando) ---
+  // --- Commands: "!claw ..." (and "!pickle ...", which still works) ---
   const comando = parseCommand(text);
 
-  // --- Modo mantenimiento ---
-  // El bot se queda mudo: no contesta, no apunta nada y no reenvia archivos.
-  // Solo dejamos pasar los comandos de un administrador, para poder quitarlo.
+  // --- Maintenance mode ---
+  // The bot goes mute: it does not answer, does not note anything down and does
+  // not forward files. Only an administrator's commands get through, so it can
+  // be switched off.
   if (config.maintenance && !(comando && admins.esAdmin(senderJid, senderJidAlt))) {
     out.action = 'mantenimiento';
     return out;
   }
 
-  // Mensajes privados (DM): quién puede escribirle lo decide el ajuste
-  // "privado" (por defecto, solo el dueño). El chat propio del dueño siempre vale.
-  // Va antes de los comandos para que un desconocido no pueda usar "!claw ..." por privado.
+  // Private messages (DM): who may write is decided by the "privado" setting
+  // (the owner only, by default). The owner's own chat always counts.
+  // This comes before the commands so a stranger cannot use "!claw ..." privately.
   if (!isGroup && !esChatPropio && !puedeEscribirPrivado(senderJid, senderJidAlt)) {
     log.debug(`Mensaje privado ignorado (ajuste "privado" = ${config.privateMode}): ${senderName}`);
     return out;
   }
 
-  // --- Vetados: no pueden usar a Claw (ni comandos, ni hablarle; tampoco se aprende de ellos) ---
+  // --- Banned: they cannot use Claw (no commands, no talking to it; nothing is learned from them either) ---
   if (admins.esVetado(senderJid, senderJidAlt)) {
     out.action = 'vetado';
     log.debug(`Mensaje de ${senderName} ignorado (está vetado).`);
@@ -257,7 +259,7 @@ export async function handleMessage(
 
   if (comando) return await handleCommand({ comando, input: { ...input, chatJid }, out, listModels });
 
-  // A partir de aqui solo actuamos en los grupos asignados.
+  // From here on we only act in the assigned groups.
   if (isGroup && !groupAllowed(chatJid)) {
     if (!warnedUnbound.has(chatJid)) {
       warnedUnbound.add(chatJid);
@@ -275,15 +277,15 @@ export async function handleMessage(
     return out;
   }
 
-  // --- 0. Archivos y notas de voz ---
+  // --- 0. Files and voice notes ---
   if (incoming?.kind === 'audio') {
     const transcript = await handleIncomingAudio({ incoming, chatJid, senderName, out, transcribe });
     if (transcript) text = transcript;
     if (!text) return out;
   } else if (incoming?.kind === 'image' || incoming?.kind === 'document') {
     await handleIncomingImage({ incoming, chatJid, senderName, senderJid, msgId, out, text });
-    // El pie de un archivo normalmente lo describe ("esto entra en el examen..."):
-    // solo seguimos si de verdad es una pregunta o si le hablan a Claw.
+    // A file caption usually describes it ("esto entra en el examen..."): we only
+    // go on when it really is a question or when Claw is addressed.
     if (!text) return out;
     if (!isQuestion(text) && !clawMatch(text)) return out;
   }
@@ -291,8 +293,8 @@ export async function handleMessage(
   if (!text) return out;
   memory.logMessage({ chatJid: convJid, msgId, author: senderName, authorJid: senderJid, text });
 
-  // Contador de palabrotas: las cuenta para el ranking de "!claw palabrotas" y,
-  // si toca, saca el ranking en el momento (con un margen para no spamear).
+  // Swear counter: it counts them for the "!claw palabrotas" ranking and, when
+  // due, posts the ranking on the spot (with a margin so it does not spam).
   if (isGroup && config.countSwears) {
     const cuenta = contarPalabrotas(text);
     if (cuenta.total) {
@@ -322,19 +324,19 @@ export async function handleMessage(
     }
   }
 
-  // --- 1. Modo Claw ---
+  // --- 1. Claw mode ---
   if (clawMatch(text) || (mentionedBot && !looksRelevant(text))) {
     return handleClaw({ chatJid, senderName, text, mentionedBot, out });
   }
 
-  // En privado lo tratamos como si fuera el grupo: si dices un deber o un examen,
-  // se apunta en el grupo; si preguntas por ellos, te contesto con lo del grupo.
-  // Para charlar con Claw de cualquier cosa, escribe "claw ...". En el chat contigo
-  // mismo (tu panel del dueño), lo que no va de deberes/exámenes son tus notas: ahí
-  // me callo.
+  // In private we treat it as if it were the group: if you say a homework item or
+  // an exam, it is noted in the group; if you ask about them, you get the group's.
+  // To chat with Claw about anything, write "claw ...". In the chat with yourself
+  // (your owner panel), whatever is not about homework/exams are your notes: there
+  // the bot stays quiet.
   if (!isGroup && esChatPropio && !looksRelevant(text)) return out;
 
-  // --- 2. Ruta rapida: pregunta tipica de deberes/examen ---
+  // --- 2. Fast route: typical homework/exam question ---
   const fast = fastRoute(text);
   if (fast) {
     const entries = memory.findPending({ kind: fast.kind, subjectKey: fast.subjectKey, chatJid });
@@ -358,15 +360,15 @@ export async function handleMessage(
       }
       return out;
     }
-    // No sabemos nada todavia: abrimos la pregunta y lo confirma la IA abajo.
+    // We know nothing yet: the question is opened and the AI confirms below.
   }
 
-  // --- 3. Analisis con IA ---
+  // --- 3. AI analysis ---
   const pending = memory.getPendingQuestion(chatJid, config.answerWindowMinutes);
   const recent = memory.recentMessages(convJid, config.contextMessages);
   const relevant = looksRelevant(text) || Boolean(pending) || Boolean(fast);
   if (!relevant) {
-    // En privado, lo que no va de deberes/exámenes es una charla con Claw.
+    // In private, whatever is not about homework/exams is a chat with Claw.
     if (!isGroup && !esChatPropio) return handleClaw({ chatJid, senderName, text, mentionedBot, out });
     return out;
   }
@@ -411,8 +413,8 @@ export async function handleMessage(
 
   if (analysis.tipo === 'dato_deberes' || analysis.tipo === 'dato_examen') {
     const kind = analysis.tipo === 'dato_examen' ? 'examen' : 'deberes';
-    // Si venía con una foto o un PDF, el pie solo lo describe ("esto entra en...").
-    // No lo apuntamos como dato suelto: el archivo ya está guardado y enlazado.
+    // If it came with a photo or a PDF, the caption only describes it ("esto entra en...").
+    // It is not noted as a standalone fact: the file is already stored and linked.
     if (input.media?.kind === 'image' || input.media?.kind === 'document') {
       log.debug('El pie de archivo no se apunta por separado.');
       return out;
@@ -447,7 +449,7 @@ export async function handleMessage(
           analysis.fecha ? ` (${analysis.fecha})` : ''
         }`
       );
-      // Por defecto NO confirmamos: el bot solo habla si le preguntan.
+      // By default we do NOT confirm: the bot only speaks when asked.
       if (config.ackSaves && replyAllowed(chatJid, `ack:${saved.entry.id}`)) {
         out.action = 'guardado';
         out.replies = [replies.savedAck(saved.entry)];
@@ -461,17 +463,17 @@ export async function handleMessage(
   }
 
   out.action = 'ignorado';
-  // En privado, cualquier cosa que no sea un dato ni una pregunta de deberes o
-  // exámenes es una conversación normal con Claw.
+  // In private, anything that is not a fact nor a homework or exam question is a
+  // normal conversation with Claw.
   if (!isGroup && !esChatPropio) {
     return handleClaw({ chatJid, senderName, text, mentionedBot, out });
   }
   return out;
 }
 
-// ---------------------------------------------------------------- archivos
+// ---------------------------------------------------------------- files
 
-/** Firma del contenido enviado (texto + archivos): si cambia, volvemos a responder. */
+/** Signature of the content sent (text + files): when it changes, we answer again. */
 function contentSignature(entries, stored) {
   return `${entriesSignature(entries)}|${(stored || []).map((m) => m.id).join(',')}`;
 }
@@ -481,14 +483,14 @@ function storedMedia(kind, subjectKey, chatJid = null) {
   return memory.listMedia({ kind, subjectKey, limit: config.mediaSendMax, chatJid });
 }
 
-/** Engancha los archivos guardados a la respuesta que se va a enviar. */
+/** Attaches the stored files to the reply that is about to be sent. */
 function attachMedia(out, { rows, kind, subject }) {
   if (!config.mediaEnabled || !rows?.length) return;
   const caption = replies.mediaCaption({ kind, subject, count: rows.length });
   for (const m of rows) out.media.push(media.asOutgoing(m, caption));
 }
 
-/** Notas de voz: las escuchamos y seguimos como si fueran texto. */
+/** Voice notes: we listen to them and carry on as if they were text. */
 async function handleIncomingAudio({ incoming, chatJid, senderName, out, transcribe }) {
   if (!config.transcribeEnabled || config.transcribeMode === 'nada') return '';
   const seconds = Number(incoming.seconds || 0);
@@ -510,8 +512,8 @@ async function handleIncomingAudio({ incoming, chatJid, senderName, out, transcr
       log.info(`🎧 Nota de voz de ${senderName}: (no he entendido nada)`);
       return '';
     }
-    // En modo contexto también escuchamos para detectar el trigger hablado,
-    // pero seguimos descartando las notas sin pregunta abierta que no lo digan.
+    // In context mode we also listen, to detect the spoken trigger, but we still
+    // discard notes without an open question that do not say it.
     if (!hasPendingContext && !clawMatch(text)) {
       log.debug('Nota de voz ignorada (modo contexto, sin pregunta abierta ni trigger Claw)');
       return '';
@@ -530,7 +532,7 @@ async function handleIncomingAudio({ incoming, chatJid, senderName, out, transcr
   }
 }
 
-/** Fotos y documentos: solo los guardamos si van de deberes/examenes, y solo si caben en el disco. */
+/** Photos and documents: only saved when they are about homework/exams, and only if they fit on disk. */
 async function handleIncomingImage({ incoming, chatJid, senderName, senderJid, msgId, out, text }) {
   if (!config.mediaEnabled || config.mediaMode === 'nada') return;
   const esDocumento = incoming.kind === 'document';
@@ -554,7 +556,7 @@ async function handleIncomingImage({ incoming, chatJid, senderName, senderJid, m
   const subject = subjectFromText?.label || pending?.subject || null;
   const cosa = esDocumento ? 'el archivo' : 'la foto';
 
-  // 1. ¿Cabe en el disco? Si no, avisamos (nos lo ha pedido el usuario).
+  // 1. Does it fit on disk? If not, we warn (the user asked for that).
   const check = media.canStore(incoming.size || 0);
   if (!check.ok) {
     log.warn(`No guardo ${cosa}: ${check.reason} (libre ${check.freeMb} MB, necesita ${check.needMb} MB)`);
@@ -568,7 +570,7 @@ async function handleIncomingImage({ incoming, chatJid, senderName, senderJid, m
     return;
   }
 
-  // 2. La descargamos.
+  // 2. Download it.
   let buffer;
   try {
     buffer = await incoming.download();
@@ -578,7 +580,7 @@ async function handleIncomingImage({ incoming, chatJid, senderName, senderJid, m
   }
   if (!buffer?.length) return;
 
-  // 3. La colgamos de lo ultimo que sepamos de esa asignatura (para saber cuando borrarla).
+  // 3. Hang it off the latest thing we know for that subject (to know when to delete it).
   const entry = kind ? memory.findLatestEntry({ kind, subjectKey, chatJid }) : null;
   const saved = media.saveImage({
     buffer,
@@ -597,7 +599,7 @@ async function handleIncomingImage({ incoming, chatJid, senderName, senderJid, m
   });
 
   if (!saved.ok) {
-    // El tamaño real puede ser mayor que el anunciado.
+    // The real size can be larger than the announced one.
     log.warn(`No pude guardar ${cosa}: ${saved.reason}`);
     if (saved.reason === 'no-space' && replyAllowed(chatJid, 'media:sin-espacio')) {
       out.notices.push(replies.noSpaceReply());
@@ -607,7 +609,7 @@ async function handleIncomingImage({ incoming, chatJid, senderName, senderJid, m
   }
 
   out.savedMedia = saved.media;
-  // Si alguien estaba preguntando, la foto (con su pie) vale como respuesta.
+  // If someone was asking, the photo (with its caption) counts as the answer.
   if (pending) memory.resolveQuestion(pending.id);
   if (out.action === 'silencio') out.action = 'foto-guardada';
   if (config.ackSaves && replyAllowed(chatJid, `media-ack:${saved.media.id}`)) {
@@ -622,7 +624,7 @@ function buildReply(fast, entries) {
   return replies.deberesReply(entries, { subject: fast.subjectLabel });
 }
 
-/** Quita la primera aparición de `frag` en `texto` (comparando sin acentos). */
+/** Removes the first appearance of `frag` in `texto` (comparing without accents). */
 function quitarFragmento(texto, frag) {
   if (!texto || !frag) return texto;
   const idx = fold(texto).indexOf(fold(frag));
@@ -630,7 +632,7 @@ function quitarFragmento(texto, frag) {
   return texto.slice(0, idx) + ' ' + texto.slice(idx + frag.length);
 }
 
-/** Limpia coletillas que quedan al quitar la asignatura y la fecha del contenido. */
+/** Cleans the leftovers when the subject and the date are removed from the content. */
 function limpiarContenido(s) {
   const SOLO_CONECTORES = /^(?:(?:para|antes de|antes del|de|del|el|la|los|las|que|entrega|entregar|sobre)\s*)+$/i;
   const recorta = (x) => x.replace(/^[\s:;,\-–—./]+/, '').replace(/[\s:;,\-–—./]+$/, '').trim();
@@ -648,8 +650,8 @@ function limpiarContenido(s) {
 }
 
 /**
- * Interpreta "!claw apunta <deberes|examen> <asignatura> <contenido> [para <fecha>]".
- * La asignatura y la fecha se detectan dentro del texto; el resto es el contenido.
+ * Parses "!claw apunta <deberes|examen> <asignatura> <contenido> [para <fecha>]".
+ * The subject and the date are detected inside the text; the rest is the content.
  */
 function parseApunte(cola) {
   let rest = String(cola || '').trim();
@@ -693,7 +695,7 @@ async function handleClaw({ chatJid, senderName, text, mentionedBot, out }) {
     return out;
   }
 
-  // Si pegan una posición (FEN), la analizamos como gran maestro.
+  // If a position (FEN) is pasted, we analyse it like a grandmaster.
   if (config.chessEnabled) {
     const fen = ajedrez.extraeFen(question);
     if (fen) {
@@ -703,8 +705,8 @@ async function handleClaw({ chatJid, senderName, text, mentionedBot, out }) {
     }
   }
 
-  // Si la pregunta de Claw va de deberes o examenes y ya lo sabemos,
-  // contestamos con el formato bueno de la base de datos (y sin gastar IA).
+  // If the Claw question is about homework or exams and we already know it,
+  // we answer with the database's own format (and without spending AI).
   const fast = fastRoute(question);
   if (fast) {
     const entries = memory.findPending({ kind: fast.kind, subjectKey: fast.subjectKey, chatJid });
@@ -741,7 +743,7 @@ async function handleClaw({ chatJid, senderName, text, mentionedBot, out }) {
   return out;
 }
 
-/** Se usa al arrancar para no arrastrar preguntas de antes. */
+/** Used on startup so questions from before are not carried over. */
 export function resetTransientState() {
   lastReplyAt.clear();
   lastReplySignature.clear();
@@ -753,11 +755,11 @@ export function resetTransientState() {
 
 export { todayISO };
 
-// ---------------------------------------------------------------- comandos
+// ---------------------------------------------------------------- commands
 
 const COMANDO_RE = /^\s*[!./]\s*([a-zA-Z]+)\b\s*([\s\S]*)$/;
 
-/** Minúsculas y sin acentos, para comparar lo que escribe la gente. */
+/** Lowercase and accent-free, to compare what people type. */
 function sinAcentos(s) {
   return String(s || '')
     .normalize('NFD')
@@ -765,7 +767,7 @@ function sinAcentos(s) {
     .toLowerCase();
 }
 
-/** Reconoce "!claw ..." (o "!pickle ...", que sigue funcionando). */
+/** Recognises "!claw ..." (or "!pickle ...", which still works). */
 export function parseCommand(text) {
   const m = COMANDO_RE.exec(String(text || ''));
   if (!m) return null;
@@ -774,7 +776,7 @@ export function parseCommand(text) {
   return { orden, resto: (m[2] || '').trim() };
 }
 
-/** Busca una clave del catálogo de ajustes aunque se escriba con acentos o mayúsculas. */
+/** Finds a settings catalog key even when written with accents or capitals. */
 function claveDeAjuste(texto) {
   const q = sinAcentos(texto);
   if (!q) return null;
@@ -782,8 +784,8 @@ function claveDeAjuste(texto) {
 }
 
 /**
- * Todos los comandos "!claw ...": consultas, ajustes y vinculación.
- * Devuelve el `out` ya relleno.
+ * Every "!claw ..." command: queries, settings and binding.
+ * Returns `out` already filled in.
  */
 async function handleCommand({ comando, input, out, listModels }) {
   const {
@@ -803,7 +805,7 @@ async function handleCommand({ comando, input, out, listModels }) {
   const esDueno = admins.esDueno(senderJid, senderJidAlt);
   out.action = 'comando';
 
-  // --- Estado / ayuda ---
+  // --- Status / help ---
   if (!sub || sub === 'ayuda' || sub === 'help' || sub === 'estado') {
     out.action = 'estado';
     out.replies = [
@@ -814,7 +816,7 @@ async function handleCommand({ comando, input, out, listModels }) {
         stats: memory.stats(chatJid)
       })
     ];
-    // Los ajustes se enseñan solo en privado: en el grupo los leería todo el mundo.
+    // Settings are only shown in private: in the group everybody would read them.
     if (esAdmin && !isGroup) out.replies.push(ajustes.formato());
     else if (esAdmin && isGroup) {
       out.replies.push('⚙️ Tus ajustes los ves por privado: escríbeme _!claw ajustes_ en el chat contigo mismo.');
@@ -823,7 +825,7 @@ async function handleCommand({ comando, input, out, listModels }) {
     return out;
   }
 
-  // --- Modelo conversacional de Ollama y retorno al modelo principal ---
+  // --- Ollama chat model and going back to the primary model ---
   if (sub === 'ia' || sub === 'modelo') {
     if (!esAdmin) {
       out.replies = [replies.noPermitido()];
@@ -886,7 +888,7 @@ async function handleCommand({ comando, input, out, listModels }) {
     return out;
   }
 
-  // --- Vincularse / desvincularse (varios grupos a la vez) ---
+  // --- Linking / unlinking (several groups at once) ---
   if (sub === 'aqui') {
     if (!esAdmin) {
       out.replies = [replies.noPermitido()];
@@ -937,18 +939,18 @@ async function handleCommand({ comando, input, out, listModels }) {
     return out;
   }
 
-  // --- Ajustes ---
+  // --- Settings ---
   if (sub === 'ajustes' || sub === 'ajuste' || sub === 'config') {
     if (!esAdmin) {
       out.replies = [replies.noPermitido()];
       return out;
     }
-    // "!claw ajustes" -> lista
+    // "!claw ajustes" -> list
     if (!palabras[1]) {
       out.replies = [ajustes.formato()];
       return out;
     }
-    // "!claw ajustes reset <clave>" -> volver al valor de fábrica
+    // "!claw ajustes reset <clave>" -> back to the factory value
     if (sinAcentos(palabras[1]) === 'reset' || sinAcentos(palabras[1]) === 'reiniciar') {
       const clave = claveDeAjuste(palabras[2]);
       if (!clave) {
@@ -965,14 +967,14 @@ async function handleCommand({ comando, input, out, listModels }) {
       return out;
     }
     const valor = palabras.slice(2).join(' ').trim();
-    // Sin valor: solo decir cómo está.
+    // No value: just say how it is.
     if (!valor) {
       out.replies = [
         `*${clave}* está en *${ajustes.bonito(ajustes.get(clave))}*\n_${ajustes.CATALOGO[clave].etiqueta}_`
       ];
       return out;
     }
-    // La lista de administradores solo la toca el dueño.
+    // Only the owner touches the administrator list.
     if (clave === 'admins' && !esDueno) {
       out.replies = ['🔒 Solo el dueño puede cambiar la lista de administradores.'];
       return out;
@@ -983,7 +985,45 @@ async function handleCommand({ comando, input, out, listModels }) {
     return out;
   }
 
-  // --- Administradores (atajo de "!claw ajustes admins") ---
+  // --- Bot language ---
+  const IDIOMA = ['idioma', 'language', 'lang', 'llengua', 'langue', 'sprache', 'lingua', 'idiomas', 'languages'];
+  if (IDIOMA.includes(sub)) {
+    out.action = 'comando-idioma';
+    if (!cola) {
+      const actual = i18n.infoIdioma();
+      const lineas = [
+        i18n.t('languageListTitle'),
+        '',
+        i18n.t('languageCurrent', { name: actual.name }),
+        '',
+        ...i18n.SOPORTADOS.map((code) => {
+          const info = i18n.infoIdioma(code);
+          return i18n.t('languageListLine', { code, name: info.name });
+        }),
+        '',
+        i18n.t('languageMore'),
+        '',
+        i18n.t('languageUsage')
+      ];
+      out.replies = [lineas.join('\n')];
+      return out;
+    }
+    if (!esAdmin) {
+      out.replies = [replies.noPermitido()];
+      return out;
+    }
+    const codigo = i18n.normalizarIdioma(cola);
+    if (!codigo) {
+      out.replies = [i18n.t('languageUnknown')];
+      return out;
+    }
+    i18n.guardarIdioma(codigo);
+    log.info(`Idioma cambiado por ${senderName}: ${codigo}`);
+    out.replies = [i18n.t('languageChanged', { name: i18n.infoIdioma(codigo).name })];
+    return out;
+  }
+
+  // --- Administrators (shortcut for "!claw ajustes admins") ---
   if (sub === 'admins' || sub === 'admin') {
     if (!esAdmin) {
       out.replies = [replies.noPermitido()];
@@ -1004,7 +1044,7 @@ async function handleCommand({ comando, input, out, listModels }) {
     return out;
   }
 
-  // --- Vetados: prohibir/permitir que alguien use a Claw ---
+  // --- Banned: forbid/allow someone to use Claw ---
   const PROHIBIR = ['prohibir', 'prohibe', 'veta', 'vetar', 'banea', 'banear', 'bloquea', 'bloquear'];
   const PERMITIR = ['permitir', 'permite', 'desvetar', 'desveta', 'desbloquear', 'desbloquea', 'desbanear'];
   if (PROHIBIR.includes(sub) || PERMITIR.includes(sub)) {
@@ -1041,7 +1081,7 @@ async function handleCommand({ comando, input, out, listModels }) {
     return out;
   }
 
-  // --- Ver la lista de vetados ---
+  // --- Show the banned list ---
   if (['vetados', 'prohibidos', 'bloqueados', 'veto'].includes(sub)) {
     if (!esAdmin) {
       out.replies = [replies.noPermitido()];
@@ -1052,7 +1092,7 @@ async function handleCommand({ comando, input, out, listModels }) {
     return out;
   }
 
-  // --- Modo mantenimiento (atajo de "!claw ajustes mantenimiento") ---
+  // --- Maintenance mode (shortcut for "!claw ajustes mantenimiento") ---
   if (sub === 'mantenimiento' || sub === 'manten' || sub === 'parar' || sub === 'pausa') {
     if (!esAdmin) {
       out.replies = [replies.noPermitido()];
@@ -1081,7 +1121,7 @@ async function handleCommand({ comando, input, out, listModels }) {
     return out;
   }
 
-  // --- Ver todo lo apuntado (deberes y exámenes) ---
+  // --- Show everything noted down (homework and exams) ---
   if (['apuntes', 'apunte', 'ver', 'guardado', 'memoria', 'todo'].includes(sub)) {
     const entries = memory.listEntries(100000, chatJid);
     out.action = 'comando-apuntes';
@@ -1089,7 +1129,7 @@ async function handleCommand({ comando, input, out, listModels }) {
     return out;
   }
 
-  // --- Contador de palabrotas ---
+  // --- Swear counter ---
   if (['palabrotas', 'palabrota', 'tacos', 'taco', 'insultos', 'insulto', 'groserias', 'groserías', 'swear'].includes(sub)) {
     const sub2 = sinAcentos(palabras[1] || '');
     if (sub2 === 'reset' || sub2 === 'reiniciar' || sub2 === 'borrar' || sub2 === 'cero') {
@@ -1113,7 +1153,7 @@ async function handleCommand({ comando, input, out, listModels }) {
     return out;
   }
 
-  // --- Apuntar/editar a mano un deber o examen (con su fecha límite) ---
+  // --- Note down/edit a homework item or exam by hand (with its deadline) ---
   if (['apunta', 'apuntar', 'pon', 'poner', 'fija', 'fijar', 'anade', 'añade', 'edita', 'editar', 'modifica', 'modificar'].includes(sub)) {
     if (!esAdmin && !config.apuntaLibre) {
       out.replies = [replies.noPermitido()];
@@ -1140,7 +1180,7 @@ async function handleCommand({ comando, input, out, listModels }) {
     return out;
   }
 
-  // --- Consultas de deberes y exámenes ---
+  // --- Homework and exam queries ---
   if (sub === 'deberes' || sub === 'deber' || sub === 'tareas') {
     const s = cola ? detectSubject(cola) : null;
     const entries = memory.findPending({ kind: 'deberes', subjectKey: s?.key || null, chatJid });
@@ -1199,7 +1239,7 @@ async function handleCommand({ comando, input, out, listModels }) {
     return out;
   }
 
-  // --- Borrar un apunte equivocado ---
+  // --- Delete a wrong entry ---
   if (sub === 'olvida' || sub === 'olvidar' || sub === 'borra') {
     if (!esAdmin) {
       out.replies = [replies.noPermitido()];
@@ -1217,7 +1257,7 @@ async function handleCommand({ comando, input, out, listModels }) {
     return out;
   }
 
-  // --- Marcar deberes o exámenes como hechos ---
+  // --- Mark homework or exams as done ---
   if (sub === 'hecho' || sub === 'hechos' || sub === 'entregado' || sub === 'terminado') {
     const pendientes = [
       ...memory.findPending({ kind: 'deberes', chatJid }),
@@ -1253,7 +1293,7 @@ async function handleCommand({ comando, input, out, listModels }) {
     return out;
   }
 
-  // --- Resumen de lo que se ha hablado ---
+  // --- Summary of what has been talked about ---
   if (sub === 'resumen' || sub === 'resumenes') {
     const dias = /hoy/.test(cola) ? 1 : /semana|7/.test(cola) ? 7 : 3;
     const texto = await resumenDeDias(chatJid, dias);
@@ -1262,7 +1302,7 @@ async function handleCommand({ comando, input, out, listModels }) {
     return out;
   }
 
-  // --- Qué hay de nuevo (novedades del bot) ---
+  // --- What is new (bot changelog) ---
   if (sub === 'novedades' || sub === 'novedad' || sub === 'changelog') {
     out.action = 'comando-novedades';
     const texto = textoNovedades();
@@ -1270,7 +1310,7 @@ async function handleCommand({ comando, input, out, listModels }) {
     return out;
   }
 
-  // --- Buscar en internet (DuckDuckGo) ---
+  // --- Web search (DuckDuckGo) ---
   if (sub === 'busca' || sub === 'buscar' || sub === 'buscarweb' || sub === 'googlea' || sub === 'internet') {
     if (!config.webSearchEnabled) {
       out.action = 'comando-busca';
@@ -1300,10 +1340,11 @@ async function handleCommand({ comando, input, out, listModels }) {
     return out;
   }
 
-  // --- Generar una imagen (EXPERIMENTAL) ---
-  // ÚNICO sitio de todo el bot donde se genera una imagen, y solo si alguien lo
-  // escribe a mano. Nunca se genera una imagen por hablar de ella: la barrera es
-  // el ajuste "imagenes" (apagado de fábrica), que solo el dueño/admins puede abrir.
+  // --- Generate an image (EXPERIMENTAL) ---
+  // The ONLY place in the whole bot where an image is generated, and only if
+  // someone types it by hand. An image is never generated just by talking about
+  // it: the barrier is the "imagenes" setting (off from the factory), which only
+  // the owner/admins can open.
   if (esPedidoDeImagen(sub)) {
     out.action = 'comando-imagen';
     if (!config.imageGenEnabled) {
@@ -1314,11 +1355,11 @@ async function handleCommand({ comando, input, out, listModels }) {
       out.replies = ['🎨 Dime qué dibujo. Ejemplo: _!claw imagen un pingüino con gafas de sol_'];
       return out;
     }
-    // Dibujar tarda cerca de un minuto: avisamos de que estamos en ello para
-    // que no parezca que se ha colgado (y lo quitamos al acabar, pase lo que pase).
+    // Drawing takes close to a minute: we announce it is going on so it does not
+    // look hung (and it is removed at the end, no matter what).
     presence.escribiendo(chatJid, true);
-    // Aviso inmediato sin depender de whatsapp.js (el router no lo importa para
-    // no crear un ciclo): whatsapp.js deja aquí su forma de mandar mensajes.
+    // Immediate notice without depending on whatsapp.js (the router does not
+    // import it, to avoid a cycle): whatsapp.js leaves its way of sending here.
     if (!presence.avisarTexto(chatJid, '🎨 Generando, por favor espera...')) {
       log.debug('No pude mandar el aviso de generación (sin conexión).');
     }
@@ -1329,13 +1370,13 @@ async function handleCommand({ comando, input, out, listModels }) {
       presence.escribiendo(chatJid, false);
     }
     if (!r.ok || (!r.buffer && !r.filePath)) {
-      // "Ocupado" no es un fallo: está dibujando otra. Se le dice claro.
+      // "Busy" is not a failure: it is drawing another one. Say it plainly.
       if (r.busy) {
         out.replies = [replies.imagenOcupadaReply()];
         return out;
       }
-      // Dejamos el motivo completo en el log (el mensaje del grupo solo lleva un
-      // resumen) para poder diagnosticar sin depender de lo que se vea.
+      // The full reason is left in the log (the group message only carries a
+      // summary) so it can be diagnosed without relying on what is visible.
       log.warn(`No pude generar la imagen "${cola}": ${r.error}`);
       out.replies = [replies.imagenErrorReply(r.error)];
       return out;
@@ -1346,7 +1387,7 @@ async function handleCommand({ comando, input, out, listModels }) {
     return out;
   }
 
-  // --- Modo ajedrez: jugar, analizar y hablar como un gran maestro ---
+  // --- Chess mode: play, analyse and talk like a grandmaster ---
   if (sub === 'ajedrez' || sub === 'chess' || sub === 'ajedrez') {
     if (!config.chessEnabled) {
       out.action = 'comando-ajedrez';
@@ -1372,16 +1413,16 @@ async function handleCommand({ comando, input, out, listModels }) {
     return out;
   }
 
-  // --- Cualquier otra cosa: es una pregunta para Claw ---
+  // --- Anything else: it is a question for Claw ---
   return handleClaw({ chatJid, senderName, text: comando.resto, mentionedBot, out });
 }
 
-/** Todo lo del modo ajedrez: empezar, mover, rendirse y comentar. */
+/** Everything chess mode does: start, move, resign and comment. */
 async function manejaAjedrez({ chatJid, senderName, cola, out }) {
   const t = sinAcentos(cola);
   out.action = 'comando-ajedrez';
 
-  // Empezar partida (o enseñar el tablero si ya hay una).
+  // Start a game (or show the board when one is already running).
   const quiereNueva = ['', 'nueva', 'nuevo', 'nuevo', 'reset', 'reiniciar', 'empezar', 'jugar'].includes(t);
   const quiereNegras = ['negras', 'black', 'b', 'con negras'].includes(t);
   const quiereBlancas = ['blancas', 'white', 'w', 'con blancas'].includes(t);
@@ -1431,7 +1472,7 @@ async function manejaAjedrez({ chatJid, senderName, cola, out }) {
     return out;
   }
 
-  // ¿Es una jugada?
+  // Is it a move?
   if (ajedrez.esJugada(cola)) {
     let estado = ajedrez.partida(chatJid);
     if (!estado) {
@@ -1456,7 +1497,7 @@ async function manejaAjedrez({ chatJid, senderName, cola, out }) {
       return out;
     }
     const partes = [r.texto];
-    // Si no ha terminado, contesta Claw.
+    // If it is not over, Claw replies.
     if (!r.gameOver) {
       const bot = await ajedrez.jugadaDelBot(chatJid);
       if (bot.ok) partes.push('', bot.texto);
@@ -1465,7 +1506,7 @@ async function manejaAjedrez({ chatJid, senderName, cola, out }) {
     return out;
   }
 
-  // Si no es jugada: hablamos de ajedrez como un gran maestro (o analizamos un FEN).
+  // If it is not a move: we talk about chess like a grandmaster (or analyse a FEN).
   const fen = ajedrez.extraeFen(cola);
   if (fen) {
     out.replies = [ajedrez.analiza(fen)];

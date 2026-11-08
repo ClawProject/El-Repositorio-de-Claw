@@ -1,11 +1,11 @@
-// Clasificador: convierte un mensaje del grupo en datos estructurados usando la IA local.
+// Classifier: turns a group message into structured data using the local AI.
 import { config } from './config.js';
 import { log } from './logger.js';
 import { chat } from './ollama.js';
 import { describeToday, todayISO, parseSpanishDate, extractDatePhrase, isValidISO } from './dates.js';
 import { canonicalSubject, subjectKey, detectSubject } from './subjects.js';
 
-// Esquema que le exigimos al modelo. Todo string (nada de null) para máxima compatibilidad.
+// Schema required from the model. Everything is a string (no null) for maximum compatibility.
 const SCHEMA = {
   type: 'object',
   properties: {
@@ -78,7 +78,7 @@ function safeJson(text) {
   try {
     return JSON.parse(cleaned);
   } catch {
-    // Intento de rescate: primer objeto {...} que aparezca
+    // Rescue attempt: the first {...} object that appears
     const start = cleaned.indexOf('{');
     const end = cleaned.lastIndexOf('}');
     if (start !== -1 && end > start) {
@@ -133,11 +133,11 @@ export function normalize(raw, { text, pending }) {
 
   let subject = typeof raw?.asignatura === 'string' ? raw.asignatura.trim() : '';
   const guess = detectSubject(text);
-  // Si el mensaje nombra explícitamente Física y Química, la mención conjunta
-  // prevalece sobre una respuesta parcial de la IA ("física" o "química").
+  // If the message explicitly names Physics and Chemistry, the joint mention
+  // prevails over a partial answer from the AI ("física" or "química").
   if (guess?.label === 'física y química') subject = guess.label;
   else if (subject) subject = canonicalSubject(subject) || subject;
-  // Si la IA no vio asignatura, intentamos detectarla nosotros en el texto.
+  // If the AI saw no subject, we try to detect it ourselves in the text.
   else if (guess) subject = guess.label;
   if (!subject && pending && tipo.startsWith('dato_') && pending.subject) {
     subject = canonicalSubject(pending.subject) || pending.subject;
@@ -151,10 +151,10 @@ export function normalize(raw, { text, pending }) {
     fechaTexto = dateInMessage.phrase;
   }
 
-  // Reparto de tareas: la IA decide QUE frase del mensaje es la fecha, y
-  // nosotros calculamos CUANDO es. La IA cuenta mal los dias ("el lunes" desde
-  // un miercoles -> domingo), asi que si hay una fecha en palabras la
-  // resolvemos siempre nosotros, que es determinista.
+  // Division of labour: the AI decides WHICH phrase of the message is the date,
+  // and we calculate WHEN it is. The AI miscounts days ("el lunes" starting from
+  // a Wednesday -> Sunday), so whenever there is a date in words we always
+  // resolve it ourselves, which is deterministic.
   const ours = fechaTexto ? parseSpanishDate(fechaTexto) : null;
   if (ours) {
     if (fecha && fecha !== ours) {
@@ -162,7 +162,7 @@ export function normalize(raw, { text, pending }) {
     }
     fecha = ours;
   } else if (!isValidISO(fecha)) {
-    // La IA no dio fecha util: ultimo intento buscandola en el propio mensaje.
+    // The AI gave no usable date: last attempt, looking for it in the message itself.
     fecha = parseSpanishDate(text) || '';
   }
 
@@ -173,7 +173,7 @@ export function normalize(raw, { text, pending }) {
 
   const content = typeof raw?.contenido === 'string' ? raw.contenido.trim() : '';
 
-  // En las preguntas la fecha no se usa para nada: evitamos ruido.
+  // In questions the date is not used at all: we avoid noise.
   if (tipo === 'pregunta_deberes' || tipo === 'pregunta_examen') {
     return {
       tipo,
@@ -200,7 +200,7 @@ export function normalize(raw, { text, pending }) {
 }
 
 /**
- * Analiza un mensaje del grupo.
+ * Analyses a group message.
  * @returns {Promise<{tipo:string, subject:string|null, content:string|null, fecha:string|null, fechaTexto:string|null, confidence:number, source:'ia'|'texto'|'error'}>}
  */
 export async function analyze({ text, pending = null, recent = [], senderName = null }) {

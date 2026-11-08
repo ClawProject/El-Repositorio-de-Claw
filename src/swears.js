@@ -1,20 +1,21 @@
-// Contador de "palabrotas": reconoce los tacos e insultos que se dicen en el grupo.
-// No censura nada ni regaña a nadie: solo cuenta, para el ranking de "!claw palabrotas".
+// Swear counter: recognises the swear words and insults said in the group.
+// It censors nothing and scolds nobody: it only counts, for the "!claw palabrotas"
+// ranking.
 //
-// La comparación es por palabras completas, así que "computadora" NO cuenta como
-// "puta" ni "conocido" como "coño". Se mantienen los acentos, así que "coño" y
-// "cono" (el de helado) son distintos.
+// Comparison is per whole word, so "computadora" does NOT count as "puta" nor
+// "conocido" as "coño". Accents are kept, so "coño" and "cono" (ice cream cone)
+// are different.
 
-// Palabras que cuentan como palabrota (en minúsculas, tal cual se escriben).
+// Words that count as a swear word (lowercase, exactly as written).
 const PALABRAS = [
-  // Clásicas
+  // Classic ones
   'puta', 'puto', 'putas', 'putos', 'putita', 'putito', 'putón', 'putona',
   'mierda', 'mierdas', 'mierdero', 'mierdoso',
   'joder', 'jodete', 'jódete', 'jodes', 'jodido', 'jodida', 'jodidos', 'jodidas',
   'jodienda', 'jodanse', 'jódanse', 'joputa', 'joputas',
   'coño', 'coños', 'cojones', 'cojonudo', 'cojonuda',
   'hostia', 'hostias', 'hostiaputa', 'ostia', 'ostias',
-  // Insultos
+  // Insults
   'cabrón', 'cabron', 'cabrona', 'cabrones', 'cabronas', 'cabronazo',
   'gilipollas', 'gilipuertas', 'imbécil', 'imbecil', 'imbéciles', 'imbeciles',
   'idiota', 'idiotas', 'capullo', 'capulla', 'capullos', 'capullas',
@@ -25,7 +26,7 @@ const PALABRAS = [
   'mamón', 'mamon', 'mamona', 'mamones',
   'hijoputa', 'hijoputas', 'hijaputa', 'malparido', 'malparida',
   'bastardo', 'bastarda',
-  // Más gruesas
+  // Cruder ones
   'polla', 'pollas', 'pollón', 'verga', 'vergas', 'chupapollas', 'chupavergas',
   'culo', 'culos', 'culiao', 'culiada', 'culiaos',
   'huevón', 'huevon', 'huevones', 'hueón', 'weón', 'weon'
@@ -33,14 +34,14 @@ const PALABRAS = [
 
 const SET = new Set(PALABRAS);
 
-// Frases hechas que también cuentan como una palabrota.
+// Set phrases that also count as one swear word.
 const FRASES = [
   { re: /\bhijo\s+de\s+puta\b/i, nombre: 'hijo de puta' },
   { re: /\bme\s+cag(?:ü|u)en\b/i, nombre: 'me cagüen' },
   { re: /\bcago\s+en\b/i, nombre: 'cago en' }
 ];
 
-/** Trocea el texto en palabras (letras, con acentos y ñ). */
+/** Splits the text into words (letters, with accents and ñ). */
 function palabrasDe(texto) {
   return String(texto || '')
     .toLowerCase()
@@ -48,13 +49,13 @@ function palabrasDe(texto) {
     .filter(Boolean);
 }
 
-/** ¿Es una palabrota suelta? (una sola palabra) */
+/** Is it a standalone swear word? (a single word) */
 export function esPalabrota(palabra) {
   return SET.has(String(palabra || '').toLowerCase().trim());
 }
 
 /**
- * Cuenta las palabrotas de un texto.
+ * Counts the swear words in a text.
  * @returns {{total:number, byWord:Record<string,number>}}
  */
 export function contarPalabrotas(texto) {
@@ -79,7 +80,7 @@ export function contarPalabrotas(texto) {
   return { total, byWord };
 }
 
-/** Todas las palabras conocidas (por si hiciera falta). */
+/** All known words (in case they are needed). */
 export function listaPalabrotas() {
   return [...PALABRAS];
 }

@@ -1,6 +1,6 @@
-// Prueba de vetados: comprueba que un veto por número también se aplica
-// cuando WhatsApp identifica a la persona solo con su @lid (y al revés).
-// Uso: npm run test:vetados  (no necesita Ollama ni WhatsApp)
+// Banned test: checks that a ban by number also applies when WhatsApp
+// identifies the person only with their @lid (and the other way round).
+// Usage: npm run test:vetados  (it needs neither Ollama nor WhatsApp)
 import os from 'node:os';
 import path from 'node:path';
 import { config } from '../config.js';
@@ -47,40 +47,40 @@ function caso(label, r, esperado) {
 
 let todoOk = true;
 
-// El dueño veta el número de Caco.
+// The owner bans Caco's number.
 let r = await dice('!claw prohibir +34600555444', DUENO, DUENO, 'Dueno');
 todoOk = caso('vetar por número', r, 'comando-prohibir') && todoOk;
 
-// Aprendemos la equivalencia número <-> @lid (lo hace whatsapp.js al ver un mensaje).
+// Learn the number <-> @lid equivalence (whatsapp.js does this when it sees a message).
 recordarAlias(CACO_LID, CACO_PN);
 
 todoOk = caso('vetado llega con número', await dice('!claw apuntes', CACO_PN, null, 'Caco'), 'vetado') && todoOk;
 todoOk = caso('vetado llega con @lid + número', await dice('!claw apuntes', CACO_LID, CACO_PN, 'Caco'), 'vetado') && todoOk;
 todoOk = caso('vetado llega SOLO con @lid', await dice('!claw apuntes', CACO_LID, null, 'Caco'), 'vetado') && todoOk;
 
-// El dueño también puede ser reconocido por su @lid.
+// The owner can also be recognised by their @lid.
 recordarAlias('555000111@lid', DUENO);
 todoOk = caso('el dueño es admin también con @lid', await dice('!claw vetados', '555000111@lid', null, 'Dueno'), 'comando-vetados') && todoOk;
 
-// Perdonar usando el número debe quitar el veto aunque el mensaje llegue por @lid.
+// Allowing by number must lift the ban even when the message arrives via the @lid.
 r = await dice('!claw permitir +34600555444', DUENO, DUENO, 'Dueno');
 todoOk = caso('perdonar por número', r, 'comando-permitir') && todoOk;
 todoOk = caso('tras perdonar, el @lid ya no está vetado', await dice('!claw apuntes', CACO_LID, null, 'Caco'), 'comando-apuntes') && todoOk;
 
-// Y al revés: vetar por @lid bloquea también los mensajes con el número.
+// And the other way round: banning by @lid also blocks the messages with the number.
 r = await dice(`!claw prohibir ${CACO_LID}`, DUENO, DUENO, 'Dueno');
 todoOk = caso('vetar por @lid', r, 'comando-prohibir') && todoOk;
 todoOk = caso('vetado por @lid llega con número', await dice('!claw apuntes', CACO_PN, null, 'Caco'), 'vetado') && todoOk;
 todoOk = caso('vetado por @lid llega con @lid', await dice('!claw apuntes', CACO_LID, null, 'Caco'), 'vetado') && todoOk;
 
-// El número se puede escribir con o sin el prefijo del país.
+// The number can be written with or without the country prefix.
 r = await dice('!claw prohibir 600777888', DUENO, DUENO, 'Dueno');
 todoOk = caso('vetar sin prefijo del país', r, 'comando-prohibir') && todoOk;
 todoOk = caso('ese veto bloquea el número con prefijo', await dice('!claw apuntes', '34600777888@s.whatsapp.net', null, 'Otro'), 'vetado') && todoOk;
 r = await dice('!claw permitir +34600777888', DUENO, DUENO, 'Dueno');
 todoOk = caso('perdonar con prefijo quita el veto sin prefijo', r, 'comando-permitir') && todoOk;
 
-// El dueño no se puede vetar ni a través de un alias.
+// The owner cannot be banned, not even through an alias.
 r = await dice('!claw prohibir 555000111@lid', DUENO, DUENO, 'Dueno');
 const protegido =
   /No puedo vetar/i.test(r.replies.join(' ')) && !admins.esVetado(DUENO, '555000111@lid');

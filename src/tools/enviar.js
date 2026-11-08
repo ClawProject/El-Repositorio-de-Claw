@@ -1,10 +1,10 @@
-// Manda UN mensaje al grupo del instituto desde tu propia cuenta de WhatsApp.
+// Sends ONE message to the school group from your own WhatsApp account.
 //
-//   npm run enviar "texto del mensaje"
-//   npm run enviar -- --listar        (ver los grupos y su identificador)
+//   npm run enviar "message text"
+//   npm run enviar -- --listar        (list the groups and their identifier)
 //
-// OJO: cierra antes el bot (arrancar.bat) si lo tienes abierto. Dos conexiones
-// a la vez con la misma sesión se pelean y WhatsApp cierra una de las dos.
+// CAREFUL: close the bot first (arrancar.bat) if you have it open. Two
+// connections at once with the same session fight and WhatsApp closes one.
 import { config } from '../config.js';
 import * as memory from '../memory.js';
 import { welcomeText } from '../replies.js';
@@ -37,14 +37,14 @@ function ok(msg) {
 }
 
 /**
- * ¿A qué grupo lo mando? Solo por identificador: el del .env o el que guardó
- * el bot al vincularse con "!claw aqui". El nombre no se usa para elegir grupo.
+ * Which group does it go to? Only by identifier: the one from .env or the one
+ * the bot saved when linking with "!claw aqui". Names are not used to pick a group.
  */
 async function resolverGrupo() {
   try {
     await memory.init(config.dbPath);
   } catch {
-    /* si no hay base de datos, tiramos del .env */
+    /* with no database, fall back to the .env */
   }
 
   const jidFijo = config.groupJid || (memory.getSetting('group_jid') || null);
@@ -68,8 +68,8 @@ async function main() {
     bail('No hay sesión de WhatsApp guardada todavía. Arranca el bot y escanea el QR.');
     return;
   } else if (!state.creds?.registered && state.creds?.me?.id) {
-    // Para evitar un bucle: si solo tenemos me.id pero registered es false
-    // (esto pasa a veces con sesiones antiguas), forzamos registered = true
+    // To avoid a loop: with only me.id and registered false (which happens
+    // sometimes with old sessions), force registered = true
     state.creds.registered = true;
   }
 
@@ -159,7 +159,7 @@ async function main() {
       const mentions = (meta.participants || []).map((p) => p.id).filter(Boolean);
       if (mentions.length) payload.mentions = mentions;
     } catch {
-      /* si no puedo ver los participantes, mandamos solo el texto */
+      /* if the participants cannot be read, send the text only */
     }
   }
   const enviado = await sock.sendMessage(destino.jid, payload);
@@ -167,13 +167,13 @@ async function main() {
     try {
       memory.setSetting('welcome_sent', new Date().toISOString());
     } catch {
-      /* nada */
+      /* nothing */
     }
   }
   console.log(`\n  ✅ Enviado:\n\n    ${texto}\n`);
   ok(`id del mensaje: ${enviado?.key?.id || '?'}`);
 
-  // Un respiro para que WhatsApp confirme antes de cortar.
+  // A short pause so WhatsApp confirms before cutting the connection.
   await new Promise((r) => setTimeout(r, 1500));
   sock.end();
 }
@@ -188,7 +188,7 @@ main()
     try {
       memory.close();
     } catch {
-      /* nada */
+      /* nothing */
     }
     setTimeout(() => process.exit(process.exitCode || 0), 400);
   });

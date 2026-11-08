@@ -1,13 +1,13 @@
-// Quién manda en PickleBrain: el dueño y los administradores.
+// Who is in charge in PickleBrain: the owner and the administrators.
 //
-// El dueño es el número del propio bot (o el que se ponga en WHATSAPP_OWNER_JID).
-// Solo el dueño y los administradores pueden ver y tocar los ajustes.
+// The owner is the bot's own number (or whatever is set in WHATSAPP_OWNER_JID).
+// Only the owner and the administrators can see and change the settings.
 import { config, jidDeLaCuenta, jidLidDeLaCuenta } from './config.js';
 import * as settings from './settings.js';
 import { identidades } from './identities.js';
 
-/** Solo los números, para comparar aunque el JID venga como "@lid" o con el dispositivo pegado.
- *  Si el JID no es numérico (los nombres de prueba), comparamos el nombre tal cual. */
+/** Digits only, so they can be compared even when the JID comes as "@lid" or with
+ *  the device attached. If the JID is not numeric (test names), compare the name as is. */
 export function numeroDe(jid) {
   const local = String(jid || '')
     .split('@')[0]
@@ -15,10 +15,10 @@ export function numeroDe(jid) {
     .trim();
   const soloDigitos = local.replace(/[^0-9]/g, '');
   if (!soloDigitos) return local.toLowerCase();
-  // Los móviles españoles tienen 9 dígitos (empiezan por 6 o 7) y WhatsApp los
-  // guarda con el 34 delante. Igualamos las dos formas para que "600111222" y
-  // "34600111222" cuenten como la misma persona: la gente (y el README) suele
-  // escribir el número sin prefijo.
+  // Spanish mobile numbers have 9 digits (starting with 6 or 7) and WhatsApp
+  // stores them with 34 in front. We treat both forms as equal so "600111222"
+  // and "34600111222" count as the same person: people (and the README) usually
+  // write the number without the prefix.
   if (/^[67]\d{8}$/.test(soloDigitos)) return `34${soloDigitos}`;
   return soloDigitos;
 }
@@ -29,31 +29,31 @@ export function sonIguales(a, b) {
   return Boolean(na) && na === nb;
 }
 
-/** Todas las identidades del dueño: su número y su "@lid".
- *  WhatsApp manda los mensajes propios con cualquiera de las dos formas, así que
- *  hay que reconocer ambas para no ignorarte a ti mismo. */
+/** Every identity of the owner: their number and their "@lid".
+ *  WhatsApp sends your own messages with either form, so both must be recognised
+ *  in order not to ignore yourself. */
 export function identidadesDueno() {
   return [config.ownerJid, jidDeLaCuenta(), jidLidDeLaCuenta()].filter(Boolean);
 }
 
-/** El número del dueño (la primera identidad disponible). */
+/** The owner's number (the first available identity). */
 export function duenoJid() {
   return identidadesDueno()[0] || null;
 }
 
-/** Todos los que pueden tocar los ajustes (el dueño siempre está). */
+/** Everyone who can change the settings (the owner is always included). */
 export function admins() {
   const lista = [...identidadesDueno(), ...(config.adminJids || []), ...(settings.get('admins') || [])];
   return [...new Set(lista.filter(Boolean))];
 }
 
-/** Gente vetada: no puede usar a Claw (ni hablarle ni comandos). */
+/** Banned people: they cannot use Claw (neither talk to it nor run commands). */
 export function vetados() {
   const lista = [...(config.blockedJids || []), ...(settings.get('vetados') || [])];
   return [...new Set(lista.filter(Boolean))];
 }
 
-/** ¿Es el dueño? (se admiten varios JID para la misma persona: @lid y @s.whatsapp.net) */
+/** Is it the owner? (several JIDs for the same person are accepted: @lid and @s.whatsapp.net) */
 export function esDueno(...jids) {
   const ids = identidadesDueno();
   if (!ids.length) return false;
@@ -67,7 +67,7 @@ export function esAdmin(...jids) {
   return conocidos.some((j) => lista.some((a) => sonIguales(j, a)));
 }
 
-/** ¿Está vetado (no puede usar a Claw)? El dueño y los admins nunca lo están. */
+/** Is it banned (cannot use Claw)? The owner and admins never are. */
 export function esVetado(...jids) {
   if (esAdmin(...jids)) return false;
   const lista = vetados();
@@ -75,7 +75,7 @@ export function esVetado(...jids) {
   return conocidos.some((j) => lista.some((v) => sonIguales(j, v)));
 }
 
-/** Veta a alguien (no podrá usar a Claw). Devuelve false si ya lo estaba o es admin. */
+/** Bans someone (they will not be able to use Claw). Returns false if already banned or an admin. */
 export function addVetado(jid) {
   const limpio = String(jid || '').trim();
   if (!limpio || esAdmin(limpio) || esVetado(limpio)) return false;
@@ -84,8 +84,8 @@ export function addVetado(jid) {
   return true;
 }
 
-/** Quita el veto. Devuelve false si no estaba vetado.
- *  Acepta cualquier identidad conocida de la persona (número o @lid). */
+/** Lifts the ban. Returns false if it was not banned.
+ *  Accepts any known identity of the person (number or @lid). */
 export function removeVetado(jid) {
   const actuales = settings.get('vetados') || [];
   const ids = identidades(jid);
@@ -95,7 +95,7 @@ export function removeVetado(jid) {
   return true;
 }
 
-/** Añade un administrador (el dueño no hace falta: ya lo es). */
+/** Adds an administrator (the owner does not need it: they already are one). */
 export function addAdmin(jid) {
   const limpio = String(jid || '').trim();
   if (!limpio || esAdmin(limpio)) return false;

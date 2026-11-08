@@ -1,5 +1,5 @@
-// Comprobacion rapida de que todos los modulos se cargan sin error.
-// Uso: node src/tools/smoke.js
+// Quick check that every module loads without errors.
+// Usage: node src/tools/smoke.js
 import { config } from '../config.js';
 console.log('config ok ->', config.ollamaModel, config.timezone);
 const dates = await import('../dates.js');

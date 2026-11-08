@@ -1,4 +1,4 @@
-// Punto de entrada de PickleBrain.
+// PickleBrain entry point.
 import { config } from './config.js';
 import { log } from './logger.js';
 import * as memory from './memory.js';
@@ -13,6 +13,7 @@ import { textoNovedades, marcadorNovedades } from './changelog.js';
 import { start, stop, sendReplies, estaConectado, cuandoConecte } from './whatsapp.js';
 import * as power from './power.js';
 import { startServer } from './server.js';
+import { prepararIdioma } from './setup.js';
 
 let cleanupTimer = null;
 let avisosTimer = null;
@@ -29,11 +30,11 @@ function runCleanup(reason) {
   }
 }
 
-/** Recordatorios de exámenes y deberes: avisa la tarde antes y la mañana del día. */
+/** Exam and homework reminders: warns the evening before and on the morning of the day. */
 async function runAvisos(reason = 'periódica') {
   try {
-    if (config.maintenance) return; // en mantenimiento no molestamos
-    if (!estaConectado()) return; // sin conexión no hay nada que mandar (se reintenta luego)
+    if (config.maintenance) return; // do not disturb while in maintenance
+    if (!estaConectado()) return; // with no connection there is nothing to send (retried later)
     const grupos = boundGroupJids();
     if (!grupos.length) return;
     let enviados = 0;
@@ -46,7 +47,7 @@ async function runAvisos(reason = 'periódica') {
         yaEnviado: (clave) => Boolean(memory.getSetting(clave))
       });
       for (const aviso of pendientes) {
-        // Solo se da por enviado si de verdad salió (si no, se reintenta).
+        // Only counts as sent if it really went out (otherwise it is retried).
         if (!(await sendReplies(grupo, [aviso.texto]))) continue;
         memory.setSetting(aviso.clave, new Date().toISOString());
         log.info(`Recordatorio (${aviso.cuando}) enviado a ${grupo}.`);
@@ -59,12 +60,12 @@ async function runAvisos(reason = 'periódica') {
   }
 }
 
-/** Resumen semanal automático (por defecto, domingos por la tarde). */
+/** Automatic weekly summary (Sunday afternoons by default). */
 async function runResumen() {
   try {
-    if (config.maintenance) return; // en mantenimiento no molestamos
+    if (config.maintenance) return; // do not disturb while in maintenance
     if (!config.summaryEnabled) return;
-    if (!estaConectado()) return; // sin conexión no hay nada que mandar
+    if (!estaConectado()) return; // with no connection there is nothing to send
     const grupos = boundGroupJids();
     if (!grupos.length) return;
     for (const grupo of grupos) {
@@ -72,7 +73,7 @@ async function runResumen() {
       if (!tocaResumenSemanal(new Date(), ultima)) continue;
       const texto = await resumenSemanal(grupo);
       if (texto && (await sendReplies(grupo, [texto]))) {
-        // Se marca solo si salió de verdad, para no perder el resumen de la semana.
+        // Only marked if it really went out, so the week's summary is not lost.
         memory.setSetting(`resumen_semanal:${grupo}`, new Date().toISOString().slice(0, 10));
         log.info(`Resumen semanal enviado a ${grupo}.`);
       }
@@ -82,21 +83,21 @@ async function runResumen() {
   }
 }
 
-/** Novedades del bot: se cuentan al grupo una sola vez por cambio. */
+/** Bot changelog: told to the group only once per change. */
 async function runNovedades() {
   try {
     if (!config.changelogNotify) return;
-    if (config.maintenance) return; // en mantenimiento no molestamos
-    if (!estaConectado()) return; // si no hay conexión, lo intentamos más tarde
+    if (config.maintenance) return; // do not disturb while in maintenance
+    if (!estaConectado()) return; // if there is no connection, we try again later
     const grupos = boundGroupJids();
     if (!grupos.length) return;
     const clave = marcadorNovedades();
-    if (!clave || memory.getSetting(clave)) return; // ya se contó esta novedad
+    if (!clave || memory.getSetting(clave)) return; // this change was already announced
     const texto = textoNovedades();
     if (!texto) return;
     const enviados = [];
     for (const grupo of grupos) {
-      // Solo marcamos los grupos donde SÍ se pudo enviar, para reintentar el resto.
+      // Only mark the groups where it WAS sent, so the rest are retried.
       if (await sendReplies(grupo, [texto])) enviados.push(grupo);
     }
     if (enviados.length === grupos.length) {
@@ -118,14 +119,16 @@ async function main() {
 
   await memory.init();
   ajustes.aplicarTodos();
-  resetTransientState(); // no arrastrar preguntas abiertas de la ejecucion anterior
+  resetTransientState(); // do not carry over open questions from the previous run
   media.ensureDirs();
   startServer();
+  // First start: the bot does not connect to WhatsApp until a language is chosen.
+  await prepararIdioma();
   log.info(
     `Ajustes cargados. Claw: ${config.ollamaModel} | Apuntes: ${config.ollamaBrainModel} | Zona horaria: ${config.timezone}`
   );
 
-  // Candado de energía: que el ordenador no se duerma mientras el bot está abierto.
+  // Power lock: keep the computer awake while the bot is running.
   power.start();
   const asignados = boundGroupJids();
   if (asignados.length) {
@@ -136,7 +139,7 @@ async function main() {
     log.info('Sin grupo asignado. Escribe "!claw aqui" dentro del grupo del instituto.');
   }
 
-  // --- Extras: fotos y notas de voz ---
+  // --- Extras: photos and voice notes ---
   const voiceOn = config.transcribeEnabled && config.transcribeMode !== 'nada';
   if (voiceOn) {
     const motorVoz = await voiceEngine();
@@ -146,7 +149,7 @@ async function main() {
           ? 'Notas de voz activadas con Python/faster-whisper.'
           : `Notas de voz activadas con Whisper local (modelo ${config.whisperModel}).`
       );
-      // Lo dejamos cargando en segundo plano: la primera nota de voz ya irá rápida.
+      // Load it in the background: the first voice note will then be fast.
       warmupVoice().catch(() => {});
     } else {
       log.warn('No encuentro el servicio Python de voz ni ffmpeg: no podré entender notas de voz.');
@@ -176,7 +179,7 @@ async function main() {
     log.info(`Ollama responde. Modelo "${config.ollamaModel}" disponible.`);
   }
 
-  // --- Limpieza automatica: borra lo que ya caduco ---
+  // --- Automatic cleanup: deletes whatever has expired ---
   runCleanup('arranque');
   const everyMs = Math.max(5, config.cleanupIntervalMinutes) * 60000;
   cleanupTimer = setInterval(() => runCleanup('periódica'), everyMs);
@@ -184,10 +187,10 @@ async function main() {
 
   await start();
 
-  // --- Avisos de exámenes, novedades y resumen semanal ---
-  // `start()` termina antes de que la conexión esté abierta, así que nos
-  // apuntamos a "cuando conecte" para no mandar nada antes de tiempo (y para
-  // reintentarlo solo cuando de verdad haya conexión).
+  // --- Exam notices, changelog and weekly summary ---
+  // `start()` returns before the connection is open, so we subscribe to
+  // "when it connects" to avoid sending anything too early (and to retry only
+  // when there really is a connection).
   cuandoConecte(() => {
     runNovedades();
     runAvisos('arranque');
@@ -222,7 +225,7 @@ process.on('uncaughtException', (err) => {
   log.error('Error no capturado:', err?.message || err);
   log.debug(err?.stack);
 });
-// Suelta el candado de energía pase lo que pase al cerrar.
+// Release the power lock no matter how it closes.
 process.on('exit', () => power.stop());
 
 main().catch((err) => {

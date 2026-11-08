@@ -1,9 +1,9 @@
-// Transcripcion de notas de voz, en local.
+// Voice note transcription, locally.
 //
-// Camino principal: servicio Python (python/server.py) con faster-whisper.
-// Respaldo:         audio -> ffmpeg -> PCM 16 kHz -> transformers.js (ONNX).
+// Main path: Python service (python/server.py) with faster-whisper.
+// Fallback:  audio -> ffmpeg -> 16 kHz PCM -> transformers.js (ONNX).
 //
-// No sale nada a internet salvo la primera descarga del modelo.
+// Nothing goes to the internet except the first model download.
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { config } from './config.js';
@@ -22,7 +22,7 @@ export class TranscribeUnavailable extends Error {
   }
 }
 
-/** Comprueba que ffmpeg existe y responde. */
+/** Checks that ffmpeg exists and responds. */
 export async function ffmpegAvailable() {
   try {
     await execFileAsync(config.ffmpegPath, ['-version'], { timeout: 10000 });
@@ -33,8 +33,9 @@ export async function ffmpegAvailable() {
 }
 
 /**
- * Qué motor de voz usaría ahora mismo: 'python', 'node' o null si no hay ninguno.
- * Con Python no hace falta ffmpeg (faster-whisper decodifica el audio él solo).
+ * Which voice engine would be used right now: 'python', 'node' or null if none
+ * is available. With Python, ffmpeg is not needed (faster-whisper decodes the
+ * audio by itself).
  */
 export async function voiceEngine() {
   if (config.pythonAiEnabled && (await pythonAi.vozDisponible())) return 'python';
@@ -42,12 +43,12 @@ export async function voiceEngine() {
   return null;
 }
 
-/** ¿Podemos transcribir con algún motor? */
+/** Can we transcribe with any engine? */
 export async function voiceAvailable() {
   return (await voiceEngine()) !== null;
 }
 
-/** Carga (una sola vez) el modelo de Whisper. */
+/** Loads the Whisper model (only once). */
 async function getTranscriber({ localFilesOnly = false } = {}) {
   if (transcriber) return transcriber;
   if (!pipelinePromise) {
@@ -60,11 +61,11 @@ async function getTranscriber({ localFilesOnly = false } = {}) {
           'Falta el paquete de transcripcion. Ejecuta:  npm install @huggingface/transformers'
         );
       }
-      // Que no llene la consola con avisos de descarga.
+      // Keep it from flooding the console with download warnings.
       try {
         transformers.env.logLevel = 'error';
       } catch {
-        /* ignorar */
+        /* ignore */
       }
 
       log.info(
@@ -88,7 +89,7 @@ async function getTranscriber({ localFilesOnly = false } = {}) {
   return transcriber;
 }
 
-/** Pasa cualquier audio a PCM mono 16 bits 16 kHz usando ffmpeg. */
+/** Converts any audio to 16-bit mono 16 kHz PCM using ffmpeg. */
 async function decodeToPcm(inputPath) {
   try {
     const { stdout } = await execFileAsync(
@@ -121,7 +122,7 @@ async function decodeToPcm(inputPath) {
   }
 }
 
-/** Convierte PCM 16-bit little endian a Float32 en el rango [-1, 1]. */
+/** Converts 16-bit little-endian PCM to Float32 in the [-1, 1] range. */
 function pcmToFloat32(buffer) {
   const samples = Math.floor(buffer.length / 2);
   const out = new Float32Array(samples);
@@ -132,13 +133,13 @@ function pcmToFloat32(buffer) {
 }
 
 /**
- * Transcribe un archivo de audio (nota de voz, audio, video...).
+ * Transcribes an audio file (voice note, audio, video...).
  * @param {string} filePath
  * @returns {Promise<{text:string, seconds:number, ms:number}>}
  */
 export async function transcribeFile(filePath, { localFilesOnly = false } = {}) {
-  // Primero el servicio Python (faster-whisper): no necesita ffmpeg y suele ser
-  // más rápido. Si falla y el respaldo está permitido, seguimos con Node.
+  // First the Python service (faster-whisper): it needs no ffmpeg and is usually
+  // faster. If it fails and fallback is allowed, we continue with Node.
   if (config.pythonAiEnabled && (await pythonAi.vozDisponible())) {
     try {
       return await pythonAi.transcribir(filePath);
@@ -176,7 +177,7 @@ export async function transcribeFile(filePath, { localFilesOnly = false } = {}) 
   return { text, seconds, ms: Date.now() - t0 };
 }
 
-/** Precalienta el modelo (util al arrancar para la primera nota de voz). */
+/** Warms up the model (useful at startup for the first voice note). */
 export async function warmup() {
   if (config.pythonAiEnabled && (await pythonAi.vozDisponible())) {
     const listo = await pythonAi.warmupVoz();

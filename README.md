@@ -520,12 +520,6 @@ Yes, as long as the host computer remains powered on and the WhatsApp linked-dev
 
 Claw stops running, but its stored information remains in `data/picklebrain.db`.
 
-@Puraciencia-mp
-
-¿Cómo funciona la Inteligencia Artificial (IA)?  Parte 2
-
-¿Cómo Funciona Realmente la Inteligencia Artificial?
-
 **Can WhatsApp ban my number?**
 
 There is a real risk. Claw uses Baileys, an unofficial WhatsApp Web library. WhatsApp's terms restrict unauthorized automation. Using a separate number is recommended.

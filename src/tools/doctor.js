@@ -1,5 +1,5 @@
-// Diagnostico: comprueba que todo lo necesario funciona.
-// Uso:  npm run doctor
+// Diagnostics: checks that everything needed works.
+// Usage:  npm run doctor
 import fs from 'node:fs';
 import { config } from '../config.js';
 import { log } from '../logger.js';
@@ -32,7 +32,7 @@ async function main() {
     check('Modulo node:sqlite', false, err.message);
   }
 
-  // 3. Carpeta de datos
+  // 3. Data folder
   try {
     fs.mkdirSync(config.dataDir, { recursive: true });
     const probe = `${config.dataDir}/.probe`;
@@ -43,7 +43,7 @@ async function main() {
     check('Carpeta de datos escribible', false, err.message);
   }
 
-  // 4. Base de datos
+  // 4. Database
   try {
     await memory.init();
     const s = memory.stats();
@@ -68,7 +68,7 @@ async function main() {
 
   if (!hasModel) return summary();
 
-  // 6. Inferencia real
+  // 6. Real inference
   const t0 = Date.now();
   let warm = false;
   try {
@@ -85,7 +85,7 @@ async function main() {
     check('Inferencia del modelo', false, err.message);
   }
 
-  // 7. Analizador con ejemplos reales
+  // 7. Classifier with real examples
   const samples = [
     { text: 'chicos que deberes hay de mates?', esperado: 'pregunta_deberes' },
     { text: 'el examen de historia es el 20 de octubre', esperado: 'dato_examen' },
@@ -105,7 +105,7 @@ async function main() {
   }
   check('Clasificador', aciertos >= 3, `${aciertos}/${samples.length} aciertos`);
 
-  // 8. Filtros sin IA
+  // 8. Filters without AI
   const hola = todayISO();
   console.log(`\n         Hoy es ${describeToday(hola)}`);
   check(
@@ -117,7 +117,7 @@ async function main() {
   check('Filtro de ruido', !looksRelevant('jajaja que risa'), 'los memes no despiertan al bot');
   check('Modo Claw', clawQuestion('Claw cuanto son 2+2') === 'cuanto son 2+2', 'Claw cuanto son 2+2 -> "cuanto son 2+2"');
 
-  // 9. Fotos y espacio en disco
+  // 9. Photos and disk space
   console.log('');
   const mediaLib = await import('../media.js');
   try {
@@ -143,7 +143,7 @@ async function main() {
   const guardado = mediaLib.dirStats();
   check('Archivos guardados ahora', true, `${guardado.files} archivo(s), ${guardado.mb} MB`);
 
-  // 10. Notas de voz
+  // 10. Voice notes
   console.log('');
   if (!config.transcribeEnabled || config.transcribeMode === 'nada') {
     check('Entender notas de voz', null, 'desactivado en la configuracion');

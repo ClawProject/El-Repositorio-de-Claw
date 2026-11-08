@@ -1,16 +1,16 @@
-// Candado de energía: mientras el bot está abierto, evita que Windows duerma o
-// hiberne el ordenador (si se suspendiera, se caería la conexión con WhatsApp).
+// Power lock: while the bot is open, it keeps Windows from sleeping or
+// hibernating the computer (if it suspended, the WhatsApp connection would drop).
 //
-// Usa la API de Windows SetThreadExecutionState con ES_CONTINUOUS. Lo que hace
-// es pedirle al sistema "no te duermas" DESDE UN HILO VIVO: si ese proceso
-// termina, el sistema vuelve a la normalidad. No cambia ningún ajuste del PC.
-// Como hay que mantener un hilo vivo, lanzamos un pequeño PowerShell en segundo
-// plano que se queda esperando y, además, se cierra solo si el bot desaparece.
+// It uses the Windows SetThreadExecutionState API with ES_CONTINUOUS. What it does
+// is ask the system "do not sleep" FROM A LIVE THREAD: if that process ends, the
+// system goes back to normal. It changes no PC setting at all.
+// Since a live thread has to be kept, we launch a small PowerShell in the
+// background that waits and also closes itself if the bot disappears.
 import { spawn } from 'node:child_process';
 import { config } from './config.js';
 import { log } from './logger.js';
 
-// Flags de SetThreadExecutionState (documentación de Microsoft).
+// SetThreadExecutionState flags (Microsoft documentation).
 const ES_CONTINUOUS = 0x80000000;
 const ES_SYSTEM_REQUIRED = 0x00000001;
 const ES_DISPLAY_REQUIRED = 0x00000002;
@@ -19,8 +19,8 @@ let child = null;
 let childFlags = 0;
 
 function flagsDeseados() {
-  // >>> 0 para que salga como entero sin signo (el OR de JS es de 32 bits con signo
-  // y 0x80000000 quedaría negativo, que PowerShell rechaza como uint32).
+  // >>> 0 so it comes out as an unsigned integer (JS OR is signed 32-bit and
+  // 0x80000000 would end up negative, which PowerShell rejects as uint32).
   return (ES_CONTINUOUS | ES_SYSTEM_REQUIRED | (config.keepDisplay ? ES_DISPLAY_REQUIRED : 0)) >>> 0;
 }
 
@@ -35,7 +35,7 @@ function iniciar(flags) {
     `$padre = ${padre}`,
     'while ($true) {',
     '  Start-Sleep -Seconds 20',
-    // Si el bot ya no existe (p. ej. se cerró a lo bruto), nos vamos y soltamos el candado.
+    // If the bot no longer exists (e.g. it was force-closed), we leave and drop the lock.
     '  if (-not (Get-Process -Id $padre -ErrorAction SilentlyContinue)) { break }',
     '  [PickleWake.Native]::SetThreadExecutionState($flags) | Out-Null',
     '}'
@@ -74,13 +74,13 @@ function iniciar(flags) {
   childFlags = flags;
 }
 
-/** Activa el candado si toca (Windows y ajuste activado). */
+/** Enables the lock when appropriate (Windows and the setting enabled). */
 export function start() {
   if (child || process.platform !== 'win32' || !config.preventSleep) return;
   iniciar(flagsDeseados());
 }
 
-/** Suelta el candado (al cerrar el bot). */
+/** Releases the lock (when the bot closes). */
 export function stop() {
   if (!child) return;
   const proc = child;
@@ -89,11 +89,11 @@ export function stop() {
   try {
     proc.kill();
   } catch {
-    /* da igual */
+    /* ignore */
   }
 }
 
-/** Pone el candado al día con los ajustes actuales (por si cambian en caliente). */
+/** Brings the lock in line with the current settings (in case they change live). */
 export function sync() {
   const quiere = process.platform === 'win32' && config.preventSleep;
   if (!quiere) {

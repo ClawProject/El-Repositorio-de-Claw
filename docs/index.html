@@ -97,7 +97,7 @@
       *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
     }
 
-    /* ---------- Estructura de la portada ---------- */
+    /* ---------- Landing page structure ---------- */
     .landing-page { position: relative; z-index: 1; }
     .landing-wrap { width: min(1180px, calc(100% - 48px)); margin: 0 auto; }
 
@@ -146,7 +146,7 @@
     }
     .nav-cta:hover { transform: translateY(-1px); background: var(--lime-soft); }
 
-    /* ---------- Héroe ---------- */
+    /* ---------- Hero ---------- */
     .landing-hero {
       display: grid;
       min-height: 600px;
@@ -381,7 +381,7 @@
     }
     .feature-card[aria-expanded="true"]::after { transform: rotate(45deg); color: var(--lime); }
 
-    /* ---------- Cómo funciona ---------- */
+    /* ---------- How it works ---------- */
     .how-section { display: grid; grid-template-columns: .9fr 1.1fr; align-items: center; gap: 64px; padding-top: 20px; }
     .how-copy h3 {
       margin: 0 0 16px;
@@ -489,7 +489,7 @@
     .landing-footer .fbrand .brand-mark { width: 26px; height: 26px; flex-basis: 26px; border-radius: 8px; }
     .landing-footer .fbrand .brand-mark svg { width: 15px; height: 15px; }
 
-    /* ---------- Reveal al hacer scroll ---------- */
+    /* ---------- Scroll reveal ---------- */
     .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s cubic-bezier(.2, .8, .2, 1), transform .7s cubic-bezier(.2, .8, .2, 1); }
     .reveal.in { opacity: 1; transform: none; }
     @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; } }
@@ -697,7 +697,7 @@
     .danger:hover { background: rgba(255, 154, 154, .14); }
     .empty { border: 1px dashed var(--line-strong); border-radius: 16px; padding: 30px 20px; color: var(--muted); font-size: .88rem; text-align: center; }
 
-    /* ---------- Panel de administración (modo debug) ---------- */
+    /* ---------- Admin panel (debug mode) ---------- */
     .debug-badge {
       border: 1px solid rgba(215, 255, 107, .45); border-radius: 999px;
       padding: 4px 9px; color: var(--lime); background: rgba(215, 255, 107, .1);
@@ -1046,9 +1046,9 @@
     let history = [];
 
     function defaultApiBase() {
-      // Si la web se sirve desde el propio PickleBrain (o desde ngrok), el
-      // servidor es el mismo origen. Solo al abrir el archivo en local se usa
-      // la dirección por defecto.
+      // When the web is served by PickleBrain itself (or by ngrok), the server
+      // is the same origin. The default address is only used when the file is
+      // opened locally.
       return /^https?:$/.test(location.protocol) ? location.origin : 'https://dawn-greeter-grazing.ngrok-free.dev';
     }
 
@@ -1218,7 +1218,7 @@
       }
     }
 
-    // ------------------------------------------------------ administración
+    // ------------------------------------------------------ administration
     function adminStat(label, value) {
       const box = document.createElement('div');
       box.className = 'admin-stat';
@@ -1422,8 +1422,8 @@
       });
     });
 
-    // Aparición suave de las secciones al hacer scroll (mejora progresiva:
-    // sin JavaScript o sin IntersectionObserver, todo se ve igual).
+    // Gentle appearance of the sections on scroll (progressive enhancement:
+    // without JavaScript or IntersectionObserver everything still shows).
     if ('IntersectionObserver' in window) {
       const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {

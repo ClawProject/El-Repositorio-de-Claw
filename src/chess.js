@@ -1,10 +1,10 @@
-// Modo ajedrez de Claw: jugar partidas, analizar posiciones (FEN o foto) y
-// hablar como un gran maestro.
+// Claw's chess mode: play games, analyse positions (FEN or photo) and talk
+// like a grandmaster.
 //
-// Toda la lógica pesada (reglas, jugadas legales, tablero) va con chess.js; las
-// JUGADAS las decide el motor propio (chessengine.js: minimax con poda), porque
-// la IA de texto de 3B jugaba al azar. La IA solo comenta la partida. Si el
-// motor fallara, hay una heurística sencilla de reserva: el modo nunca se rompe.
+// All the heavy logic (rules, legal moves, board) comes from chess.js; the
+// MOVES are decided by our own engine (chessengine.js: minimax with pruning),
+// because the 3B text AI played at random. The AI only comments on the game. If
+// the engine failed, there is a simple fallback heuristic: the mode never breaks.
 import { log } from './logger.js';
 import { chat } from './ollama.js';
 import * as memory from './memory.js';
@@ -12,7 +12,7 @@ import { config } from './config.js';
 import { eligeJugada as motorEligeJugada } from './chessengine.js';
 import { Chess } from 'chess.js';
 
-// ---------------------------------------------------------------- tablero
+// ---------------------------------------------------------------- board
 
 const GLIFOS = {
   w: { k: '♔', q: '♕', r: '♖', b: '♗', n: '♘', p: '♙' },
@@ -20,7 +20,7 @@ const GLIFOS = {
 };
 const LETRAS = { k: 'rey', q: 'dama', r: 'torre', b: 'alfil', n: 'caballo', p: 'peón' };
 
-/** Tablero en texto, estilo WhatsApp. */
+/** Board as text, WhatsApp style. */
 export function tableroTexto(game) {
   const board = game.board();
   const filas = [];
@@ -32,14 +32,14 @@ export function tableroTexto(game) {
   return filas.join('\n');
 }
 
-/** Pieza en una casilla, para comentarios ("el caballo de f3"). */
+/** Piece on a square, for comments ("the knight on f3"). */
 export function piezaEn(game, casilla) {
   const p = game.get(casilla);
   if (!p) return null;
   return { nombre: LETRAS[p.type], color: p.color === 'w' ? 'blancas' : 'negras' };
 }
 
-// ---------------------------------------------------------------- partidas
+// ---------------------------------------------------------------- games
 
 const PARTIDAS = new Map(); // chatJid -> {game, colorUsuario, movimientos}
 
@@ -51,12 +51,12 @@ function guarda(chatJid, estado) {
       JSON.stringify({ fen: estado.game.fen(), colorUsuario: estado.colorUsuario, mov: estado.movimientos })
     );
   } catch {
-    /* el modo ajedrez no depende de persistir */
+    /* the chess mode does not depend on persisting */
   }
   return estado;
 }
 
-/** Recupera una partida guardada (por si el bot se reinició). */
+/** Restores a saved game (in case the bot restarted). */
 export function carga(chatJid) {
   if (PARTIDAS.has(chatJid)) return PARTIDAS.get(chatJid);
   try {
@@ -73,12 +73,12 @@ export function carga(chatJid) {
   }
 }
 
-/** Empieza una partida (por defecto, el usuario juega con blancas). */
+/** Starts a game (by default the user plays White). */
 export function empieza(chatJid, { colorUsuario = 'w' } = {}) {
   const game = new Chess();
   const movimientos = [];
   if (colorUsuario === 'b') {
-    // Claw juega con blancas: abre con algo razonable.
+    // Claw plays White: opens with something reasonable.
     const apertura = ['e4', 'd4', 'Nf3', 'c4', 'g3'];
     const m = game.move(apertura[Math.floor(Math.random() * apertura.length)]);
     movimientos.push(m.san);
@@ -96,25 +96,25 @@ export function borraPartida(chatJid) {
   try {
     memory.setSetting(`chess:${chatJid}`, null);
   } catch {
-    /* da igual */
+    /* does not matter */
   }
 }
 
-/** ¿Es una jugada estilo "e4", "Nf3", "O-O", "e2e4"? */
+/** Is it a move like "e4", "Nf3", "O-O", "e2e4"? */
 export function esJugada(texto) {
   const t = String(texto || '').trim();
   if (!t || t.length > 12) return false;
   return /^[a-hKQRBNO0-8x+#=\-\s]+$/i.test(t) && /[a-hKQRBNO0-9]/i.test(t);
 }
 
-/** Aplica un texto de jugada (SAN o estilo UCI) al tablero. */
+/** Applies a move text (SAN or UCI style) to the board. */
 function aSan(game, texto) {
   const t = String(texto || '').trim();
   try {
     const m = game.move(t, { strict: false });
     if (m) return m;
   } catch {
-    /* no era SAN */
+    /* it was not SAN */
   }
   if (/^[a-h][1-8][a-h][1-8][qrbn]?$/i.test(t)) {
     try {
@@ -127,7 +127,7 @@ function aSan(game, texto) {
 }
 
 /**
- * Mueve la pieza del usuario.
+ * Moves the user's piece.
  * @returns {{ok:boolean, texto?:string, gameOver?:boolean, error?:string}}
  */
 export function mueve(chatJid, texto) {
@@ -159,7 +159,7 @@ function resumenTrasMovimiento(game, estado) {
   return lineas.join('\n');
 }
 
-/** Claw elige su jugada. IA si puede; si no, una heurística decente. */
+/** Claw picks its move. AI when possible; otherwise a decent heuristic. */
 export async function jugadaDelBot(chatJid) {
   const estado = PARTIDAS.get(chatJid);
   if (!estado) return { ok: false };
@@ -187,14 +187,14 @@ export async function jugadaDelBot(chatJid) {
   return { ok: true, texto: lineas.join('\n'), gameOver, san: jugada.san };
 }
 
-/** Heurística de emergencia: prefiere capturas, jaques y el centro. */
+/** Emergency heuristic: it prefers captures, checks and the centre. */
 function elegirConHeuristica(game, legales) {
   const VALOR = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
   const CENTRO = new Set(['d4', 'e4', 'd5', 'e5', 'c4', 'f4', 'c5', 'f5']);
   let mejor = legales[0];
   let mejorPuntos = -Infinity;
   for (const m of legales) {
-    let puntos = Math.random() * 0.4; // un poco de variedad
+    let puntos = Math.random() * 0.4; // a bit of variety
     if (m.captured) puntos += VALOR[m.captured] * 2 - VALOR[m.piece] * 0.3;
     if (m.promotion) puntos += 6;
     if (CENTRO.has(m.to)) puntos += 0.6;
@@ -211,7 +211,7 @@ function elegirConHeuristica(game, legales) {
   return mejor;
 }
 
-/** Diagnóstico final de la partida. */
+/** Final diagnosis of the game. */
 export function finDePartida(game) {
   if (game.isCheckmate()) {
     const ganaBlancas = game.turn() === 'b';
@@ -224,11 +224,11 @@ export function finDePartida(game) {
   return '🏁 La partida ha terminado.';
 }
 
-// ---------------------------------------------------------------- análisis
+// ---------------------------------------------------------------- analysis
 
 export const FEN_RE = /([rnbqkpRNBQKP1-8]+\/){7}[rnbqkpRNBQKP1-8]+\s+[wb]\s+(K?Q?k?q?|-)\s+([a-h][1-8]|-)\s+\d+\s+\d+/;
 
-/** Saca un FEN de un texto si lo hay. */
+/** Extracts a FEN from a text, if there is one. */
 export function extraeFen(texto) {
   const m = FEN_RE.exec(String(texto || ''));
   if (!m) return null;
@@ -240,7 +240,7 @@ export function extraeFen(texto) {
   }
 }
 
-/** Valor estático de la posición, para que el "gran maestro" opine. */
+/** Static value of the position, so the "grandmaster" can comment on it. */
 export function evaluar(game) {
   const VALOR = { p: 1, n: 3.1, b: 3.3, r: 5, q: 9, k: 0 };
   let material = 0;
@@ -255,7 +255,7 @@ export function evaluar(game) {
   return { material, movilidadBlancas, movilidadNegras };
 }
 
-/** Nº de jugadas legales de un bando, cambiando el turno en el FEN. */
+/** Number of legal moves for one side, switching the turn in the FEN. */
 function movilidadDe(game, color) {
   try {
     const fen = game.fen().replace(/^(\S+) \S+ (.*)$/, `$1 ${color} $2`);
@@ -265,7 +265,7 @@ function movilidadDe(game, color) {
   }
 }
 
-/** Análisis de una posición (FEN) en tono de gran maestro. */
+/** Analysis of a position (FEN) in a grandmaster tone. */
 export function analiza(fen) {
   let game;
   try {
@@ -321,7 +321,7 @@ function n(x) {
   return Number.isFinite(x) && x > 0 ? String(x) : '—';
 }
 
-/** Comentario corto de gran maestro sobre la partida actual. */
+/** Short grandmaster comment about the current game. */
 export async function comentarioGM(chatJid) {
   const estado = PARTIDAS.get(chatJid);
   if (!estado) return '';
@@ -341,7 +341,7 @@ export async function comentarioGM(chatJid) {
   }
 }
 
-/** Reconocer que la gente quiere jugar/analizar ajedrez (para modo Claw). */
+/** Detects that people want to play/analyse chess (for Claw mode). */
 export function mencionaAjedrez(texto) {
   const t = String(texto || '').toLowerCase();
   return /\bajedrez\b|\bfen\b|\btablero\b/.test(t);

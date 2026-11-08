@@ -1,9 +1,9 @@
-// Cliente del servicio Python local (voz e imágenes).
+// Client for the local Python service (voice and images).
 //
-// El servicio vive en `python/server.py` y escucha solo en 127.0.0.1. Aquí no
-// importamos nada pesado: solo hablamos HTTP con él. Si no está arrancado,
-// `estaDisponible()` devuelve false y los módulos que lo usan pueden seguir con
-// sus motores antiguos.
+// The service lives in `python/server.py` and listens only on 127.0.0.1. Nothing
+// heavy is imported here: we only talk HTTP to it. If it is not running,
+// `estaDisponible()` returns false and the modules using it can fall back to
+// their legacy engines.
 import fs from 'node:fs';
 import path from 'node:path';
 import { config } from './config.js';
@@ -27,8 +27,8 @@ function motivo(err, ms) {
 }
 
 /**
- * Estado del servicio Python. Se cachea unos segundos para no preguntar en
- * cada mensaje. Devuelve `null` si está desactivado o no responde.
+ * Python service status. It is cached for a few seconds so it is not asked on
+ * every message. Returns `null` when disabled or not responding.
  * @param {{force?:boolean}} opciones
  */
 export async function salud({ force = false } = {}) {
@@ -55,25 +55,25 @@ export async function salud({ force = false } = {}) {
   }
 }
 
-/** ¿Hay servicio Python en general? */
+/** Is there a Python service at all? */
 export async function estaDisponible(opciones) {
   return Boolean(await salud(opciones));
 }
 
-/** ¿El servicio puede transcribir voz (faster-whisper instalado)? */
+/** Can the service transcribe voice (faster-whisper installed)? */
 export async function vozDisponible(opciones) {
   const estado = await salud(opciones);
   return Boolean(estado?.voice?.available);
 }
 
-/** ¿El servicio puede generar imágenes (torch + diffusers instalados)? */
+/** Can the service generate images (torch + diffusers installed)? */
 export async function imagenDisponible(opciones) {
   const estado = await salud(opciones);
   return Boolean(estado?.images?.available);
 }
 
 /**
- * Transcribe un audio con el servicio Python.
+ * Transcribes audio with the Python service.
  * @param {string} filePath
  * @param {{timeoutMs?:number}} opciones
  * @returns {Promise<{text:string, seconds:number, ms:number}>}
@@ -110,8 +110,8 @@ export async function transcribir(filePath, { timeoutMs } = {}) {
 }
 
 /**
- * Genera una imagen con el servicio Python.
- * Nunca lanza: devuelve `{ok:true, buffer, mime}` o `{ok:false, error}`.
+ * Generates an image with the Python service.
+ * It never throws: returns `{ok:true, buffer, mime}` or `{ok:false, error}`.
  */
 export async function generarImagen(prompt, opciones = {}) {
   const ms = opciones.timeoutMs ?? Math.max(1000, Number(config.imageGenTimeout || 300) * 1000);
@@ -155,7 +155,7 @@ export async function generarImagen(prompt, opciones = {}) {
   }
 }
 
-/** Precarga el modelo de voz para que la primera nota no tarde de más. */
+/** Preloads the voice model so the first note is not too slow. */
 export async function warmupVoz() {
   const ms = config.pythonAiTimeoutMs;
   const { signal, cancelar } = conTimeout(ms);
@@ -170,7 +170,7 @@ export async function warmupVoz() {
   }
 }
 
-/** Olvida el estado cacheado (útil en pruebas y al cambiar de URL). */
+/** Forgets the cached status (useful in tests and when the URL changes). */
 export function olvidarEstado() {
   cacheSalud = null;
 }

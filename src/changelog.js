@@ -1,10 +1,10 @@
-// Novedades: lee el CHANGELOG.md y prepara un resumen corto para el grupo.
+// Changelog: reads CHANGELOG.md and prepares a short summary for the group.
 //
-// Para qué sirve: cuando se añade algo nuevo al bot, el grupo se entera sin
-// tener que mirar nada. El aviso sale SOLO UNA VEZ por novedad (se guarda un
-// marcador con la huella de lo que se ha contado), así que no spamea cada vez
-// que se reinicia. Se puede apagar con CHANGELOG_NOTIFY=false, y cualquiera
-// puede pedirlo a mano con "!claw novedades".
+// What it is for: when something new is added to the bot, the group finds out
+// without having to look anywhere. The notice goes out ONLY ONCE per change (a
+// marker with the fingerprint of what was announced is stored), so it does not
+// spam on every restart. It can be switched off with CHANGELOG_NOTIFY=false, and
+// anyone can request it by hand with "!claw novedades".
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { log } from './logger.js';
@@ -12,7 +12,7 @@ import { config } from './config.js';
 
 const ARCHIVO = new URL('../CHANGELOG.md', import.meta.url);
 
-/** Todo el CHANGELOG (vacío si no está). */
+/** The whole CHANGELOG (empty when missing). */
 export function leerChangelog() {
   try {
     return fs.readFileSync(ARCHIVO, 'utf8');
@@ -23,8 +23,8 @@ export function leerChangelog() {
 }
 
 /**
- * La sección "[Sin publicar]", que es donde vive todo lo nuevo.
- * Devuelve vacío si no hay (ya publicado todo).
+ * The "[Unreleased]" section, where everything new lives.
+ * Returns empty when there is none (everything already published).
  */
 export function seccionSinPublicar(md = leerChangelog()) {
   const inicio = md.indexOf('## [Sin publicar]');
@@ -34,7 +34,7 @@ export function seccionSinPublicar(md = leerChangelog()) {
   return (fin === -1 ? resto : resto.slice(0, fin)).trim();
 }
 
-/** Desmonta la sección en viñetas de texto (una por cambio). */
+/** Splits the section into plain-text bullets (one per change). */
 export function extraerCambios(seccion) {
   const lineas = String(seccion || '').split('\n');
   const salida = [];
@@ -58,7 +58,7 @@ export function extraerCambios(seccion) {
   return salida;
 }
 
-/** Quita el ruido de markdown para que se lea bien en WhatsApp. */
+/** Strips markdown noise so it reads well in WhatsApp. */
 function limpiarMarkdown(texto) {
   return String(texto || '')
     .replace(/`([^`]*)`/g, '$1')
@@ -67,7 +67,7 @@ function limpiarMarkdown(texto) {
     .replace(/(^|\s)_([^_]+)_/g, '$1$2');
 }
 
-/** Recorta por una palabra entera, para no cortar a mitad. */
+/** Trims at a whole word, so nothing is cut mid-word. */
 function recortar(texto, max) {
   const t = String(texto || '').trim();
   if (t.length <= max) return t;
@@ -76,7 +76,7 @@ function recortar(texto, max) {
   return `${(espacio > max * 0.6 ? trozo.slice(0, espacio) : trozo).trimEnd()}…`;
 }
 
-/** De una viñeta larga, se queda con el título y la primera frase. */
+/** From a long bullet, keeps the title and the first sentence. */
 function resumir(texto) {
   const limpio = String(texto || '').replace(/\s+/g, ' ').trim();
   const m = /^\*\*(.+?)\.\*\*\s*(.*)$/.exec(limpio);
@@ -84,14 +84,14 @@ function resumir(texto) {
   const resto = limpiarMarkdown(m ? m[2] : limpio).trim();
   if (!titulo) return limpiarMarkdown(recortar(limpio, 170));
 
-  // Primera frase del resto, cortada con cuidado (sin partir URLs ni "U.S.").
+  // First sentence of the rest, cut carefully (without splitting URLs or "U.S.").
   let frase = resto;
   const corte = resto.search(/(?<=[a-záéíóúñ)])\.\s+[A-ZÁÉÍÓÚÑ]/);
   if (corte !== -1) frase = resto.slice(0, corte + 1);
   return { titulo, frase: recortar(frase, 140) };
 }
 
-/** Las novedades ya reducidas: [{titulo, frase}] (o sueltas si no llevan título). */
+/** The changes already condensed: [{titulo, frase}] (or loose ones when untitled). */
 export function novedades(md = leerChangelog()) {
   const seccion = seccionSinPublicar(md);
   return extraerCambios(seccion)
@@ -100,20 +100,20 @@ export function novedades(md = leerChangelog()) {
     .filter((r) => r.titulo || r.frase);
 }
 
-/** Huella de lo que queda por publicar (para no repetir el aviso). */
+/** Fingerprint of what is still unpublished (so the notice is not repeated). */
 export function hashNovedades(md = leerChangelog()) {
   const seccion = seccionSinPublicar(md);
   if (!seccion) return '';
   return crypto.createHash('sha1').update(seccion).digest('hex').slice(0, 10);
 }
 
-/** Clave del marcador en la base de datos para esa huella. */
+/** Database marker key for that fingerprint. */
 export function marcadorNovedades(md = leerChangelog()) {
   const hash = hashNovedades(md);
   return hash ? `changelog:${hash}` : null;
 }
 
-/** El mensaje de WhatsApp, listo para mandar. Vacío si no hay novedades. */
+/** The WhatsApp message, ready to send. Empty when there is nothing new. */
 export function textoNovedades(md = leerChangelog()) {
   const lista = novedades(md);
   if (!lista.length) return '';

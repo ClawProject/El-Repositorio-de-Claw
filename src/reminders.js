@@ -1,9 +1,9 @@
-// Recordatorios de exámenes y deberes: el bot avisa en el grupo la tarde antes y la mañana del día.
+// Exam and homework reminders: the bot warns in the group the evening before and on the morning of the day.
 import { config } from './config.js';
 import { todayISO, addDays, longDate } from './dates.js';
 import { subjectLabel } from './subjects.js';
 
-/** Texto del aviso: con antelación, la víspera y el mismo día. */
+/** Notice text: in advance, the evening before and on the same day. */
 function textoAviso(entry, cuando, dias = 0) {
   const subj = subjectLabel(entry.subject) || entry.subject || 'General';
   const cuandoTxt = entry.fecha ? longDate(entry.fecha) : entry.fechaTexto || '';
@@ -28,11 +28,11 @@ function textoAviso(entry, cuando, dias = 0) {
 }
 
 /**
- * Qué avisos toca mandar ahora mismo.
+ * Which notices are due right now.
  *
- * @param {Array} entries       deberes y exámenes apuntados
- * @param {Date}  now          momento actual
- * @param {(clave:string)=>boolean} yaEnviado  ¿ya se mandó este aviso?
+ * @param {Array} entries       recorded homework and exams
+ * @param {Date}  now           current moment
+ * @param {(clave:string)=>boolean} yaEnviado  was this notice already sent?
  * @returns {Array<{clave:string, texto:string, cuando:'previo'|'tarde'|'manana'}>}
  */
 export function avisosPendientes({ exams = [], deberes = [], now = new Date(), yaEnviado = () => false } = {}) {

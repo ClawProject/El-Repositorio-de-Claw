@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
-"""Servicio local de IA de Claw: voz (faster-whisper) e imágenes (diffusers).
+"""Claw's local AI service: voice (faster-whisper) and images (diffusers).
 
-Se ejecuta aparte del bot de Node y escucha SOLO en 127.0.0.1. Node lo llama
-por HTTP; si no está arrancado, el bot sigue funcionando con sus motores
-antiguos (transformers.js para voz y sd-cli/HTTP para imágenes).
+It runs separately from the Node bot and listens ONLY on 127.0.0.1. Node calls
+it over HTTP; if it is not running, the bot keeps working with its legacy
+engines (transformers.js for voice and sd-cli/HTTP for images).
 
-Arranque:
+Start it with:
     python python/server.py
 
-Variables de entorno más importantes (se pueden poner en .env):
-    PYTHON_AI_HOST / PYTHON_AI_PORT   dónde escucha (127.0.0.1:5050)
+Most important environment variables (they can be set in .env):
+    PYTHON_AI_HOST / PYTHON_AI_PORT   where it listens (127.0.0.1:5050)
     PYTHON_WHISPER_MODEL              tiny | base | small | medium | large-v3
     PYTHON_WHISPER_DEVICE             auto | cuda | cpu
     PYTHON_WHISPER_COMPUTE            int8 | float16 | int8_float16
-    PYTHON_IMAGE_MODEL                modelo de Hugging Face o ruta local
+    PYTHON_IMAGE_MODEL                Hugging Face model or local path
     PYTHON_IMAGE_DEVICE               auto | cuda | cpu
-    PYTHON_IMAGE_UNLOAD               true = libera la GPU tras cada imagen
+    PYTHON_IMAGE_UNLOAD               true = free the GPU after each image
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ try:
     from dotenv import load_dotenv
 
     load_dotenv(ROOT / ".env")
-    # Con Homebrew el .env vive en la carpeta de datos, no junto al código.
+    # With Homebrew the .env lives in the data folder, not next to the code.
     _data_dir = os.getenv("PICKLEBRAIN_DATA_DIR", "").strip()
     if _data_dir:
         _data_path = Path(_data_dir).expanduser()
@@ -51,7 +51,7 @@ try:
             _data_path = ROOT / _data_path
         load_dotenv(_data_path / ".env")
 except Exception:
-    # python-dotenv es opcional: si no está, se usan las variables del sistema.
+    # python-dotenv is optional: without it, the system variables are used.
     pass
 
 
@@ -91,7 +91,7 @@ def _modulo_disponible(nombre: str) -> bool:
 
 MODELS_DIR = _path("PYTHON_MODELS_DIR", ROOT / "data" / "models")
 
-# ------------------------------------------------------------------ voz
+# ----------------------------------------------------------------- voice
 WHISPER_MODEL = os.getenv("PYTHON_WHISPER_MODEL", "base").strip() or "base"
 WHISPER_DEVICE = os.getenv("PYTHON_WHISPER_DEVICE", "auto").strip().lower()
 WHISPER_COMPUTE = os.getenv("PYTHON_WHISPER_COMPUTE", "").strip()
@@ -100,14 +100,14 @@ WHISPER_BEAM = _int("PYTHON_WHISPER_BEAM", 5)
 MAX_UPLOAD_MB = _int("PYTHON_MAX_UPLOAD_MB", 64)
 MAX_UPLOAD_BYTES = max(1, MAX_UPLOAD_MB) * 1024 * 1024
 
-# --------------------------------------------------------------- imágenes
+# ---------------------------------------------------------------- images
 IMAGE_MODEL = (
     os.getenv("PYTHON_IMAGE_MODEL", "stable-diffusion-v1-5/stable-diffusion-v1-5").strip()
     or "stable-diffusion-v1-5/stable-diffusion-v1-5"
 )
 IMAGE_DEVICE = os.getenv("PYTHON_IMAGE_DEVICE", "auto").strip().lower()
-# Con una GPU de 4 GB conviene liberar el modelo después de cada imagen para
-# que Ollama pueda volver a usar la VRAM. Con una GPU grande, ponlo en false.
+# On a 4 GB GPU it is best to release the model after each image so Ollama can
+# use the VRAM again. On a large GPU, set it to false.
 IMAGE_UNLOAD = _bool("PYTHON_IMAGE_UNLOAD", True)
 IMAGE_MAX_SIDE = _int("PYTHON_IMAGE_MAX_SIDE", 1024)
 IMAGE_CPU_FALLBACK = _bool("PYTHON_IMAGE_CPU_FALLBACK", False)
@@ -120,7 +120,7 @@ log = logging.getLogger("claw.python")
 
 
 class ServiceUnavailable(RuntimeError):
-    """Falta una dependencia o el modelo no se puede cargar."""
+    """A dependency is missing or the model cannot be loaded."""
 
 
 app = FastAPI(title="Claw Python AI", version="1.0.0")
@@ -131,7 +131,7 @@ async def _service_unavailable(_request, exc: ServiceUnavailable):
     return JSONResponse(status_code=503, content={"error": str(exc)})
 
 
-# ================================================================ VOZ
+# ================================================================ VOICE
 
 _voice_model = None
 _voice_device: Optional[str] = None
@@ -176,7 +176,7 @@ def _es_error_cuda(exc: Exception) -> bool:
 
 
 def get_voice_model(force_cpu: bool = False):
-    """Carga Whisper una sola vez. Si CUDA falla, reintenta en CPU."""
+    """Loads Whisper only once. If CUDA fails, it retries on CPU."""
     global _voice_model, _voice_device
     if _voice_model is not None and not force_cpu:
         return _voice_model, _voice_device
@@ -232,7 +232,7 @@ async def transcribe(
     language: Optional[str] = Form(None),
     vad: bool = Form(True),
 ):
-    """Transcribe un audio (ogg/opus de WhatsApp, mp3, wav...)."""
+    """Transcribes audio (WhatsApp ogg/opus, mp3, wav...)."""
     t0 = time.time()
     datos = await file.read(MAX_UPLOAD_BYTES + 1)
     if len(datos) > MAX_UPLOAD_BYTES:
@@ -254,8 +254,8 @@ async def transcribe(
     try:
         texto, segundos = _transcribir_audio(model, datos, opciones)
     except Exception as exc:
-        # ctranslate2 puede detectar la GPU y fallar después si faltan las
-        # librerías CUDA (libcublas, cuDNN...). En ese caso pasamos a CPU.
+        # ctranslate2 can detect the GPU and then fail if the CUDA libraries
+        # (libcublas, cuDNN...) are missing. In that case we switch to CPU.
         if device == "cuda" and _es_error_cuda(exc):
             log.warning("CUDA falló al transcribir (%s); cambio Whisper a CPU.", exc)
             _liberar_modelo_voz()
@@ -281,7 +281,7 @@ async def transcribe(
     }
 
 
-# ============================================================ IMÁGENES
+# =============================================================== IMAGES
 
 _image_pipe = None
 _image_device: Optional[str] = None
@@ -302,7 +302,7 @@ class ImageRequest(BaseModel):
 
 
 def _dims_validas(valor: int) -> int:
-    """Redondea a múltiplo de 8 y limita el tamaño para no reventar la VRAM."""
+    """Rounds to a multiple of 8 and caps the size so the VRAM is not blown."""
     valor = max(256, min(IMAGE_MAX_SIDE, int(valor)))
     return max(256, (valor // 8) * 8)
 
@@ -342,7 +342,7 @@ def _aplicar_scheduler(pipe, sampler: str, scheduler: str):
 
 
 def get_image_pipeline():
-    """Carga el pipeline de diffusers una sola vez."""
+    """Loads the diffusers pipeline only once."""
     global _image_pipe, _image_device
     if _image_pipe is not None:
         return _image_pipe, _image_device
@@ -387,7 +387,7 @@ def get_image_pipeline():
 
 
 def _descargar_pipeline():
-    """Suelta el modelo de imágenes para devolver la VRAM a Ollama."""
+    """Releases the image model to give the VRAM back to Ollama."""
     global _image_pipe, _image_device
     with _image_load_lock:
         _image_pipe = None
@@ -405,7 +405,7 @@ def _descargar_pipeline():
 
 @app.post("/generate")
 def generate(req: ImageRequest):
-    """Genera una imagen PNG y la devuelve como bytes."""
+    """Generates a PNG image and returns it as bytes."""
     with _image_gen_lock:
         pipe, device = get_image_pipeline()
         ancho = _dims_validas(req.width)
@@ -457,7 +457,7 @@ def generate(req: ImageRequest):
         )
 
 
-# ================================================================ SALUD
+# ================================================================ HEALTH
 
 
 @app.get("/health")
@@ -481,7 +481,7 @@ def health():
 
 @app.post("/warmup")
 def warmup(target: str = "voice"):
-    """Precarga un modelo para que la primera petición no tarde de más."""
+    """Preloads a model so the first request is not too slow."""
     objetivo = (target or "voice").strip().lower()
     if objetivo in {"voice", "voz", "all", "todo"}:
         get_voice_model()
@@ -501,7 +501,7 @@ def root():
 def _host_y_puerto():
     host = os.getenv("PYTHON_AI_HOST", "127.0.0.1").strip() or "127.0.0.1"
     puerto = _int("PYTHON_AI_PORT", 5050)
-    # Si Node usa PYTHON_AI_URL, respetamos su host/puerto para no desincronizarnos.
+    # If Node uses PYTHON_AI_URL, its host/port is respected to stay in sync.
     url = os.getenv("PYTHON_AI_URL", "").strip()
     if url:
         parsed = urlparse(url if "://" in url else f"http://{url}")

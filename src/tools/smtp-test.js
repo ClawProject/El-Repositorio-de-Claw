@@ -1,6 +1,6 @@
-// Comprueba el SMTP de AsterMail sin arrancar el bot.
-// Uso:  npm run smtp            (solo conecta y saluda)
-//       npm run smtp -- tu@alu.edu.gva.es   (ademas envia un codigo de prueba)
+// Checks the AsterMail SMTP without starting the bot.
+// Usage:  npm run smtp            (only connects and greets)
+//         npm run smtp -- you@alu.edu.gva.es   (also sends a test code)
 import nodemailer from 'nodemailer';
 import { config } from '../config.js';
 import { log } from '../logger.js';

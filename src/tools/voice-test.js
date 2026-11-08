@@ -1,4 +1,4 @@
-// Prueba opcional del Whisper local con la nota de voz incluida y una variante con ruido.
+// Optional local Whisper test with the bundled voice note and a variant with noise.
 // Uso: npm run test:voice
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

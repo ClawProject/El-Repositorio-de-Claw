@@ -1,37 +1,37 @@
 @echo off
-rem Arranca PickleBrain con doble clic.
+rem Starts PickleBrain with a double click.
 cd /d "%~dp0"
 
 where node >nul 2>nul
 if errorlevel 1 (
   echo.
-  echo   No encuentro Node.js. Instalalo desde https://nodejs.org
+  echo   Node.js not found. Install it from https://nodejs.org
   echo.
   pause
   exit /b 1
 )
 
 if not exist "node_modules" (
-  echo   Instalando dependencias por primera vez...
+  echo   Installing dependencies for the first time...
   call npm.cmd install --no-audit --no-fund
 )
 
 if not exist ".env" (
-  echo   Creando .env a partir de .env.example...
+  echo   Creating .env from .env.example...
   copy /y ".env.example" ".env" >nul
 )
 
 where ffmpeg >nul 2>nul
 if errorlevel 1 (
-  echo   Aviso: no encuentro ffmpeg, asi que no podre entender las notas de voz.
-  echo   Instalalo asi:   winget install Gyan.FFmpeg
+  echo   Warning: ffmpeg not found, so voice notes cannot be understood.
+  echo   Install it with:   winget install Gyan.FFmpeg
   echo.
 )
 
 echo.
-echo   Arrancando PickleBrain...
+echo   Starting PickleBrain...
 echo.
 node src\index.js
 echo.
-echo   El bot se ha detenido.
+echo   The bot has stopped.
 pause

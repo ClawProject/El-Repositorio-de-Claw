@@ -1,8 +1,8 @@
-// Simulador: prueba el bot SIN conectar WhatsApp.
-// Uso:  npm run sim
+// Simulator: tries the bot WITHOUT connecting WhatsApp.
+// Usage:  npm run sim
 //
-// Escribe mensajes como si fueras un alumno del grupo y veras exactamente
-// que haria el bot. Usa la misma base de datos que el bot real.
+// Type messages as if you were a student in the group and you will see exactly
+// what the bot would do. It uses the same database as the real bot.
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
@@ -20,8 +20,8 @@ import { subjectLabel } from '../subjects.js';
 const SIM_JID = 'simulacion@g.us';
 const VOICE_FIXTURE = path.join(config.rootDir, 'src', 'tools', 'fixtures', 'nota-de-voz.ogg');
 let senderName = 'Ana';
-let comoDueno = false; // escribir como el dueño (para probar los ajustes)
-let enPrivado = false; // chat privado en vez del grupo
+let comoDueno = false; // write as the owner (to try the settings)
+let enPrivado = false; // private chat instead of the group
 
 const COLORS = {
   reset: '\x1b[0m',
@@ -131,7 +131,7 @@ function printReplies(list, attached = []) {
   }
 }
 
-/** Entrega un mensaje al router (texto, y opcionalmente archivo). */
+/** Delivers a message to the router (text, and optionally a file). */
 async function deliver({ text, media = null, label = null }) {
   const t0 = Date.now();
   const duenoJid = admins.duenoJid();
@@ -183,7 +183,7 @@ function mimeFor(file, kind) {
   return table[ext] || (kind === 'audio' ? 'audio/ogg' : 'image/jpeg');
 }
 
-/** Separa "/imagen "C:\\ruta con espacios\\foto.jpg" el pie de foto" */
+/** Splits "/imagen "C:\\ruta con spaces\\foto.jpg" the caption" */
 function splitPathAndCaption(rest) {
   const raw = rest.trim();
   if (!raw) return { file: '', caption: '' };
@@ -223,7 +223,7 @@ async function main() {
   await memory.init();
   ajustes.aplicarTodos();
   resetTransientState();
-  memory.setSetting('group_jid', SIM_JID); // simulamos un grupo ya vinculado
+  memory.setSetting('group_jid', SIM_JID); // simulate an already linked group
   memory.setSetting('group_name', 'Grupo de prueba');
   mediaStore.ensureDirs();
 

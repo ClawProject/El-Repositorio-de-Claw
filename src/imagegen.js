@@ -1,21 +1,21 @@
-// Generación de imágenes — EXPERIMENTAL.
+// Image generation — EXPERIMENTAL.
 //
-// OJO CON ESTO, que es lo importante:
-//   1. Está APAGADA por defecto (IMAGE_GEN_ENABLED=false).
-//   2. El bot NUNCA genera una imagen por su cuenta: ni si alguien le pide una
-//      hablando con normalidad, ni con "claw hazme una imagen". Únicamente se
-//      genera cuando alguien escribe el comando a mano ("!claw imagen ...")
-//      Y el ajuste "imagenes" está activo (que solo el dueño/admins puede poner).
-//   3. Todo sigue en local: la IA de imágenes vive en tu ordenador.
+// PAY ATTENTION TO THIS, it is the important part:
+//   1. It is OFF by default (IMAGE_GEN_ENABLED=false).
+//   2. The bot NEVER generates an image on its own: not if someone asks for one
+//      in normal conversation, nor with "claw hazme una imagen". It only
+//      generates when someone types the command by hand ("!claw imagen ...")
+//      AND the "imagenes" setting is on (which only the owner/admins can change).
+//   3. Everything stays local: the image AI runs on your computer.
 //
-// Hay tres motores (IMAGE_GEN_BACKEND):
-//   - "auto" (por defecto): usa el servicio Python (diffusers) si está levantado
-//     y, si no, cae al motor "cli".
-//   - "python": servicio Python local (python/server.py, diffusers).
-//   - "cli": llama a sd-cli.exe (stable-diffusion.cpp) como un proceso suelto.
-//     No hace falta tener ningún servidor abierto.
-//   - "http": pide la imagen a un servidor compatible con OpenAI Images
-//     (por ejemplo sd-server de stable-diffusion.cpp).
+// There are three engines (IMAGE_GEN_BACKEND):
+//   - "auto" (default): uses the Python service (diffusers) when it is up and,
+//     otherwise, falls back to the "cli" engine.
+//   - "python": local Python service (python/server.py, diffusers).
+//   - "cli": calls sd-cli.exe (stable-diffusion.cpp) as a standalone process.
+//     No server needs to be open.
+//   - "http": asks a server compatible with OpenAI Images for the picture
+//     (for example stable-diffusion.cpp's sd-server).
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -26,12 +26,12 @@ import { log } from './logger.js';
 import { mejorarPrompt, prepararPromptImagen } from './promptmagic.js';
 import * as pythonAi from './python-ai.js';
 
-/** ¿Está encendida la generación de imágenes? */
+/** Is image generation switched on? */
 export function imagenesActivas() {
   return Boolean(config.imageGenEnabled);
 }
 
-/** ¿Se está pidiendo una imagen con la forma de "!claw imagen ..."? */
+/** Is an image being requested in the "!claw imagen ..." shape? */
 export function esPedidoDeImagen(sub) {
   return [
     'imagen',
@@ -48,7 +48,7 @@ export function esPedidoDeImagen(sub) {
   ].includes(String(sub || '').toLowerCase());
 }
 
-/** Identifica el tipo de imagen a partir de sus primeros bytes. */
+/** Identifies the image type from its first bytes. */
 export function sniffMime(buf) {
   if (!buf || buf.length < 4) return 'image/png';
   if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return 'image/png';
@@ -70,9 +70,9 @@ function decodificarBase64(txt) {
 }
 
 /**
- * Saca la imagen de la respuesta de un servidor.
- * Acepta los formatos más habituales: OpenAI (`data[].b64_json` o `data[].url`),
- * Ollama (`images[]`) y suelto (`b64_json` / `image` / `url`).
+ * Pulls the image out of a server response.
+ * It accepts the most common formats: OpenAI (`data[].b64_json` or `data[].url`),
+ * Ollama (`images[]`) and bare ones (`b64_json` / `image` / `url`).
  * @returns {{buffer?:Buffer, url?:string}|null}
  */
 export function parsearImagen(data) {
@@ -103,25 +103,25 @@ export function parsearImagen(data) {
   return null;
 }
 
-// ----------------------------------------------------------- motor "cli"
+// ----------------------------------------------------------- "cli" engine
 
-/** Convierte una ruta del .env en absoluta (las relativas cuelgan del proyecto). */
+/** Turns a .env path into an absolute one (relative paths hang off the project). */
 function rutaAbsoluta(valor, porDefecto) {
   const texto = String(valor || '').trim() || porDefecto;
   return path.isAbsolute(texto) ? texto : path.join(rootDir, texto);
 }
 
-/** Dónde está el ejecutable de stable-diffusion.cpp (sd-cli.exe). */
+/** Where the stable-diffusion.cpp executable is (sd-cli.exe). */
 export function binCli() {
   return rutaAbsoluta(config.imageGenBin, path.join('sdserver', 'sd-cli.exe'));
 }
 
-/** Dónde está el modelo de imágenes (fichero .gguf o .safetensors). */
+/** Where the image model is (.gguf or .safetensors file). */
 export function modeloCli() {
   return rutaAbsoluta(config.imageGenModelPath, path.join('sdserver', 'models', 'v1-5-pruned_Q4_K.gguf'));
 }
 
-/** Los argumentos para sd-cli (se lanza sin shell, así el prompt no puede colar comandos). */
+/** The arguments for sd-cli (it is spawned without a shell, so the prompt cannot sneak commands in). */
 export function argsCli({ prompt, out, steps, width, height, negative, seed, cfgScale, sampler, scheduler } = {}) {
   const args = [
     '-m',
@@ -139,7 +139,7 @@ export function argsCli({ prompt, out, steps, width, height, negative, seed, cfg
   ];
   const neg = negative !== undefined ? negative : config.imageGenNegative;
   if (neg) args.push('-n', String(neg));
-  // Semilla: un número fijo da siempre la misma imagen; -1 = aleatoria.
+  // Seed: a fixed number always gives the same image; -1 = random.
   const s = seed !== undefined && seed !== null ? seed : config.imageGenSeed;
   if (s !== undefined && s !== null && s !== '') args.push('-s', String(s));
   // CFG, sampler, scheduler (SD 1.5)
@@ -153,18 +153,18 @@ export function argsCli({ prompt, out, steps, width, height, negative, seed, cfg
 }
 
 /**
- * Extrae la línea más útil de lo que soltó el motor, para poder decir algo
- * decente. Antes nos quedábamos con la ÚLTIMA línea, que muchas veces es un
- * genérico ("generate failed") y no cuenta la razón de verdad (falta de
- * memoria, fichero mal, etc.).
+ * Extracts the most useful line from what the engine printed, so something
+ * decent can be said. It used to keep the LAST line, which is often a generic
+ * one ("generate failed") that does not tell the real reason (out of memory,
+ * bad file, etc.).
  */
 export function pistaDeError(ruido, code) {
   const lineas = String(ruido || '')
-    // La barra de progreso usa \r, así que partimos también por ahí.
+    // The progress bar uses \r, so we split on that too.
     .split(/\r?\n|\r/)
     .map((l) => l.trim())
     .filter(Boolean)
-    // Fuera la barra de progreso ("=====>  8/20 - 2.86s/it").
+    // Drop the progress bar ("=====>  8/20 - 2.86s/it").
     .filter((l) => !/^[|=<>.\s]*-?\d+\/\d+/.test(l) && !/s\/it\b/.test(l));
 
   const conChicha = lineas.filter((l) =>
@@ -176,10 +176,10 @@ export function pistaDeError(ruido, code) {
 }
 
 /**
- * Mata de verdad el proceso del motor. En Windows `child.kill()` no siempre
- * termina un ejecutable nativo, así que hay que usar taskkill con /T (árbol
- * entero) y /F (a la fuerza). Si no, quedan procesos colgados comiendo CPU y
- * VRAM (justo lo que pasó).
+ * Really kills the engine process. On Windows `child.kill()` does not always
+ * end a native executable, so taskkill is needed with /T (whole tree) and /F
+ * (forced). Otherwise processes are left hanging, eating CPU and VRAM (which is
+ * exactly what happened).
  */
 export function matarProceso(child) {
   if (!child || !child.pid) return;
@@ -194,18 +194,18 @@ export function matarProceso(child) {
       child.kill('SIGKILL');
     }
   } catch {
-    /* lo intentamos igualmente con kill() */
+    /* try kill() anyway */
   }
   try {
     child.kill();
   } catch {
-    /* da igual */
+    /* does not matter */
   }
 }
 
 /**
- * Genera con sd-cli.exe. Nunca lanza: devuelve {ok, filePath, mime, buffer} o
- * {ok:false, error}.
+ * Generates with sd-cli.exe. It never throws: returns {ok, filePath, mime, buffer}
+ * or {ok:false, error}.
  * @param {{out:string, timeoutMs?:number}} opciones
  */
 export async function generarImagenCli(prompt, { out, timeoutMs, promptMejorado } = {}) {
@@ -226,11 +226,11 @@ export async function generarImagenCli(prompt, { out, timeoutMs, promptMejorado 
     };
   }
 
-  // En una gráfica de 4 GB no caben a la vez el modelo de texto (Ollama) y el de
-  // imágenes: si Ollama tiene el suyo cargado, al dibujar le falta memoria y falla
-  // ("unet segment failed during workspace capacity check"). Así que soltamos el
-  // de texto primero; Ollama lo recarga solo cuando haga falta. Si Ollama no
-  // responde, seguimos igualmente e intentamos dibujar.
+  // A 4 GB GPU cannot hold the text model (Ollama) and the image model at the
+  // same time: when Ollama has its own loaded, drawing runs out of memory and
+  // fails ("unet segment failed during workspace capacity check"). So the text
+  // model is released first; Ollama reloads it by itself when needed. If Ollama
+  // does not respond, we carry on anyway and try to draw.
   if (config.imageGenFreeVram) {
     await liberarVram();
   }
@@ -248,9 +248,9 @@ export async function generarImagenCli(prompt, { out, timeoutMs, promptMejorado 
       return resolve({ ok: false, error: err.message });
     }
 
-    // Guardamos el FINAL de lo que suelta el motor (donde están los errores).
-    // Antes nos quedábamos con los primeros 4000 caracteres, así que una barra
-    // de progreso larga podía comerse el mensaje de error de verdad.
+    // Keep the END of what the engine prints (that is where the errors are).
+    // It used to keep the first 4000 characters, so a long progress bar could
+    // eat the real error message.
     let ruido = '';
     child.stdout?.on('data', () => {});
     child.stderr?.on('data', (d) => {
@@ -288,9 +288,9 @@ export async function generarImagenCli(prompt, { out, timeoutMs, promptMejorado 
   });
 }
 
-// ----------------------------------------------------------- motor "http"
+// ----------------------------------------------------------- "http" engine
 
-/** Pide la imagen a un servidor compatible con OpenAI Images. */
+/** Asks a server compatible with OpenAI Images for the picture. */
 export async function generarImagenHttp(prompt, { timeoutMs } = {}) {
   const endpoint = String(config.imageGenEndpoint || '').trim();
   if (!endpoint) return { ok: false, error: 'No hay ningún endpoint de imágenes configurado.' };
@@ -346,24 +346,24 @@ export async function generarImagenHttp(prompt, { timeoutMs } = {}) {
   }
 }
 
-// --------------------------------------------------------- motor "python"
+// --------------------------------------------------------- "python" engine
 
-/** Genera con el servicio Python (diffusers). Nunca lanza. */
+/** Generates with the Python service (diffusers). It never throws. */
 export async function generarImagenPython(prompt, opciones = {}) {
   return pythonAi.generarImagen(prompt, opciones);
 }
 
-// ----------------------------------------------------------- fachada
+// ----------------------------------------------------------- facade
 
-// La tarjeta gráfica tiene 4 GB: si se lanzan DOS sd-cli a la vez se quedan sin
-// memoria y fallan los dos (nos pasó: dos "!claw imagen" seguidos). Así que las
-// generaciones van de una en una: la segunda espera a que acabe la primera.
-// Si ya hay demasiada gente esperando, se le dice que pruebe luego.
-const MAX_ESPERANDO = 1; // además de la que se está dibujando ahora mismo
-let dibujando = 0; // generaciones en marcha + esperando turno
+// The GPU has 4 GB: running TWO sd-cli at once runs out of memory and both fail
+// (it happened to us: two "!claw imagen" in a row). So generations go one at a
+// time: the second waits for the first to finish. If too many people are already
+// waiting, they are told to try later.
+const MAX_ESPERANDO = 1; // besides the one being drawn right now
+let dibujando = 0; // running generations + those waiting for their turn
 let cola = Promise.resolve();
 
-/** Pide turno para dibujar. Devuelve la función para soltarlo, o null si hay cola. */
+/** Asks for a turn to draw. Returns the function that releases it, or null when the queue is full. */
 export async function pedirTurno() {
   if (dibujando > MAX_ESPERANDO) return null;
   dibujando++;
@@ -380,17 +380,17 @@ export async function pedirTurno() {
 }
 
 /**
- * Genera una imagen con el motor configurado.
- * Nunca lanza: devuelve {ok:true, filePath?|buffer, mime} o {ok:false, error, off?}.
+ * Generates an image with the configured engine.
+ * It never throws: returns {ok:true, filePath?|buffer, mime} or {ok:false, error, off?}.
  *
- * Si la generación está apagada, devuelve {ok:false, off:true} sin hacer nada
- * (así es imposible que el bot genere una imagen por accidente).
+ * When generation is off it returns {ok:false, off:true} without doing anything
+ * (so it is impossible for the bot to generate an image by accident).
  */
 export async function generarImagen(prompt, opciones = {}) {
   const texto = String(prompt || '').trim();
   if (!texto) return { ok: false, error: 'No has dicho qué quieres dibujar.' };
 
-  // La barrera de seguridad: apagada = no se genera nada, ni aunque lo pidan.
+  // The safety barrier: off = nothing is generated, even if asked for.
   if (!config.imageGenEnabled && !opciones.forzar) {
     return { ok: false, off: true, error: 'La generación de imágenes está apagada.' };
   }
@@ -411,7 +411,7 @@ export async function generarImagen(prompt, opciones = {}) {
 
     if (motor === 'python' || motor === 'auto') {
       if (await pythonAi.imagenDisponible()) {
-        // En una GPU pequeña, soltamos antes el modelo de texto de Ollama.
+        // On a small GPU, release Ollama's text model first.
         if (config.imageGenFreeVram) await liberarVram();
         return await generarImagenPython(textoFinal, opciones);
       }

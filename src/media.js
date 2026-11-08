@@ -1,10 +1,10 @@
-// Gestion de los archivos (sobre todo fotos) que el bot se guarda.
+// Management of the files (mostly photos) the bot keeps for itself.
 //
-// Reglas del juego:
-//   - Antes de descargar nada se comprueba el espacio libre del disco.
-//   - Si no hay sitio, no se guarda y se avisa con un mensaje simpatico.
-//   - Pasado el periodo (fecha del examen + margen) se borra TODO: el archivo
-//     y el apunte. Asi el disco no se llena nunca.
+// Rules of the game:
+//   - Free disk space is checked before downloading anything.
+//   - If there is no room, nothing is saved and a friendly message is shown.
+//   - Once the period is over (exam date + margin) EVERYTHING is deleted: the
+//     file and the record. That way the disk never fills up.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -56,9 +56,9 @@ export function ensureDirs() {
   fs.mkdirSync(tempDir(), { recursive: true });
 }
 
-// ---------------------------------------------------------------- espacio
+// ---------------------------------------------------------------- space
 
-/** Espacio libre (en bytes) del disco donde vive la carpeta de archivos. */
+/** Free space (in bytes) on the disk where the files folder lives. */
 export function freeBytes() {
   try {
     ensureDirs();
@@ -82,7 +82,7 @@ export function spaceInfo() {
 }
 
 /**
- * ¿Cabe un archivo de `bytes` sin quedarnos sin disco?
+ * Does a file of `bytes` fit without running out of disk?
  * @returns {{ok:boolean, reason?:'too-big'|'no-space', freeMb:number|null, needMb:number, keepMb:number}}
  */
 export function canStore(bytes) {
@@ -90,7 +90,7 @@ export function canStore(bytes) {
   const info = { needMb, keepMb: config.mediaMinFreeMb, freeMb: null };
   if (needMb > config.mediaMaxMb) return { ok: false, reason: 'too-big', ...info };
   const free = freeBytes();
-  if (free === null) return { ok: true, ...info }; // no podemos medirlo: no bloqueamos
+  if (free === null) return { ok: true, ...info }; // cannot measure it: do not block
   info.freeMb = Math.round(free / MB);
   if (free - (Number(bytes) || 0) < config.mediaMinFreeMb * MB) {
     return { ok: false, reason: 'no-space', ...info };
@@ -98,7 +98,7 @@ export function canStore(bytes) {
   return { ok: true, ...info };
 }
 
-// ---------------------------------------------------------------- escribir
+// ---------------------------------------------------------------- writing
 
 function subfolderFor(dateISO) {
   return dateISO.slice(0, 7); // 2026-10
@@ -111,7 +111,7 @@ function newFileName(ext, when = todayISO()) {
 }
 
 /**
- * Guarda una imagen. Comprueba el espacio antes de escribir nada.
+ * Saves an image. It checks the space before writing anything.
  * @returns {{ok:true, media:object} | {ok:false, reason:string, needMb?:number, freeMb?:number|null}}
  */
 export function saveImage({ buffer, mime, fileName, caption, kind, subject, subjectKey, chatJid, msgId, author, authorJid, expiresAt, entryId }) {
@@ -154,7 +154,7 @@ export function saveImage({ buffer, mime, fileName, caption, kind, subject, subj
   return { ok: true, media };
 }
 
-/** Guarda un audio temporal (para transcribirlo); luego se borra. */
+/** Saves a temporary audio file (to transcribe it); it is deleted afterwards. */
 export function saveTempAudio(buffer, mime) {
   ensureDirs();
   const name = `voice-${Date.now()}-${crypto.randomBytes(3).toString('hex')}.${extensionFor(mime, 'ogg')}`;
@@ -163,14 +163,14 @@ export function saveTempAudio(buffer, mime) {
   return full;
 }
 
-/** Ruta libre dentro de la carpeta temporal, para que otro programa escriba ahí. */
+/** Free path inside the temp folder, so another program can write there. */
 export function tempFilePath(prefix = 'tmp', ext = 'bin') {
   ensureDirs();
   const name = `${prefix}-${Date.now()}-${crypto.randomBytes(3).toString('hex')}.${ext}`;
   return path.join(tempDir(), name);
 }
 
-/** Guarda una imagen generada por IA (se envía ya y luego la limpia cleanup). */
+/** Saves an AI-generated image (it is sent right away and cleanup removes it). */
 export function saveTempImage(buffer, mime) {
   ensureDirs();
   const name = `gen-${Date.now()}-${crypto.randomBytes(3).toString('hex')}.${extensionFor(mime, 'png')}`;
@@ -190,18 +190,18 @@ export function removeFile(file) {
   }
 }
 
-/** Cuando hay que borrar un archivo: tambien quitamos su apunte. */
+/** When a file must be deleted: its record is removed too. */
 export function deleteMedia(media) {
   removeFile(media.filePath);
   memory.deleteMediaRow(media.id);
 }
 
-// ---------------------------------------------------------------- caducidad
+// ---------------------------------------------------------------- expiry
 
 /**
- * Cuando hay que borrar un archivo:
- *   - si sabemos la fecha (un examen), se guarda hasta unos dias despues;
- *   - si no, unos dias desde que llego.
+ * When a file must be deleted:
+ *   - if we know the date (an exam), it is kept for a few days afterwards;
+ *   - otherwise, a few days from when it arrived.
  */
 export function computeExpiry({ fecha = null } = {}) {
   if (fecha && isValidISO(fecha)) {
@@ -231,7 +231,7 @@ export function dirStats() {
     try {
       bytes += fs.statSync(f).size;
     } catch {
-      /* ignorar */
+      /* ignore */
     }
   }
   return { files: files.length, bytes, mb: Math.round(bytes / MB) };
@@ -245,24 +245,24 @@ export function fileSize(file) {
   }
 }
 
-// ---------------------------------------------------------------- limpieza
+// ---------------------------------------------------------------- cleanup
 
 /**
- * Limpieza: borra archivos caducados, huerfanos, aplica el tope total y
- * olvida los examenes/deberes que ya pasaron.
+ * Cleanup: deletes expired and orphan files, applies the total cap and
+ * forgets the exams/homework that are already past.
  */
 export function cleanup() {
   ensureDirs();
   const result = { expired: 0, orphans: 0, capped: 0, entries: 0, freedBytes: 0 };
 
-  // 1. Archivos caducados.
+  // 1. Expired files.
   for (const m of memory.expiredMedia()) {
     result.freedBytes += removeFile(m.filePath);
     memory.deleteMediaRow(m.id);
     result.expired += 1;
   }
 
-  // 2. Archivos sin apunte (huerfanos).
+  // 2. Files with no record (orphans).
   const known = new Set(memory.allMedia().map((m) => path.resolve(m.filePath)));
   for (const file of listFiles()) {
     if (!known.has(path.resolve(file))) {
@@ -271,7 +271,7 @@ export function cleanup() {
     }
   }
 
-  // 3. Tope total de la carpeta (borra lo mas antiguo primero).
+  // 3. Total folder cap (deletes the oldest first).
   const cap = config.mediaMaxTotalMb * MB;
   const rows = memory.allMedia().map((m) => ({ ...m, size: fileSize(m.filePath) }));
   let total = rows.reduce((a, r) => a + r.size, 0);
@@ -286,7 +286,7 @@ export function cleanup() {
     }
   }
 
-  // 4. Olvidar lo que ya paso de fecha.
+  // 4. Forget whatever is past its date.
   if (config.cleanupRemoveEntries) {
     const before = addDays(todayISO(), -config.cleanupExamGraceDays);
     const stale = addDays(todayISO(), -config.mediaRetentionDays);
@@ -295,7 +295,7 @@ export function cleanup() {
     for (const p of purged.archivos) result.freedBytes += removeFile(p);
   }
 
-  // 5. Restos de transcripciones.
+  // 5. Leftovers from transcriptions.
   for (const file of listFiles(tempDir())) {
     if (Date.now() - fileMtime(file) > 6 * 3600000) result.freedBytes += removeFile(file);
   }
@@ -311,18 +311,18 @@ function fileMtime(file) {
   }
 }
 
-/** Borra TODOS los archivos y sus apuntes (comando /borrar del simulador). */
+/** Deletes EVERY file and its records (/borrar command of the simulator). */
 export function wipeAll() {
   const paths = memory.wipeMedia();
   let freed = 0;
   for (const p of paths) freed += removeFile(p);
-  // Restos sueltos.
+  // Loose leftovers.
   for (const file of listFiles()) freed += removeFile(file);
   for (const file of listFiles(tempDir())) removeFile(file);
   return { files: paths.length, freedBytes: freed };
 }
 
-/** Prepara un archivo guardado para enviarlo por WhatsApp (foto o documento). */
+/** Prepares a stored file to be sent over WhatsApp (photo or document). */
 export function asOutgoing(media, caption = null) {
   const mime = media.mime || 'image/jpeg';
   const esDocumento = !mime.startsWith('image/');
@@ -338,7 +338,7 @@ export function asOutgoing(media, caption = null) {
   return { filePath: media.filePath, mime, caption, kind: 'image' };
 }
 
-/** Nombre de reserva para un documento guardado, si no sabemos el original. */
+/** Fallback name for a stored document, when the original is unknown. */
 function defaultDocName(filePath, mime) {
   const base = path.basename(filePath || 'documento');
   return base || `documento.${extensionFor(mime, 'pdf')}`;

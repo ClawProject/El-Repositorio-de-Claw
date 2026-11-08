@@ -1,5 +1,5 @@
-// Utilidades de fecha en espanol. Todo el bot trabaja con fechas ISO (YYYY-MM-DD)
-// calculadas en la zona horaria configurada, nunca con la hora local del sistema.
+// Spanish date utilities. The whole bot works with ISO dates (YYYY-MM-DD)
+// calculated in the configured time zone, never with the system's local time.
 import { config } from './config.js';
 
 export const MONTHS = [
@@ -7,12 +7,12 @@ export const MONTHS = [
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
 ];
 
-// indice 0 = domingo, igual que Date#getUTCDay
+// index 0 = Sunday, same as Date#getUTCDay
 export const WEEKDAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
 const pad = (n) => String(n).padStart(2, '0');
 
-/** Descompone un Date en sus partes tal y como se ven en la zona horaria dada. */
+/** Breaks a Date into its parts as they are seen in the given time zone. */
 export function partsInTz(date = new Date(), tz = config.timezone) {
   const fmt = new Intl.DateTimeFormat('en-CA', {
     timeZone: tz,
@@ -38,13 +38,13 @@ export function partsInTz(date = new Date(), tz = config.timezone) {
   };
 }
 
-/** Fecha de hoy (o de `date`) como YYYY-MM-DD en la zona horaria configurada. */
+/** Today's date (or `date`) as YYYY-MM-DD in the configured time zone. */
 export function todayISO(date = new Date(), tz = config.timezone) {
   const { year, month, day } = partsInTz(date, tz);
   return `${year}-${pad(month)}-${pad(day)}`;
 }
 
-/** Hora actual en la zona configurada, como YYYY-MM-DD HH:MM:SS. */
+/** Current time in the configured zone, as YYYY-MM-DD HH:MM:SS. */
 export function nowStamp(date = new Date(), tz = config.timezone) {
   const { year, month, day, hour, minute, second } = partsInTz(date, tz);
   return `${year}-${pad(month)}-${pad(day)} ${pad(hour)}:${pad(minute)}:${pad(second)}`;
@@ -64,12 +64,12 @@ export function addDays(iso, n) {
   return utcToISO(isoToUTC(iso) + n * 86400000);
 }
 
-/** Dias desde `from` hasta `to`. Positivo = futuro. */
+/** Days from `from` to `to`. Positive = future. */
 export function daysBetween(from, to) {
   return Math.round((isoToUTC(to) - isoToUTC(from)) / 86400000);
 }
 
-/** 0 = domingo ... 6 = sabado */
+/** 0 = Sunday ... 6 = Saturday */
 export function weekdayOf(iso) {
   return new Date(isoToUTC(iso)).getUTCDay();
 }
@@ -82,18 +82,18 @@ export function isValidISO(value) {
   return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
 }
 
-/** "20 de octubre" */
+/** e.g. "20 de octubre" (Spanish output) */
 export function dayMonth(iso) {
   const [, m, d] = iso.split('-').map(Number);
   return `${d} de ${MONTHS[m - 1]}`;
 }
 
-/** "miércoles 20 de octubre" */
+/** e.g. "miércoles 20 de octubre" (Spanish output) */
 export function longDate(iso) {
   return `${WEEKDAYS[weekdayOf(iso)]} ${dayMonth(iso)}`;
 }
 
-/** "hoy", "mañana", "el lunes", "el 20 de octubre"... */
+/** "hoy", "mañana", "el lunes", "el 20 de octubre"... (Spanish output) */
 export function humanDate(iso, today = todayISO()) {
   const diff = daysBetween(today, iso);
   if (diff === 0) return 'hoy';
@@ -109,7 +109,7 @@ export function shortDate(iso) {
   return `${d} ${MONTHS[m - 1].slice(0, 3)}`;
 }
 
-/** Texto que se le da a la IA para que sepa que dia es hoy. */
+/** Text given to the AI so it knows which day today is. */
 export function describeToday(today = todayISO()) {
   const [y] = today.split('-').map(Number);
   return `${longDate(today)} de ${y} (${today})`;
@@ -120,10 +120,10 @@ function stripAccents(s) {
 }
 
 /**
- * Como stripAccents pero conservando la longitud (caracter a caracter) y en
- * minusculas. Sirve para buscar dentro de un texto y luego recortar el texto
- * ORIGINAL por los mismos indices (la version normal cambia de longitud en las
- * letras con tilde).
+ * Like stripAccents but keeping the length (character by character) and
+ * lowercasing. It is used to search inside a text and then slice the ORIGINAL
+ * text at the same indexes (the normal version changes length on accented
+ * letters).
  */
 export function fold(s) {
   let out = '';
@@ -146,14 +146,14 @@ function weekdayFromName(name) {
 }
 
 /**
- * Busca una fecha en un texto en espanol y devuelve TAMBIEN la frase exacta que
- * la representa (para poder recortarla del contenido).
+ * Looks for a date in a Spanish text and ALSO returns the exact phrase that
+ * represents it (so it can be cut out of the content).
  * @returns {{iso: string, phrase: string}|null}
  */
 export function extractDatePhrase(text, today = todayISO()) {
   if (!text) return null;
   const raw = String(text);
-  const t = fold(raw); // en minusculas y sin acentos, misma longitud que `raw`
+  const t = fold(raw); // lowercase and without accents, same length as `raw`
   const hit = (m, iso) => ({ iso, phrase: raw.slice(m.index, m.index + m[0].length) });
 
   // 2026-10-20
@@ -167,13 +167,13 @@ export function extractDatePhrase(text, today = todayISO()) {
   if (/\bma[nñ]?ana\b/.test(t) && !/\b(por|de)\s+la\s+ma[nñ]?ana\b/.test(t)) return hit(t.match(/\bma[nñ]?ana\b/), addDays(today, 1));
   if (/\bhoy\b/.test(t)) return hit(t.match(/\bhoy\b/), today);
 
-  // en 3 dias / dentro de 2 semanas
+  // "en 3 dias" / "dentro de 2 semanas" (in 3 days / within 2 weeks)
   const enDias = t.match(/\b(?:en|dentro de)\s+(\d{1,2})\s+d[ií]as?\b/);
   if (enDias) return hit(enDias, addDays(today, Number(enDias[1])));
   const enSemanas = t.match(/\b(?:en|dentro de)\s+(\d{1,2})\s+semanas?\b/);
   if (enSemanas) return hit(enSemanas, addDays(today, Number(enSemanas[1]) * 7));
 
-  // 20/10 o 20/10/2026 o 20-10
+  // 20/10 or 20/10/2026 or 20-10
   const slash = t.match(/(?<![\d/\-.])(\d{1,2})[/\-.](\d{1,2})(?:[/\-.](\d{2,4}))?\b(?![/\-.]\d)/);
   if (slash) {
     const day = Number(slash[1]);
@@ -189,7 +189,7 @@ export function extractDatePhrase(text, today = todayISO()) {
     }
   }
 
-  // 20 de octubre [de 2026]
+  // "20 de octubre [de 2026]" (Spanish long form)
   const longMatch = t.match(/\b(\d{1,2})\s+de\s+([a-z]+)(?:\s+de\s+(\d{4}))?/);
   if (longMatch) {
     const day = Number(longMatch[1]);
@@ -205,7 +205,7 @@ export function extractDatePhrase(text, today = todayISO()) {
     }
   }
 
-  // "el lunes", "el proximo lunes", "el lunes que viene"
+  // "el lunes", "el proximo lunes", "el lunes que viene" (next Monday)
   const weekdayMatch = t.match(
     /\b((?:el\s+)?(?:(?:este|proximo|siguiente)\s+)?(?:domingo|lunes|martes|miercoles|jueves|viernes|sabado)(?:\s+que\s+viene)?)\b/
   );
@@ -222,7 +222,7 @@ export function extractDatePhrase(text, today = todayISO()) {
     }
   }
 
-  // "la semana que viene" -> el proximo lunes
+  // "la semana que viene" -> next Monday
   const semanaMatch = t.match(/\bla\s+semana\s+(que\s+viene|proxima|pr[oó]xima|siguiente)\b/);
   if (semanaMatch) {
     const toMonday = (1 - weekdayOf(today) + 7) % 7;
@@ -233,9 +233,9 @@ export function extractDatePhrase(text, today = todayISO()) {
 }
 
 /**
- * Parser de fechas en espanol, usado como red de seguridad si la IA devuelve
- * algo que no es una fecha ISO valida.
- * Devuelve YYYY-MM-DD o null.
+ * Spanish date parser, used as a safety net when the AI returns something that
+ * is not a valid ISO date.
+ * Returns YYYY-MM-DD or null.
  */
 export function parseSpanishDate(text, today = todayISO()) {
   return extractDatePhrase(text, today)?.iso ?? null;

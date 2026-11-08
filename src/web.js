@@ -1,12 +1,14 @@
 import { log } from './logger.js';
 import * as memory from './memory.js';
 import { startServer } from './server.js';
+import { prepararIdioma } from './setup.js';
 
 let server;
 
 async function main() {
   await memory.init();
   server = startServer();
+  await prepararIdioma();
 
   const shutdown = () => {
     server?.close(() => {

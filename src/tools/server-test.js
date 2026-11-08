@@ -20,11 +20,13 @@ const { config } = await import('../config.js');
 const { createWebAuth } = await import('../web-auth.js');
 const { startServer } = await import('../server.js');
 
-// En las pruebas no queremos lanzar el candado de energía de Windows.
+// The tests do not want to trigger the Windows power lock.
 config.preventSleep = false;
 
 test('la API exige sesión institucional y limita CORS al origen configurado', async (t) => {
   await memory.init(dbPath);
+  // The web is already configured: without this, "/" would redirect to /setup.
+  memory.setSetting('cfg:idioma', JSON.stringify('es'));
   const auth = createWebAuth({
     randomInt: () => 123456,
     sendCode: async (email, code) => sentCodes.push({ email, code }),
@@ -57,14 +59,31 @@ test('la API exige sesión institucional y limita CORS al origen configurado', a
   assert.match(loginHtml, /@alu\.edu\.gva\.es/);
   assert.match(loginHtml, /Servidor PickleBrain \(ngrok\)/);
 
-  // El JS de ambas páginas debe compilar (un error de sintaxis dejaría la web muda).
+  // The initial language setup is available and brings all 100 languages.
+  const setup = await fetch(`${baseUrl}/setup`, { headers: { Origin: allowedOrigin } });
+  assert.equal(setup.status, 200);
+  const setupHtml = await setup.text();
+  assert.match(setupHtml, /data-code="es"/);
+  assert.equal((setupHtml.match(/class="lang/g) || []).length >= 100, true);
+  const setupStatus = await fetch(`${baseUrl}/api/setup/status`, { headers });
+  assert.equal(setupStatus.status, 200);
+  const setupData = await setupStatus.json();
+  assert.equal(setupData.needed, false);
+  assert.equal(setupData.language, 'es');
+  assert.equal(setupData.languages.length, 100);
+
+  // The page JS must compile (a syntax error would leave the web mute).
   const vm = await import('node:vm');
-  for (const [nombre, html] of [['portada', homepageHtml], ['acceso', loginHtml]]) {
+  for (const [nombre, html] of [
+    ['portada', homepageHtml],
+    ['acceso', loginHtml],
+    ['configuración', setupHtml]
+  ]) {
     const inline = html.match(/<script>([\s\S]*?)<\/script>/);
     assert.ok(inline, `la ${nombre} debe incluir su JavaScript inline`);
     assert.doesNotThrow(() => new vm.Script(inline[1]), `el JavaScript de la ${nombre} debe compilar`);
   }
-  // El código de acceso son seis casillas que escriben en el campo oculto.
+  // The access code is six boxes that write into the hidden field.
   assert.equal((loginHtml.match(/class="otp-digit"/g) || []).length, 6);
   assert.match(loginHtml, /id="auth-code"/);
 
@@ -73,14 +92,14 @@ test('la API exige sesión institucional y limita CORS al origen configurado', a
   });
   assert.equal(forbidden.status, 403);
 
-  // La web servida desde el túnel de ngrok también debe poder usar la API
-  // (401 por falta de sesión, nunca 403 por origen no autorizado).
+  // The web served from the ngrok tunnel must be able to use the API too
+  // (401 for a missing session, never 403 for an unauthorized origin).
   const fromNgrok = await fetch(`${baseUrl}/api/health`, {
     headers: { Origin: 'https://picklebrain-prueba.ngrok-free.app' }
   });
   assert.equal(fromNgrok.status, 401);
 
-  // El dominio fijo del túnel también es siempre un origen válido.
+  // The tunnel's fixed domain is also always a valid origin.
   const fixedNgrok = await fetch(`${baseUrl}/api/health`, {
     headers: { Origin: 'https://dawn-greeter-grazing.ngrok-free.dev' }
   });
@@ -120,7 +139,7 @@ test('la API exige sesión institucional y limita CORS al origen configurado', a
   assert.equal(requestData.registered, true);
   assert.equal(sentCodes[0].email, 'estudiante@alu.edu.gva.es');
 
-  // El registro incompleto se rechaza antes de enviar el código.
+  // Incomplete registration is rejected before sending the code.
   const incomplete = await fetch(`${baseUrl}/api/auth/request-code`, {
     method: 'POST',
     headers,
@@ -137,7 +156,7 @@ test('la API exige sesión institucional y limita CORS al origen configurado', a
   const login = await verified.json();
   const sessionHeaders = { ...headers, Authorization: `Bearer ${login.token}` };
 
-  // La sesión normal conoce el perfil registrado, pero no es de administración.
+  // A normal session knows the registered profile, but it is not an admin one.
   const me = await fetch(`${baseUrl}/api/auth/me`, { headers: sessionHeaders });
   assert.equal(me.status, 200);
   const meData = await me.json();
@@ -156,7 +175,7 @@ test('la API exige sesión institucional y limita CORS al origen configurado', a
   });
   assert.equal(forbiddenSetting.status, 403);
 
-  // El código debug abre una sesión con acceso total a la administración.
+  // The debug code opens a session with full admin access.
   const badDebug = await fetch(`${baseUrl}/api/auth/debug`, {
     method: 'POST',
     headers,
@@ -242,6 +261,7 @@ test('la API exige sesión institucional y limita CORS al origen configurado', a
   });
   assert.equal(developerSettings.status, 403);
 
+  const fechaFutura = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
   const created = await fetch(`${baseUrl}/api/context`, {
     method: 'POST',
     headers: sessionHeaders,
@@ -249,13 +269,13 @@ test('la API exige sesión institucional y limita CORS al origen configurado', a
       kind: 'deberes',
       subject: 'Historia',
       description: 'Leer el tema 3',
-      dateISO: '2026-11-02'
+      dateISO: fechaFutura
     })
   });
   assert.equal(created.status, 200);
   const createdData = await created.json();
   assert.equal(createdData.entry.content, 'Leer el tema 3');
-  assert.equal(createdData.entry.fecha, '2026-11-02');
+  assert.equal(createdData.entry.fecha, fechaFutura);
 
   const listed = await fetch(`${baseUrl}/api/context`, { headers: sessionHeaders });
   assert.equal((await listed.json()).deberes.length, 1);

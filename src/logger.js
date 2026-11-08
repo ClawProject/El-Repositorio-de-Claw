@@ -1,4 +1,4 @@
-// Logger minimo, sin dependencias, con salida legible en consola.
+// Minimal logger, no dependencies, with readable console output.
 import { config } from './config.js';
 
 const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };

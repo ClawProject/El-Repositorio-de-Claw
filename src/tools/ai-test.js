@@ -1,4 +1,4 @@
-// Pruebas locales de extracción y contexto de IA; no necesitan Ollama ni WhatsApp.
+// Local tests for AI extraction and context; they need neither Ollama nor WhatsApp.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';

@@ -1,14 +1,14 @@
-// Resúmenes de lo que se ha hablado en el grupo.
+// Summaries of what has been talked about in the group.
 //
-// - Automatico: los domingos por la tarde, el bot cuenta lo importante de la semana.
-// - A mano: "!claw resumen" o "!claw resumen semana".
+// - Automatic: on Sunday afternoons, the bot reports the important things of the week.
+// - On demand: "!claw resumen" or "!claw resumen semana".
 import { config } from './config.js';
 import { log } from './logger.js';
 import { chat } from './ollama.js';
 import * as memory from './memory.js';
 import { todayISO, addDays } from './dates.js';
 
-/** Junta los mensajes y le pide a la IA un resumen corto y útil. */
+/** Collects the messages and asks the AI for a short, useful summary. */
 async function resumir({ chatJid, desde, hasta, etiqueta }) {
   const mensajes = memory.messagesSince(chatJid, new Date(desde).toISOString(), config.summaryMaxMessages);
   if (mensajes.length < 3) return null;
@@ -45,7 +45,7 @@ async function resumir({ chatJid, desde, hasta, etiqueta }) {
   }
 }
 
-/** Resumen de los últimos `dias` días. Devuelve el texto listo para WhatsApp. */
+/** Summary of the last `dias` days. Returns the text ready for WhatsApp. */
 export async function resumenDeDias(chatJid, dias = 7) {
   const hasta = todayISO();
   const desde = addDays(hasta, -(dias - 1));
@@ -55,12 +55,12 @@ export async function resumenDeDias(chatJid, dias = 7) {
   return [`🗒️ *Resumen de ${etiqueta}* (${desde} → ${hasta})`, '', cuerpo].join('\n');
 }
 
-/** Resumen semanal automático. */
+/** Automatic weekly summary. */
 export async function resumenSemanal(chatJid) {
   return resumenDeDias(chatJid, 7);
 }
 
-/** ¿Toca mandar ya el resumen semanal? (domingo por la tarde, por defecto). */
+/** Is it time to send the weekly summary? (Sunday afternoon, by default). */
 export function tocaResumenSemanal(now = new Date(), ultimo = null) {
   if (!config.summaryEnabled) return false;
   if (now.getDay() !== config.summaryDay) return false;

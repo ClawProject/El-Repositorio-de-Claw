@@ -142,7 +142,7 @@
     .split label { margin-top: 15px; }
     @media (max-width: 480px) { .split { grid-template-columns: 1fr; gap: 0; } }
 
-    /* código OTP */
+    /* OTP code */
     .otp { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
     .otp input {
       height: 58px; padding: 0; border-radius: 13px;
@@ -320,9 +320,9 @@
       return parseResponse(response);
     }
 
-    // --- Código de 6 dígitos en casillas separadas ---------------------
-    // El valor "de verdad" sigue estando en #auth-code, que es el que lee el
-    // envío. Así el resto de la lógica no cambia.
+    // --- 6-digit code in separate boxes -------------------------------
+    // The "real" value stays in #auth-code, which is what the submission
+    // reads. That way the rest of the logic does not change.
     function syncCode() {
       hiddenCode.value = otpInputs.map((input) => input.value.replace(/\D/g, '')).join('');
       otpInputs.forEach((input) => input.classList.toggle('filled', input.value !== ''));
@@ -364,8 +364,8 @@
       const button = document.getElementById('send-code');
       authMessage.classList.remove('error');
 
-      // Modo debug: si en el correo se escribe solo un código corto (por
-      // ejemplo 0912), no hace falta correo ni esperar al OTP.
+      // Debug mode: when only a short code is typed in the email field (for
+      // example 0912), no email or OTP wait is needed.
       if (/^\d{4,8}$/.test(email)) {
         return debugLogin(email);
       }
@@ -409,8 +409,8 @@
       }
     });
 
-    // Acceso de depuración: el servidor valida el código y devuelve una sesión
-    // con permisos de administración. La web no guarda el código.
+    // Debug access: the server validates the code and returns a session with
+    // administration permissions. The web does not store the code.
     async function debugLogin(code) {
       authMessage.classList.remove('error');
       authMessage.textContent = 'Activando modo debug…';
@@ -426,7 +426,7 @@
       }
     }
 
-    // Al escribir exactamente un código corto en el campo de correo, entra solo.
+    // Typing exactly a short code in the email field logs in by itself.
     emailInput.addEventListener('input', () => {
       const value = emailInput.value.trim();
       if (/^\d{4}$/.test(value)) debugLogin(value);

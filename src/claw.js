@@ -1,16 +1,18 @@
-// Modo "Claw": asistente general cuando alguien escribe la palabra clave en el grupo.
+// "Claw" mode: general assistant when someone types the keyword in the group.
 import { chat } from './ollama.js';
 import { log } from './logger.js';
 import { briefing, recentMessages } from './memory.js';
 import { todayISO, longDate } from './dates.js';
 import { fastRoute } from './signals.js';
 import { config } from './config.js';
+import { instruccionIdioma } from './i18n.js';
 import { buscarWeb, necesitaBuscar } from './search.js';
 
-const SYSTEM_PROMPT = `Eres "Claw", un asistente dentro de un grupo de WhatsApp de un instituto español.
+function systemPrompt() {
+  return `Eres "Claw", un asistente dentro de un grupo de WhatsApp de un instituto español.
 
 Cómo debes responder:
-- En español de España, amable y directo.
+- ${instruccionIdioma()}
 - Responde con la extensión que haga falta: una frase si la pregunta es corta, y tantas líneas como necesites si te piden algo largo o detallado. No hay límite de líneas.
 - Puedes usar varias líneas, listas con guiones, numeración o *negrita* para organizarte. Evita solo las tablas enormes.
 - Contesta JUSTO a lo que te preguntan, con tus palabras, sin copiar datos que no vengan al caso.
@@ -26,8 +28,9 @@ Cómo debes responder:
 Ejemplos:
 - Pregunta: "¿tienes el programa cerrado?" -> Respuesta: "No, estoy aquí funcionando. ¿Qué necesitas?"
 - Pregunta: "¿nos vas a matar?" -> Respuesta: "¡Qué va! Soy inofensivo. Solo ayudo con los deberes."`;
+}
 
-/** ¿La pregunta va de deberes/exámenes (y por tanto conviene darle los datos)? */
+/** Is the question about homework/exams (and therefore worth giving it the data)? */
 function sinAcentos(s) {
   return String(s || '')
     .normalize('NFD')
@@ -71,19 +74,21 @@ function cleanAnswer(text) {
     .slice(0, 4000);
 }
 
-/** Eres un gran maestro de ajedrez. */
-const GM_PROMPT = `Eres "Claw", y en este momento hablas como un GRAN MAESTRO de ajedrez: con calma, criterio y algo de chulería elegante.
+/** Grandmaster persona for the chess mode. */
+function gmPrompt() {
+  return `Eres "Claw", y en este momento hablas como un GRAN MAESTRO de ajedrez: con calma, criterio y algo de chulería elegante.
 
 Cómo debes responder:
-- En español de España, claro y con criterio.
+- ${instruccionIdioma()}
 - Habla de ajedrez: aperturas, desarrollo, centro, piezas activas, reyes seguros, táctica y planes.
 - Responde con la extensión que haga falta: breve si la posición es simple, y con todas las líneas que necesites si te piden un análisis a fondo. No hay límite de líneas.
 - Nunca menciones que eres una IA. Eres Claw, y sabes de ajedrez.
 - Nunca insultes ni faltes al respeto (nada de insultos, burlas ni desprecios). Si te provocan, responde con elegancia, sin entrar al trapo.
 - Si te dan un FEN y quieres describirlo, hazlo en lenguaje de ajedrez.`;
+}
 
 /**
- * Responde una pregunta en modo Claw.
+ * Answers a question in Claw mode.
  * @param {{question:string, history?:Array<{role:string,content:string}>, persona?:'normal'|'ajedrez', chatJid?:string|null, internet?:Array<{title:string,url:string,snippet:string}>|null, forzarBusca?:boolean}} input
  */
 export async function clawAnswer({
@@ -94,10 +99,10 @@ export async function clawAnswer({
   internet = null,
   forzarBusca = false
 }) {
-  const base = persona === 'ajedrez' ? GM_PROMPT : SYSTEM_PROMPT;
+  const base = persona === 'ajedrez' ? gmPrompt() : systemPrompt();
 
-  // ¿Hace falta mirar en internet? Solo si está activado y la pregunta lo pide
-  // (o si quien llama ya nos trae los resultados, o pide buscarlos a la fuerza).
+  // Do we need to look online? Only if it is enabled and the question asks for
+  // it (or if the caller already brings the results, or forces a search).
   let resultados = Array.isArray(internet) ? internet : null;
   if (!resultados && persona !== 'ajedrez' && config.webSearchEnabled && (forzarBusca || necesitaBuscar(question))) {
     try {
@@ -109,8 +114,8 @@ export async function clawAnswer({
     }
   }
 
-  // La fecha va en el mensaje de sistema, no en la pregunta: si la metíamos en
-  // la pregunta, el modelo pequeño respondía con la fecha a cualquier cosa.
+  // The date goes in the system message, not in the question: when it was put in
+  // the question, the small model answered with the date to anything.
   const hoy = `Hoy es ${longDate(todayISO())} (${todayISO()}).`;
   const recientes = persona === 'ajedrez' || !chatJid
     ? []
@@ -118,8 +123,8 @@ export async function clawAnswer({
         .filter((m, i, all) => !(i === all.length - 1 && m.text?.trim() === String(question).trim()))
         .slice(-6)
         .map((m) => ({ author: m.author || 'alguien', text: String(m.text || '').replace(/\s+/g, ' ').slice(0, 220) }));
-  // Los datos de deberes/exámenes solo se le pasan si la pregunta va de eso;
-  // si no, el modelo copiaba sus encabezados ("DEBERES CONOCIDOS:") como respuesta.
+  // Homework/exam data is only passed when the question is about that;
+  // otherwise the model copied its headers ("DEBERES CONOCIDOS:") as the reply.
   const preguntaEscolar = persona !== 'ajedrez' && (preguntaDeDeberes(question) || seguimientoEscolar(question, recientes));
   const datos = preguntaEscolar ? briefing(chatJid) : '';
   const contextoGrupo =
@@ -128,8 +133,8 @@ export async function clawAnswer({
           .map((m) => `- ${m.author}: ${m.text}`)
           .join('\n')}`
       : '';
-  // Si hemos buscado en internet, le pasamos lo encontrado para que responda con
-  // datos reales en vez de inventárselos.
+  // If we searched the web, we pass on what was found so it answers with real
+  // data instead of making it up.
   const internetTexto =
     resultados && resultados.length
       ? `\n\nRESULTADOS DE INTERNET (DuckDuckGo). Responde basándote SOLO en ellos, sin inventarte nada, y deja claro que la información la has sacado de ahí: empieza la respuesta con "Según DuckDuckGo" (por ejemplo, "Según DuckDuckGo, ..."). Si los resultados no responden a la pregunta, dilo con sinceridad.\n${resultados
@@ -168,8 +173,8 @@ export async function clawAnswer({
       answer = await chat(messages, chatOptions);
     }
     const texto = cleanAnswer(answer) || '🪝 No se me ocurre qué decir a eso.';
-    // Si hemos buscado en internet, nos aseguramos de que se note de dónde sale:
-    // si el modelo se ha olvidado de decirlo, lo añadimos nosotros.
+    // If we searched the web, we make sure the source is visible: if the model
+    // forgot to say it, we add it ourselves.
     return resultados && resultados.length ? conFuenteWeb(texto) : texto;
   } catch (err) {
     log.warn('Fallo en modo Claw:', err.message);
@@ -177,13 +182,13 @@ export async function clawAnswer({
   }
 }
 
-/** Garantiza que una respuesta que usa internet diga que viene de DuckDuckGo. */
+/** Makes sure a reply that uses the web says it comes from DuckDuckGo. */
 export function conFuenteWeb(texto) {
   if (/duckduckgo/i.test(texto)) return texto;
   return `🌐 *Según DuckDuckGo:*\n${texto}`;
 }
 
-/** Mensaje corto cuando alguien escribe solo "Claw" sin nada más. */
+/** Short message when someone types only "Claw" and nothing else. */
 export function clawGreeting() {
   return '🪝 Dime, ¿qué necesitas? Por ejemplo: _Claw, ¿cuánto son 2+2?_';
 }

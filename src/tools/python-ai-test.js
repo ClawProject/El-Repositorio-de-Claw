@@ -1,6 +1,6 @@
-// Pruebas del cliente del servicio Python, con un servidor HTTP falso.
-// No necesita Python ni modelos: comprueba el contrato Node <-> servicio.
-// Uso: npm run test:python
+// Tests for the Python service client, using a fake HTTP server.
+// It needs neither Python nor models: it checks the Node <-> service contract.
+// Usage: npm run test:python
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
@@ -57,7 +57,7 @@ await new Promise((resolve) => servidor.listen(0, '127.0.0.1', resolve));
 const { port } = servidor.address();
 const base = `http://127.0.0.1:${port}`;
 
-// Guardamos la configuración real para restaurarla al terminar.
+// The real configuration is saved so it can be restored at the end.
 const guardado = {
   url: config.pythonAiUrl,
   enabled: config.pythonAiEnabled,

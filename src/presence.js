@@ -1,18 +1,18 @@
-// Avisos inmediatos en WhatsApp: el "está escribiendo…" y mensajes sueltos.
+// Immediate WhatsApp signals: the "typing…" state and standalone messages.
 //
-// Sirven para que se vea que el bot sigue trabajando cuando una tarea tarda
-// (por ejemplo, dibujar una imagen: puede tardar más de un minuto y, sin estos
-// avisos, parece que se ha quedado colgado).
+// They make it visible that the bot is still working when a task takes a while
+// (for example, drawing an image: it can take over a minute and, without these
+// signals, it looks like it has hung).
 //
-// `whatsapp.js` nos deja aquí sus formas de mandar el aviso y el router las usa
-// cuando quiere, sin depender directamente de la conexión (y sin importar
-// `whatsapp.js` desde el router, que daría un ciclo raro de imports).
+// `whatsapp.js` registers its send functions here and the router uses them when
+// it wants, without depending directly on the connection (and without importing
+// `whatsapp.js` from the router, which would create an odd import cycle).
 
 let enviar = null;
 let enviarTexto = null;
 const latidos = new Map();
 
-/** WhatsApp nos deja aquí cómo mandar el aviso (o `null` al desconectar). */
+/** WhatsApp registers here how to send the signal (or `null` on disconnect). */
 export function usarEnvio(fn) {
   enviar = typeof fn === 'function' ? fn : null;
   if (!enviar) {
@@ -21,15 +21,15 @@ export function usarEnvio(fn) {
   }
 }
 
-/** WhatsApp nos deja aquí cómo mandar un mensaje suelto (o `null` al desconectar). */
+/** WhatsApp registers here how to send a standalone message (or `null` on disconnect). */
 export function usarEnvioTexto(fn) {
   enviarTexto = typeof fn === 'function' ? fn : null;
 }
 
 /**
- * Manda un mensaje suelto ya, sin esperar a que el router termine. Sirve para
- * avisar de tareas lentas (por ejemplo, generar una imagen). Nunca lanza:
- * devuelve `false` si no hay un canal de envío disponible.
+ * Sends a standalone message right away, without waiting for the router to
+ * finish. It is meant for slow tasks (for example, generating an image). It
+ * never throws: returns `false` when no send channel is available.
  */
 export function avisarTexto(chatJid, texto) {
   if (!chatJid || !texto || !enviarTexto) return false;
@@ -43,9 +43,9 @@ export function avisarTexto(chatJid, texto) {
 }
 
 /**
- * Muestra (o quita) el "escribiendo…" en un chat. Mientras está activo lo
- * refresca cada pocos segundos, porque WhatsApp lo borra solo al rato.
- * Nunca lanza: esto es solo un adorno y no puede romper nada.
+ * Shows (or clears) the "typing…" state in a chat. While active it refreshes it
+ * every few seconds, because WhatsApp clears it by itself after a while.
+ * It never throws: this is only a decoration and cannot break anything.
  */
 export function escribiendo(chatJid, activo = true) {
   if (!chatJid) return;
@@ -63,7 +63,7 @@ export function escribiendo(chatJid, activo = true) {
       const r = enviar(chatJid, activo ? 'composing' : 'paused');
       if (r && typeof r.catch === 'function') r.catch(() => {});
     } catch {
-      /* da igual */
+      /* ignore */
     }
   };
 
@@ -75,7 +75,7 @@ export function escribiendo(chatJid, activo = true) {
   }
 }
 
-/** ¿Hay algún aviso en marcha? (para los tests) */
+/** Is any signal running? (for tests) */
 export function avisando(chatJid) {
   return latidos.has(chatJid);
 }

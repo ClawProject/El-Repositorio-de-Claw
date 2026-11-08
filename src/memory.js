@@ -1,5 +1,5 @@
-// Almacenamiento en SQLite usando node:sqlite (incluido en Node 22.5+).
-// Guarda deberes, examenes, preguntas abiertas y un pequeno historial de mensajes.
+// SQLite storage using node:sqlite (bundled in Node 22.5+).
+// It stores homework, exams, open questions and a small message history.
 import fs from 'node:fs';
 import path from 'node:path';
 import { config } from './config.js';
@@ -135,7 +135,7 @@ export async function init(customPath) {
   return db;
 }
 
-/** Arreglos para bases de datos que ya existian antes de un cambio. */
+/** Fixes for databases that already existed before a change. */
 function migrate(db) {
   const cols = (tabla) => db.prepare(`PRAGMA table_info(${tabla})`).all().map((c) => c.name);
   try {
@@ -152,7 +152,7 @@ function handle() {
   return db;
 }
 
-// ---------------------------------------------------------------- ajustes
+// ---------------------------------------------------------------- settings
 
 export function getSetting(key, fallback = null) {
   const row = handle().prepare('SELECT value FROM settings WHERE key = ?').get(key);
@@ -165,16 +165,16 @@ export function setSetting(key, value) {
     .run(key, value == null ? null : String(value));
 }
 
-// ---------------------------------------------------------------- estudiantes
+// ---------------------------------------------------------------- students
 
-/** Normaliza el correo de un estudiante. */
+/** Normalises a student's email. */
 function studentEmail(value) {
   return String(value || '').trim().toLowerCase();
 }
 
 /**
- * Guarda (o actualiza) los datos de registro de un estudiante.
- * El correo institucional es la clave: si vuelve a registrarse, se actualiza.
+ * Saves (or updates) a student's registration data.
+ * The school email is the key: registering again updates the record.
  */
 export function saveStudent({ email, name, surname = '', course = '', group = '', lastLoginAt = null } = {}) {
   const clave = studentEmail(email);
@@ -206,7 +206,7 @@ export function saveStudent({ email, name, surname = '', course = '', group = ''
   return getStudent(clave);
 }
 
-/** Datos de un estudiante por correo, o null si no está registrado. */
+/** Data of a student by email, or null when not registered. */
 export function getStudent(email) {
   const row = handle().prepare('SELECT * FROM students WHERE email = ?').get(studentEmail(email));
   if (!row) return null;
@@ -222,7 +222,7 @@ export function getStudent(email) {
   };
 }
 
-/** Todos los estudiantes registrados (para el panel de administración). */
+/** Every registered student (for the admin panel). */
 export function listStudents(limit = 500) {
   return handle()
     .prepare('SELECT * FROM students ORDER BY updated_at DESC LIMIT ?')
@@ -239,7 +239,7 @@ export function listStudents(limit = 500) {
     }));
 }
 
-/** Marca la última entrada de un estudiante (sin tocar el resto del perfil). */
+/** Marks a student's last login (without touching the rest of the profile). */
 export function touchStudentLogin(email) {
   const clave = studentEmail(email);
   if (!clave) return null;
@@ -249,7 +249,7 @@ export function touchStudentLogin(email) {
   return getStudent(clave);
 }
 
-/** Borra el registro de un estudiante. Devuelve true si existía. */
+/** Deletes a student's record. Returns true if it existed. */
 export function deleteStudent(email) {
   const clave = studentEmail(email);
   if (!clave) return false;
@@ -257,7 +257,7 @@ export function deleteStudent(email) {
   return Number(result.changes) > 0;
 }
 
-// ---------------------------------------------------------------- entradas
+// ---------------------------------------------------------------- entries
 
 function rowToEntry(row) {
   if (!row) return null;
@@ -278,8 +278,8 @@ function rowToEntry(row) {
 }
 
 /**
- * Guarda un deber o un examen.
- * Devuelve { status, entry, replaced } donde status es:
+ * Saves a homework item or an exam.
+ * Returns { status, entry, replaced } where status is:
  *   'nuevo' | 'duplicado' | 'actualizado' | 'reemplaza'
  */
 export function saveEntry(input) {
@@ -291,12 +291,12 @@ export function saveEntry(input) {
   const fecha = isValidISO(input.fecha) ? input.fecha : null;
   let content = String(input.content || '').trim();
 
-  // Cada grupo tiene sus propios deberes: filtramos por chat si nos lo dicen.
+  // Every group has its own homework: we filter by chat when told to.
   const chatJid = input.chatJid || null;
   const chatWhere = chatJid ? ' AND (chat_jid IS NULL OR chat_jid = ?)' : '';
   const chatArg = chatJid ? [chatJid] : [];
 
-  // Un examen del que solo sabemos la fecha sigue siendo util: lo guardamos.
+  // An exam we only know the date of is still useful: we save it.
   if (!content) {
     if (kind === 'examen' && (fecha || input.fechaTexto)) content = 'Examen';
     else return { status: 'ignorado', entry: null, replaced: [] };
@@ -304,8 +304,8 @@ export function saveEntry(input) {
 
   const replaced = [];
 
-  // Un examen "vacío" (sin fecha y sin contenido propio) no debe borrar lo que
-  // ya sabíamos de esa asignatura: casi siempre es un "hay examen" repetido.
+  // A "vague" exam (no date and no content of its own) must not delete what we
+  // already knew about that subject: it is almost always a repeated "hay examen".
   const vagueExam =
     kind === 'examen' && !fecha && !input.fechaTexto && (!content || content === 'Examen');
   if (vagueExam && sKey) {
@@ -315,7 +315,7 @@ export function saveEntry(input) {
     if (existing) return { status: 'ignorado', entry: null, replaced: [] };
   }
 
-  // Un examen nuevo de la misma asignatura invalida los anteriores de esa asignatura.
+  // A new exam for the same subject invalidates the earlier ones for that subject.
   if (kind === 'examen' && sKey) {
     const previous = database
       .prepare(
@@ -394,10 +394,10 @@ export function saveEntry(input) {
 }
 
 /**
- * Crea o modifica a mano el apunte de una asignatura (para "!claw apunta...").
- * Si ya hay uno de esa asignatura, lo actualiza (solo los campos que le pasen);
- * si no, crea uno nuevo. Sirve para corregir deberes/exámenes y poner la fecha
- * límite a mano.
+ * Creates or edits by hand the entry for a subject (for "!claw apunta...").
+ * If one already exists for that subject it is updated (only the fields passed);
+ * otherwise a new one is created. It is used to correct homework/exams and set
+ * the deadline by hand.
  * @returns {{status:'actualizado'|'creado'|'nada', entry:object|null}}
  */
 export function upsertManual({ kind = 'deberes', subject = null, content = null, fecha = null, fechaTexto = null, chatJid = null }) {
@@ -424,7 +424,7 @@ export function upsertManual({ kind = 'deberes', subject = null, content = null,
     return { status: 'actualizado', entry: rowToEntry(database.prepare('SELECT * FROM entries WHERE id = ?').get(existing.id)) };
   }
 
-  // Sin apunte previo: para un examen basta con la fecha; para deberes hace falta texto.
+  // No previous entry: for an exam the date is enough; homework needs text.
   if (!nuevoContenido && !(k === 'examen' && (fecha || fechaTexto))) {
     return { status: 'nada', entry: null };
   }
@@ -442,7 +442,7 @@ export function upsertManual({ kind = 'deberes', subject = null, content = null,
 }
 
 /**
- * Entradas que siguen "vigentes": con fecha futura o sin fecha y recientes.
+ * Entries still "valid": with a future date, or undated and recent.
  * @param {{kind: 'deberes'|'examen', subjectKey?: string|null, chatJid?: string|null}} options
  */
 export function findPending({ kind, subjectKey: sKey = null, chatJid = null }) {
@@ -465,7 +465,7 @@ export function findPending({ kind, subjectKey: sKey = null, chatJid = null }) {
   return handle().prepare(sql).all(...params).map(rowToEntry);
 }
 
-/** Ultimo examen pasado de una asignatura (por si preguntan por uno que ya paso). */
+/** Last past exam for a subject (in case someone asks about one already gone). */
 export function findLastExam(sKey = null, chatJid = null) {
   const today = todayISO();
   const params = ['examen', today];
@@ -498,9 +498,9 @@ export function deactivateEntry(id) {
 }
 
 /**
- * Desactiva los apuntes que coincidan con un texto (para "!claw olvida ...").
- * Compara sin acentos y sin mayúsculas, contra la asignatura y el contenido.
- * @returns {number} cuántos ha borrado
+ * Deactivates the entries matching a text (for "!claw olvida ...").
+ * It compares without accents and case-insensitively, against subject and content.
+ * @returns {number} how many were deleted
  */
 export function forgetMatches(texto, chatJid = null) {
   const limpia = (s) =>
@@ -526,9 +526,9 @@ export function wipeEntries() {
 }
 
 /**
- * Desactiva TODOS los apuntes de un grupo (para "!claw olvida todo").
- * A diferencia de wipeEntries(), respeta los otros grupos y no borra el historial.
- * @returns {number} cuántos ha borrado
+ * Deactivates EVERY entry of one group (for "!claw olvida todo").
+ * Unlike wipeEntries(), it respects the other groups and keeps the history.
+ * @returns {number} how many were deleted
  */
 export function forgetAll(chatJid = null) {
   const rows = listEntries(100000, chatJid);
@@ -536,7 +536,7 @@ export function forgetAll(chatJid = null) {
   return rows.length;
 }
 
-// ---------------------------------------------------------------- archivos
+// ---------------------------------------------------------------- files
 
 function rowToMedia(row) {
   if (!row) return null;
@@ -559,7 +559,7 @@ function rowToMedia(row) {
   };
 }
 
-/** Apunta un archivo guardado en el disco. */
+/** Records a file saved to disk. */
 export function addMedia(input) {
   const now = nowStamp();
   const info = handle()
@@ -588,7 +588,7 @@ export function addMedia(input) {
   return rowToMedia(handle().prepare('SELECT * FROM media WHERE id = ?').get(Number(info.lastInsertRowid)));
 }
 
-/** Archivos vigentes de una asignatura (los que se pueden reenviar). */
+/** Valid files for a subject (the ones that can be forwarded). */
 export function listMedia({ kind = null, subjectKey = null, chatJid = null, limit = 10 } = {}) {
   const now = nowStamp();
   const params = [now];
@@ -616,7 +616,7 @@ export function allMedia() {
   return handle().prepare('SELECT * FROM media ORDER BY created_at ASC, id ASC').all().map(rowToMedia);
 }
 
-/** Archivos que ya han caducado y hay que borrar. */
+/** Files that have already expired and must be deleted. */
 export function expiredMedia(now = nowStamp()) {
   return handle()
     .prepare('SELECT * FROM media WHERE expires_at IS NOT NULL AND expires_at <= ?')
@@ -628,7 +628,7 @@ export function deleteMediaRow(id) {
   handle().prepare('DELETE FROM media WHERE id = ?').run(id);
 }
 
-/** Borra los apuntes de archivos y devuelve las rutas para borrar del disco. */
+/** Deletes the file records and returns the paths to remove from disk. */
 export function wipeMedia() {
   const paths = allMedia().map((m) => m.filePath);
   handle().exec('DELETE FROM media;');
@@ -636,8 +636,8 @@ export function wipeMedia() {
 }
 
 /**
- * Borra lo que ya no sirve: entradas con fecha pasada (con margen) y
- * entradas sin fecha demasiado antiguas.
+ * Deletes what is no longer useful: entries with a past date (with margin) and
+ * undated entries that are too old.
  * @returns {{entradas:number, archivos:string[]}}
  */
 export function purgeOld(beforeISO, staleISO) {
@@ -659,12 +659,12 @@ export function purgeOld(beforeISO, staleISO) {
   return { entradas: ids.length, archivos: linked.map((r) => r.file_path) };
 }
 
-// ---------------------------------------------------------------- preguntas
+// ---------------------------------------------------------------- questions
 
 export function openQuestion({ chatJid, kind, subject, askedBy, msgId }) {
   const database = handle();
   const sKey = subject ? subjectKey(canonicalSubject(subject) || subject) : '';
-  // No dupliques la misma pregunta si ya hay una reciente sin resolver.
+  // Do not duplicate the same question when a recent one is still open.
   const cutoff = new Date(Date.now() - config.answerWindowMinutes * 60000).toISOString();
   const open = database
     .prepare(
@@ -698,7 +698,7 @@ function rowToQuestion(row) {
   };
 }
 
-/** Ultima pregunta sin resolver dentro de la ventana de tiempo. */
+/** Last unresolved question inside the time window. */
 export function getPendingQuestion(chatJid, minutes = config.answerWindowMinutes) {
   const cutoff = new Date(Date.now() - minutes * 60000).toISOString();
   const row = handle()
@@ -717,7 +717,7 @@ export function resolveQuestion(id) {
     .run(new Date().toISOString(), id);
 }
 
-/** Marca como resueltas las preguntas viejas para no arrastrarlas. */
+/** Marks old questions as resolved so they are not carried around. */
 export function closeStaleQuestions(minutes = config.answerWindowMinutes) {
   const cutoff = new Date(Date.now() - minutes * 60000).toISOString();
   handle()
@@ -725,7 +725,7 @@ export function closeStaleQuestions(minutes = config.answerWindowMinutes) {
     .run(new Date().toISOString(), cutoff);
 }
 
-// ---------------------------------------------------------------- historial
+// ---------------------------------------------------------------- history
 
 export function logMessage({ chatJid, msgId, author, authorJid, text }) {
   if (!text || !config.storeMessages) return;
@@ -747,7 +747,7 @@ export function recentMessages(chatJid, limit = config.contextMessages) {
   return rows.reverse().map((r) => ({ author: r.author, text: r.text }));
 }
 
-/** Mensajes de un chat desde una fecha (para los resúmenes). */
+/** Messages of a chat since a date (for the summaries). */
 export function messagesSince(chatJid, sinceISO, limit = config.summaryMaxMessages) {
   const rows = handle()
     .prepare('SELECT author, text, ts FROM messages WHERE chat_jid = ? AND ts >= ? ORDER BY id ASC LIMIT ?')
@@ -760,10 +760,10 @@ function pruneMessages(days = config.storeMessagesDays) {
   handle().prepare('DELETE FROM messages WHERE ts < ?').run(cutoff);
 }
 
-// ---------------------------------------------------------------- palabrotas
+// ---------------------------------------------------------------- swears
 
 /**
- * Suma las palabrotas de un mensaje a la cuenta del grupo.
+ * Adds the swears of a message to the group's counter.
  * @param {{chatJid:string, authorKey:string, author?:string, byWord:Record<string,number>}} input
  */
 export function addSwears({ chatJid, authorKey, author = null, byWord }) {
@@ -781,7 +781,7 @@ export function addSwears({ chatJid, authorKey, author = null, byWord }) {
   }
 }
 
-/** Ranking de quién dice más palabrotas en un grupo. */
+/** Ranking of who swears the most in a group. */
 export function swearRanking(chatJid, limit = 10) {
   return handle()
     .prepare(
@@ -791,7 +791,7 @@ export function swearRanking(chatJid, limit = 10) {
     .all(chatJid, limit);
 }
 
-/** La palabrota más dicha en el grupo ({ word, n }) o null. */
+/** The most said swear in the group ({ word, n }) or null. */
 export function swearTopWord(chatJid) {
   return (
     handle()
@@ -800,19 +800,19 @@ export function swearTopWord(chatJid) {
   );
 }
 
-/** Total de palabrotas del grupo. */
+/** Total swears of the group. */
 export function swearTotal(chatJid) {
   const row = handle().prepare('SELECT SUM(count) AS n FROM swears WHERE chat_jid = ?').get(chatJid);
   return Number(row?.n || 0);
 }
 
-/** Pone el contador a cero (de un grupo, o de todos si no se pasa chatJid). */
+/** Resets the counter (for one group, or all of them when no chatJid is given). */
 export function resetSwears(chatJid = null) {
   if (chatJid) handle().prepare('DELETE FROM swears WHERE chat_jid = ?').run(chatJid);
   else handle().exec('DELETE FROM swears;');
 }
 
-// ---------------------------------------------------------------- resumen
+// ---------------------------------------------------------------- summary
 
 export function stats(chatJid = null) {
   const database = handle();
@@ -823,14 +823,14 @@ export function stats(chatJid = null) {
     deberes: one(`SELECT COUNT(*) AS n FROM entries WHERE active = 1 AND kind = 'deberes'${scope}`, ...arg).n,
     examenes: one(`SELECT COUNT(*) AS n FROM entries WHERE active = 1 AND kind = 'examen'${scope}`, ...arg).n,
     preguntas: one(`SELECT COUNT(*) AS n FROM questions WHERE resolved = 0${scope}`, ...arg).n,
-    // Ojo: en estas dos no hay WHERE previo, así que hace falta "WHERE 1=1"
-    // para poder encadenar el "AND (chat_jid ...)" del ámbito.
+    // Careful: these two have no previous WHERE, so "WHERE 1=1" is needed
+    // in order to append the scope's "AND (chat_jid ...)".
     mensajes: one(`SELECT COUNT(*) AS n FROM messages WHERE 1=1${scope}`, ...arg).n,
     archivos: one(`SELECT COUNT(*) AS n FROM media WHERE 1=1${scope}`, ...arg).n
   };
 }
 
-/** Ultima entrada (la mas reciente) de un tipo y asignatura, para engancharle una foto. */
+/** Latest entry (the most recent) of a kind and subject, to attach a photo to it. */
 export function findLatestEntry({ kind, subjectKey: sKey = null, chatJid = null }) {
   const params = [kind];
   let sql = 'SELECT * FROM entries WHERE active = 1 AND kind = ?';
@@ -846,7 +846,7 @@ export function findLatestEntry({ kind, subjectKey: sKey = null, chatJid = null 
   return rowToEntry(handle().prepare(sql).get(...params));
 }
 
-/** Resumen corto de lo que sabe, para dárselo como contexto al modo Claw. */
+/** Short summary of what it knows, to give it as context to Claw mode. */
 export function briefing(chatJid = null) {
   const today = todayISO();
   const pretty = (e) => {
@@ -878,7 +878,7 @@ export function briefing(chatJid = null) {
   return `\n\nDatos reales que tienes apuntados del grupo. Hoy es ${longDate(today)} (${today}). Úsalos si te preguntan por ellos, con lenguaje natural, sin soltar códigos de fecha:\n${lines.join('\n')}`;
 }
 
-/** Borra una entrada por su ID. */
+/** Deletes an entry by its ID. */
 export function deleteEntry(id) {
   if (!id) return false;
   handle().prepare('DELETE FROM entries WHERE id = ?').run(Number(id));
@@ -890,7 +890,7 @@ export function close() {
     try {
       db.close();
     } catch {
-      /* ignorar */
+      /* ignore */
     }
     db = null;
   }

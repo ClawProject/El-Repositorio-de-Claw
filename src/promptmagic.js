@@ -1,5 +1,5 @@
-// Mejorador de prompts para Stable Diffusion (local).
-// Traduce y enriquece el prompt del usuario a inglés, que entiende mucho mejor SD 1.5.
+// Prompt enhancer for Stable Diffusion (local).
+// It translates and enriches the user's prompt into English, which SD 1.5 understands far better.
 import { chat } from './ollama.js';
 import { config } from './config.js';
 import { log } from './logger.js';
@@ -19,7 +19,7 @@ Rules:
 
 const QUALITY_TAGS = ['high quality', 'highly detailed', 'balanced composition', 'sharp focus'];
 
-/** Añade etiquetas visuales compatibles con SD 1.5 sin cambiar el contenido pedido. */
+/** Adds SD 1.5 friendly visual tags without changing the requested content. */
 export function prepararPromptImagen(texto) {
   const prompt = String(texto || '').trim();
   if (!prompt) return '';
@@ -29,8 +29,8 @@ export function prepararPromptImagen(texto) {
 }
 
 /**
- * Mejora un prompt de imagen: traduce a inglés y lo hace más efectivo.
- * Si falla por cualquier razón, devuelve el prompt original intacto.
+ * Enhances an image prompt: translates it into English and makes it more
+ * effective. If it fails for any reason, it returns the original prompt intact.
  * @param {string} texto
  */
 export async function mejorarPrompt(texto) {
@@ -52,9 +52,9 @@ export async function mejorarPrompt(texto) {
     );
     let improved = String(answer || '').trim();
     if (!improved) return prompt;
-    // Quita comillas típicas si el modelo las mete por error.
+    // Strip typical quotes if the model adds them by mistake.
     improved = improved.replace(/^["']|["']$/g, '').trim();
-    // Limita longitud razonable.
+    // Keep the length reasonable.
     if (improved.length > 800) improved = improved.slice(0, 800);
     log.info(`Prompt mejorado (${prompt.length}->${improved.length}): "${prompt.slice(0, 60)}..." -> "${improved.slice(0, 60)}..."`);
     return improved;

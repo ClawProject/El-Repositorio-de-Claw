@@ -1,5 +1,5 @@
-// Pequeña utilidad para generar un .ics (iCalendar) con los exámenes próximos.
-// No es pesado y nos sirve para que el grupo pueda importar los exámenes al calendario.
+// Small utility to build an .ics (iCalendar) file with the upcoming exams.
+// It is lightweight and lets the group import the exams into their calendar.
 import { todayISO, addDays } from './dates.js';
 import { subjectLabel } from './subjects.js';
 
@@ -7,7 +7,7 @@ function pad(n) {
   return String(n).padStart(2, '0');
 }
 
-/** Convierte YYYY-MM-DD a YYYYMMDD para un evento todo-el-día. */
+/** Converts YYYY-MM-DD to YYYYMMDD for an all-day event. */
 function toDateOnly(iso) {
   if (!iso) return null;
   const d = new Date(`${iso}T00:00:00`);
@@ -28,8 +28,8 @@ function esc(s) {
 }
 
 /**
- * Genera el contenido .ics de los exámenes que estén en el futuro (o hoy, como
- * evento del día).
+ * Builds the .ics content for exams in the future (or today, as a same-day
+ * event).
  * @param {Array} exams
  * @returns {string}
  */

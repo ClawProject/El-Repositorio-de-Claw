@@ -1,4 +1,4 @@
-// Cliente minimo para Ollama (IA local). Sin dependencias: usa fetch.
+// Minimal client for Ollama (local AI). No dependencies: it uses fetch.
 import { config } from './config.js';
 import { log } from './logger.js';
 
@@ -21,7 +21,7 @@ async function request(pathname, { method = 'GET', body, timeoutMs = config.olla
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
-      // Un 400 puede ser porque el modelo no soporta el esquema JSON pedido.
+      // A 400 may mean the model does not support the requested JSON schema.
       const err = new Error(`Ollama respondio ${res.status}: ${detail.slice(0, 300)}`);
       err.status = res.status;
       throw err;
@@ -47,7 +47,7 @@ export async function ping() {
   }
 }
 
-/** Qué modelos de texto tiene cargados Ollama ahora mismo (en memoria gráfica). */
+/** Which text models Ollama has loaded right now (in GPU memory). */
 export async function cargados() {
   try {
     const data = await request('/api/ps', { timeoutMs: 5000 });
@@ -58,15 +58,15 @@ export async function cargados() {
 }
 
 /**
- * Suelta de la memoria gráfica (VRAM) los modelos de texto.
+ * Releases the text models from GPU memory (VRAM).
  *
- * Hace falta porque en una gráfica pequeña (4 GB) NO caben a la vez el modelo de
- * texto y el de imágenes: si Ollama tiene el suyo cargado, al motor de imágenes
- * le falta memoria y falla. Ollama lo vuelve a cargar solo (un par de segundos)
- * la próxima vez que se le pregunte algo, así que no se pierde nada.
+ * It is needed because a small GPU (4 GB) cannot hold the text model and the
+ * image model at the same time: when Ollama has its own loaded, the image engine
+ * runs out of memory and fails. Ollama reloads it by itself (a couple of seconds)
+ * the next time it is asked something, so nothing is lost.
  *
- * Nunca lanza: si Ollama no responde, se sigue intentando dibujar igualmente.
- * @returns {Promise<boolean>} true si ya no queda ningún modelo cargado.
+ * It never throws: if Ollama does not respond, drawing is still attempted.
+ * @returns {Promise<boolean>} true when no model is left loaded.
  */
 export async function liberarVram(
   modelos = [
@@ -89,7 +89,7 @@ export async function liberarVram(
     }
   }
 
-  // Esperamos (como mucho ~6s) a que Ollama confirme que ya no queda nada.
+  // Wait (about 6s at most) for Ollama to confirm nothing is left loaded.
   if (!lista.length) return true;
   for (let intento = 0; intento < 12; intento++) {
     if (!(await cargados()).length) return true;
@@ -100,7 +100,7 @@ export async function liberarVram(
 }
 
 /**
- * Conversacion con el modelo local.
+ * Conversation with the local model.
  * @param {Array<{role:string, content:string}>} messages
  * @param {{format?: string|object, temperature?: number, numPredict?: number, numCtx?: number}} options
  */
@@ -110,7 +110,7 @@ export async function chat(messages, options = {}) {
     temperature = 0.2,
     numPredict = 400,
     numCtx = 4096,
-    // Por defecto usa el modelo principal; cada tarea puede pedir otro.
+    // It uses the primary model by default; each task can ask for another one.
     model = config.ollamaModel,
     timeoutMs
   } = options;
@@ -126,9 +126,9 @@ export async function chat(messages, options = {}) {
       num_ctx: numCtx
     }
   };
-  // Qwen3 admite desactivar el modo de razonamiento en versiones recientes de
-  // Ollama. Las versiones antiguas ignoran este campo; filtramos sus etiquetas
-  // de razonamiento de la respuesta más abajo para no mostrarlas al usuario.
+  // Qwen3 allows disabling the reasoning mode in recent Ollama versions. Older
+  // versions ignore this field; their reasoning tags are filtered out of the
+  // reply further down so the user never sees them.
   if (/^qwen3(?::|$)/i.test(model)) payload.think = false;
   if (format) payload.format = format;
 
@@ -136,7 +136,7 @@ export async function chat(messages, options = {}) {
   try {
     data = await request('/api/chat', { method: 'POST', body: payload, timeoutMs });
   } catch (err) {
-    // Si el esquema JSON no le gusta al modelo, reintentamos sin el.
+    // If the model does not like the JSON schema, retry without it.
     if (err?.status === 400 && format && typeof format === 'object') {
       log.warn('Ollama rechazo el esquema JSON, reintentando en modo json simple');
       delete payload.format;

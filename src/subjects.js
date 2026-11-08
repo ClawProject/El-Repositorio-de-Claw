@@ -1,4 +1,4 @@
-// Normalizacion de nombres de asignaturas: "mates" y "matematicas" son lo mismo.
+// Subject name normalisation: "mates" and "matematicas" are the same thing.
 
 const ALIASES = {
   mate: 'matemáticas',
@@ -9,9 +9,9 @@ const ALIASES = {
   lengua: 'lengua',
   'lengua y literatura': 'lengua',
   literatura: 'lengua',
-  // En España se dice "castellano" tanto como "lengua". Sin estas variantes,
-  // un mensaje que dijera "castellano" no reconocía asignatura y el bot se
-  // limitaba a enseñar los ejemplos en vez de apuntar el deber.
+  // In Spain "castellano" is used as often as "lengua". Without these variants,
+  // a message saying "castellano" recognised no subject and the bot just showed
+  // the examples instead of recording the homework.
   castellano: 'lengua',
   castellana: 'lengua',
   'lengua y castellano': 'lengua',
@@ -59,7 +59,7 @@ const ALIASES = {
   tecnologia_industrial: 'tecnología industrial'
 };
 
-// Palabras que se buscan directamente dentro de un mensaje para adivinar la asignatura.
+// Words searched for directly inside a message to guess the subject.
 const SEARCHABLE = [
   'matemáticas', 'matemáticas aplicadas', 'matemáticas académicas', 'mates', 'mate',
   'lengua', 'literatura', 'castellano', 'lengua y castellano',
@@ -79,7 +79,7 @@ export function stripAccents(s) {
   return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
-/** Clave interna para comparar asignaturas: "Matemáticas " -> "matematicas" */
+/** Internal key to compare subjects: "Matemáticas " -> "matematicas" */
 export function subjectKey(name) {
   return stripAccents(String(name || '').toLowerCase())
     .replace(/[^a-z0-9 ]/g, ' ')
@@ -87,27 +87,27 @@ export function subjectKey(name) {
     .trim();
 }
 
-/** Convierte cualquier variante a su nombre "bonito": "mates" -> "matemáticas" */
+/** Turns any variant into its "pretty" name: "mates" -> "matemáticas" */
 export function canonicalSubject(name) {
   const key = subjectKey(name);
   if (!key) return null;
   if (ALIASES[key]) return ALIASES[key];
-  // primera palabra como alias ("mates de la clase" -> "mates")
+  // first word as an alias ("mates de la clase" -> "mates")
   const first = key.split(' ')[0];
   if (ALIASES[first]) return ALIASES[first];
   return key;
 }
 
-// Las agujas se preparan una vez. Antes se normalizaban los 70+ candidatos en
-// cada mensaje, y era el mayor coste del triaje sin IA.
+// The needles are prepared once. Previously the 70+ candidates were normalised
+// on every message, which was the biggest cost of the AI-free triage.
 const SEARCHABLE_NEEDLES = SEARCHABLE.map((candidate) => ({
   candidate,
   needle: ` ${stripAccents(candidate)} `
 }));
 
 /**
- * Intenta adivinar la asignatura mencionada en un texto libre.
- * Devuelve { key, label } o null.
+ * Tries to guess the subject mentioned in free text.
+ * Returns { key, label } or null.
  */
 export function detectSubject(text) {
   const normalized = ' ' + stripAccents(String(text || '').toLowerCase()).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ') + ' ';
@@ -124,7 +124,7 @@ export function detectSubject(text) {
   return { key: subjectKey(label), label, matched: best.matched };
 }
 
-/** Etiqueta bonita para mostrar en el grupo. */
+/** Pretty label to show in the group. */
 export function subjectLabel(name) {
   if (!name) return null;
   const canonical = canonicalSubject(name);

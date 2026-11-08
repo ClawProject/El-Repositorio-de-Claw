@@ -1,10 +1,10 @@
-# Dependencias pesadas para generar imágenes con diffusers.
-# Requiere la parte básica:
+# Heavy dependencies for generating images with diffusers.
+# Requires the basic part first:
 #   .venv/bin/pip install -r python/requirements.txt
-# y después:
+# and then:
 #   .venv/bin/pip install -r python/requirements-images.txt
 #
-# Si no tienes GPU NVIDIA, instala antes torch en versión CPU:
+# If you do not have an NVIDIA GPU, install the CPU build of torch first:
 #   .venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
 -r requirements.txt
 torch>=2.4

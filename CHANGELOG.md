@@ -1,354 +1,365 @@
 # Changelog
 
-Todos los cambios importantes de **PickleBrain**, en orden cronológico inverso.
+All notable changes to **PickleBrain**, in reverse chronological order.
 
-El formato está basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/)
-y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+and the project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [Sin publicar]
+## [Unreleased]
 
-### Cambiado
+### Changed
 
-- **Dominio fijo del túnel.** La web y el servidor usan siempre
-  `dawn-greeter-grazing.ngrok-free.dev`; ya no hay que configurarlo a mano.
-- **Registro antes de entrar.** El acceso por correo pide nombre, apellidos,
-  curso y grupo, y guarda el perfil en SQLite. El panel de administración puede
-  consultarlo y borrarlo.
-- **Clasificación con contexto y fechas más fiables.** Las respuestas breves a
-  una pregunta pendiente pueden heredar su tipo y asignatura; las correcciones
-  explícitas se reconocen y sustituyen el apunte anterior. Las fechas relativas
-  se calculan a partir de la frase original, y se evitan confusiones entre fechas
-  y listas como `3/5/6`.
-- **Física y Química como asignatura conjunta.** Se reconoce también como `FYQ`
-  y se consulta con una clave común, sin mezclarla con Física o Química por
-  separado.
-- **Respuestas de Qwen3 más limpias y robustas.** Se descarta el razonamiento
-  interno o una respuesta truncada, y Claw recurre al modelo de respaldo si el
-  principal no termina.
+- **Fixed tunnel domain.** The website and the server always use
+  `dawn-greeter-grazing.ngrok-free.dev`; it no longer has to be configured by
+  hand.
+- **Register before entering.** Email access now asks for name, surname, course
+  and group, and stores the profile in SQLite. The administration panel can view
+  and delete it.
+- **Classification with context and more reliable dates.** Short answers to a
+  pending question can inherit its type and subject; explicit corrections are
+  recognised and replace the previous note. Relative dates are calculated from
+  the original sentence, and confusion between dates and lists such as `3/5/6`
+  is avoided.
+- **Physics and Chemistry as a joint subject.** It is also recognised as `FYQ`
+  and queried through a shared key, without mixing it with Physics or Chemistry
+  separately.
+- **Cleaner and more robust Qwen3 replies.** Internal reasoning or a truncated
+  answer is discarded, and Claw falls back to the backup model if the primary one
+  does not finish.
 
-### Añadido
+### Added
 
-- **Guía de instalación y plantilla de configuración.** Nuevo `INSTALL.md` con
-  los pasos para Linux, macOS y Windows, `git clone`, Node, Ollama, servicio
-  Python, Homebrew y resolución de problemas. Se añade `.env.example` y `.env`
-  pasa a estar ignorado por Git.
-- **Carpeta de datos configurable.** `PICKLEBRAIN_DATA_DIR` permite guardar la
-  sesión, SQLite, fotos y modelos fuera del código (útil con Homebrew). El `.env`
-  también se puede colocar dentro de esa carpeta.
-- **Servicio Python para voz e imágenes.** `python/server.py` (FastAPI) usa
-  faster-whisper para transcribir notas de voz y diffusers para dibujar. Node lo
-  llama por HTTP en `127.0.0.1:5050`; si no está arrancado, el bot sigue con los
-  motores antiguos (transformers.js y sd-cli). Las imágenes pasan a
-  `IMAGE_GEN_BACKEND=auto` por defecto y Whisper cambia solo a CPU si detecta
-  CUDA pero faltan `libcublas`/cuDNN. Incluye `npm run ia`, `npm run test:python`
-  y pruebas del contrato Node ↔ Python sin descargar modelos.
-- **Modo debug con acceso total.** Escribir `0912` (o el código de
-  `WEB_DEBUG_CODE`) en el campo del correo de `/entrar/` entra al instante, sin
-  correo ni OTP. La sesión lleva `debug: true` y desbloquea una pestaña de
-  administración con estadísticas, todos los ajustes del bot y el alumnado
-  registrado. Los intentos se limitan por IP y las cuentas normales siguen sin
-  acceso a `/api/admin/*`.
-- **Apuntar por privado (mensajes directos).** Ahora puedes escribirle al bot por
-  privado (mensaje directo o el chat contigo mismo): lo que le digas de deberes o
-  exámenes **se apunta en el grupo**, y también puedes preguntarle por ellos por
-  ahí. Así se puede dejar un deber a mano sin escribir en el grupo. Para charlar
-  con Claw de cualquier otra cosa por privado, se escribe `Claw` + la pregunta
-  (antes cualquier mensaje privado iba directo a Claw y no se apuntaba nada). Por
-  seguridad, `!claw fuera` ya solo funciona dentro del grupo, para no
-  desvincularlo sin querer desde un privado.
-- **Búsqueda en internet (DuckDuckGo).** Claw ahora puede buscar en la web cuando
-  la pregunta pide algo actual (noticias, precios, resultados deportivos…) o
-  cuando se lo piden a la fuerza con `!claw busca <algo>`. Funciona sin
-  dependencias nuevas: usa el buscador HTML, luego el "lite" y, si falla, la API
-  de respuestas instantáneas. Se activa o desactiva con `!claw ajustes buscar
-  si|no` (o `WEB_SEARCH`).
-- **Dos modelos de IA según la tarea.** El "cerebro" que apunta deberes y
-  exámenes puede usar un modelo distinto (normalmente más pequeño y rápido) que el
-  que charla. Nuevo ajuste `modelo_cerebro` / variable `OLLAMA_MODEL_BRAIN`. Por
-  defecto los dos usan `qwen2.5:3b`, que cabe entero en la GPU y responde al
-  momento.
-- **Ajuste `modelo`.** El dueño puede cambiar el modelo de IA de Ollama en
-  caliente desde WhatsApp (por ejemplo `!claw ajustes modelo qwen2.5:3b`), sin
-  tocar el `.env` ni reiniciar.
-- **Firma de Claw.** Las respuestas del asistente llevan ahora una cabecera
-  `🪝 Claw` para poder distinguirlas de un vistazo de los avisos de
-  deberes/exámenes. Se puede quitar con `!claw ajustes firma no` (o
-  `CLAW_SIGNATURE=false`).
-- **Ver y borrar de golpe.** Nuevo comando `!claw apuntes` para ver todo lo que
-  el bot tiene apuntado (deberes y exámenes) de una vez, y `!claw olvida todo`
-  (dueño/admin) para vaciar de golpe todos los apuntes del grupo. El borrado
-  respeta los demás grupos y no toca el historial.
-- **Apuntar a mano con fecha límite.** Nuevo comando `!claw apunta` para crear o
-  corregir un deber o examen y ponerle la fecha a mano, sin esperar a que lo
-  digan en el grupo: `!claw apunta deberes mates hacer la ficha 3 para el
-  viernes` (también vale cambiarla sola: `!claw apunta deberes mates para el
-  lunes`). Por defecto lo puede usar **cualquiera** del grupo; el dueño puede
-  restringirlo a dueño y admins con `!claw ajustes apunta no` (o `APUNTA_LIBRE`).
-- **Ajuste `apunta`.** Quién puede usar `!claw apunta`: cualquiera (`si`, por
-  defecto) o solo el dueño y los administradores (`no`).
-- **Marcar deberes como hechos.** `!claw hecho lengua` (o con una palabra del
-  enunciado) quita de pendientes lo que ya se ha entregado: deja de salir en
-  `!claw deberes`, en `!claw proximo` y en los recordatorios. Sin argumentos
-  muestra qué queda pendiente y cómo marcarlo.
-- **Aviso de examen con antelación.** Además de la víspera y del mismo día, Claw
-  avisa tres días antes (`REMINDER_ADVANCE_DAYS`) para que dé tiempo a repasar.
-  Ponlo en `0` si prefieres solo los avisos de siempre.
-- **Candado de energía.** Mientras el bot está abierto, impide que Windows duerma
-  o hiberne el ordenador (si se suspendía, se caía la conexión con WhatsApp).
-  Usa `SetThreadExecutionState` con un pequeño proceso auxiliar: no toca ningún
-  ajuste del PC y se suelta solo al cerrar el bot. Se controla con los ajustes
-  `despierto` y `pantalla` (y las variables `PREVENT_SLEEP` y `KEEP_DISPLAY`).
-- **Quién puede escribirle por privado.** Nuevo ajuste `privado` con cuatro
-  opciones: `dueno` (solo tú, por defecto), `admins` (tú y los administradores),
-  `todos` (cualquiera) o `nadie`. Se cambia con `!claw ajustes privado <valor>`
-  (o `PRIVATE_MODE`). Antes era un simple sí/no y, con el sí, podía escribirle
-  cualquiera.
-- **Vetar a alguien (prohibirle usar a Claw).** Nuevos comandos `!claw prohibir
-  <número>` y `!claw permitir <número>` (dueño/admin), y `!claw vetados` para ver
-  la lista. A quien está vetado el bot lo ignora por completo: no le contesta a
-  Claw, no le responde a menciones y no le acepta comandos `!claw`. El dueño y los
-  administradores no se pueden vetar. También se puede poner de arranque con
-  `WHATSAPP_BLOCKED`.
-- **Contador de palabrotas.** El bot cuenta los tacos que se dicen en el grupo (por
-  persona): además de poder verlo con `!claw palabrotas`, el ranking **sale solo**
-  en cuanto alguien suelta una palabrota (con un pequeño margen entre avisos para
-  no spamear). Se pone a cero con `!claw palabrotas reset` (dueño/admin) y se
-  controla con `!claw ajustes palabrotas`/`palabrotas_aviso`/`palabrotas_espera` o
-  las variables `COUNT_SWEARS`/`SWEAR_ALERT`/`SWEAR_COOLDOWN`. Reconoce palabras
-  completas (así "computadora" no cuenta como "puta") y no censura ni regaña a nadie.
-- **Generación de imágenes (experimental).** Nuevo comando `!claw imagen <qué>`
-  que pide la imagen a un endpoint local compatible con OpenAI Images. Se añaden
-  los ajustes `imagenes`, `imagen_modelo` y `imagen_endpoint` (y las variables
-  `IMAGE_GEN_ENABLED`, `IMAGE_GEN_ENDPOINT`, `IMAGE_GEN_MODEL`, `IMAGE_GEN_API_KEY`,
-  `IMAGE_GEN_SIZE` y `IMAGE_GEN_TIMEOUT`). **Está apagada de fábrica a propósito**:
-  el bot no genera ninguna imagen por su cuenta (ni si alguien le pide una
-  hablando de ello); solo dibujo si alguien escribe `!claw imagen ...` a mano y
-  alguien con permiso ha abierto antes el ajuste `imagenes`.
-- **La IA de imágenes ya está instalada (y es local).** Se ha puesto en el
-  ordenador una IA que dibuja de verdad (Stable Diffusion 1.5, dentro de
-  `sdserver\`), así que la generación de imágenes deja de ser un hueco vacío: si
-  algún día se enciende, funciona. El motor por defecto es `cli` (llama a
-  `sd-cli.exe`, sin tener ningún servidor abierto) y también se puede apuntar a
-  un servidor compatible con OpenAI Images con el motor `http`. Ajustes nuevos:
-  `imagen_motor`, `imagen_pasos` y `imagen_negativo`; variables nuevas:
-  `IMAGE_GEN_BACKEND`, `IMAGE_GEN_BIN`, `IMAGE_GEN_MODEL_PATH`,
-  `IMAGE_GEN_STEPS`, `IMAGE_GEN_WIDTH`, `IMAGE_GEN_HEIGHT` y
-  `IMAGE_GEN_NEGATIVE`. Sigue **apagada de fábrica**.
-- **Aviso de novedades en el grupo.** Cuando se le añade algo al bot, el grupo se
-  entera: se manda un resumen de lo nuevo, **una sola vez por novedad** (para no
-  spamear en cada reinicio). Se puede volver a ver cuando quieras con `!claw
-  novedades` y se controla con el ajuste `novedades` (o `CHANGELOG_NOTIFY`).
-- **"Escribiendo…" mientras dibuja.** Dibujar una imagen tarda cerca de un minuto
-  y, sin ninguna señal, parecía que el bot se había colgado. Ahora marca
-  "escribiendo…" en el grupo mientras trabaja y lo quita al acabar. Y al pedir la
-  imagen manda además un **"🎨 Generando, por favor espera…"**.
-- **Prompts de imagen traducidos a inglés.** Stable Diffusion está entrenado en
-  inglés y le mandábamos el texto en español tal cual, así que malinterpretaba
-  muchas peticiones. Ahora el modelo de texto traduce y limpia el pedido **de
-  forma literal** (traduce, pero no inventa objetos ni cambia el sujeto) y esa
-  versión es la que va al motor. Se desactiva con `IMAGE_GEN_ENHANCE=false`.
-- **Ajustes finos de las imágenes.** Nuevas variables `IMAGE_GEN_CFG`,
-  `IMAGE_GEN_SAMPLER` (por defecto `dpm++2m`), `IMAGE_GEN_SCHEDULER`
-  (`karras`), `IMAGE_GEN_SEED` (por defecto `-1`, **semilla aleatoria**: antes
-  salía la misma composición siempre, la 42) y `IMAGE_GEN_NEGATIVE`, cuyo valor
-  por defecto pasa a estar en inglés, que es como mejor lo entiende el motor.
-- **Motor de ajedrez propio.** Claw ya no usa la IA de texto para jugar: un
-  minimax con poda alfa-beta y tablas de posición decide las jugadas. La IA solo
-  comenta la partida. Ajustable con `CHESS_THINK_MS` (milisegundos que piensa
-  cada jugada, por defecto 1200).
-- **Web rediseñada con acceso por código.** La portada (`/`) y el acceso
-  (`/entrar/`) se han rehecho: fondo negro verdoso con acentos lima, tipografía
-  propia, animaciones suaves, tarjetas de funciones con detalle y una vista previa
-  del chat. El acceso pide el correo `@alu.edu.gva.es` y un código de seis dígitos
-  en casillas separadas (10 minutos, cinco intentos); después se puede chatear con
-  Claw y gestionar deberes y exámenes compartidos. La web la sirve el propio
-  PickleBrain, en local o a través de ngrok.
+- **Initial language setup.** On first start Claw opens
+  `http://localhost:3000/setup` and asks you to choose among **100 languages**; it
+  does not connect to WhatsApp until a choice has been made. The language is
+  stored in the database, applied live to the fixed texts, the setup website and
+  the AI prompt, and can be changed later with `!claw idioma en` (owner/admins).
+  The fixed texts are translated into Spanish, English, Catalan, French,
+  Portuguese, German, Italian, Russian, Arabic and Chinese; for the rest English
+  is used as a fallback and the AI still replies in the chosen language.
+- **Installation guide and configuration template.** New `INSTALL.md` with the
+  steps for Linux, macOS and Windows, `git clone`, Node, Ollama, the Python
+  service, Homebrew and troubleshooting. `.env.example` is added and `.env` is
+  now ignored by Git.
+- **Configurable data folder.** `PICKLEBRAIN_DATA_DIR` allows keeping the
+  session, SQLite, photos and models outside the code (useful with Homebrew).
+  The `.env` can also be placed inside that folder.
+- **Python service for voice and images.** `python/server.py` (FastAPI) uses
+  faster-whisper to transcribe voice notes and diffusers to draw. Node calls it
+  over HTTP on `127.0.0.1:5050`; if it is not running, the bot keeps using the
+  legacy engines (transformers.js and sd-cli). Images switch to
+  `IMAGE_GEN_BACKEND=auto` by default and Whisper falls back to CPU by itself if
+  it detects CUDA but `libcublas`/cuDNN are missing. Includes `npm run ia`,
+  `npm run test:python` and Node ↔ Python contract tests without downloading
+  models.
+- **Debug mode with full access.** Typing `0912` (or the `WEB_DEBUG_CODE` value)
+  in the email field of `/entrar/` enters instantly, with no email or OTP. The
+  session carries `debug: true` and unlocks an administration tab with
+  statistics, all bot settings and the registered students. Attempts are limited
+  per IP and normal accounts still have no access to `/api/admin/*`.
+- **Recording from private messages.** You can now message the bot privately
+  (direct message or the chat with yourself): whatever you tell it about
+  homework or exams **is recorded in the group**, and you can also ask it about
+  them from there. That way a task can be left at hand without writing in the
+  group. To chat with Claw about anything else privately, write `Claw` plus your
+  question (before, any private message went straight to Claw and nothing was
+  recorded). For safety, `!claw fuera` now only works inside the group, so it
+  cannot be unlinked by accident from a private chat.
+- **Web search (DuckDuckGo).** Claw can now search the web when the question asks
+  for something current (news, prices, sports results…) or when it is forced with
+  `!claw busca <something>`. It works without new dependencies: it uses the HTML
+  search engine, then "lite", and if that fails the instant answers API. It is
+  enabled or disabled with `!claw ajustes buscar si|no` (or `WEB_SEARCH`).
+- **Two AI models depending on the task.** The "brain" that records homework and
+  exams can use a different model (usually smaller and faster) than the one that
+  chats. New `modelo_cerebro` setting / `OLLAMA_MODEL_BRAIN` variable. By default
+  both use `qwen2.5:3b`, which fits entirely in the GPU and replies instantly.
+- **`modelo` setting.** The owner can change the Ollama AI model live from
+  WhatsApp (for example `!claw ajustes modelo qwen2.5:3b`), without editing
+  `.env` or restarting.
+- **Claw signature.** Assistant replies now carry a `🪝 Claw` header so they can
+  be told apart at a glance from homework/exam notices. It can be removed with
+  `!claw ajustes firma no` (or `CLAW_SIGNATURE=false`).
+- **View and delete in one go.** New `!claw apuntes` command to see everything the
+  bot has recorded (homework and exams) at once, and `!claw olvida todo`
+  (owner/admin) to wipe all the notes in the group at once. Deletion respects the
+  other groups and does not touch the history.
+- **Record by hand with a deadline.** New `!claw apunta` command to create or
+  correct a task or exam and set the date by hand, without waiting for someone to
+  say it in the group: `!claw apunta deberes mates hacer la ficha 3 para el
+  viernes` (it also works to change just the date: `!claw apunta deberes mates
+  para el lunes`). By default **anyone** in the group can use it; the owner can
+  restrict it to owner and admins with `!claw ajustes apunta no` (or
+  `APUNTA_LIBRE`).
+- **`apunta` setting.** Who can use `!claw apunta`: anyone (`si`, default) or only
+  the owner and the administrators (`no`).
+- **Mark homework as done.** `!claw hecho lengua` (or with a word from the
+  description) removes what has already been handed in from the pending list: it
+  stops appearing in `!claw deberes`, in `!claw proximo` and in the reminders.
+  With no arguments it shows what is still pending and how to mark it.
+- **Exam notice in advance.** Besides the evening before and the same day, Claw
+  now warns three days ahead (`REMINDER_ADVANCE_DAYS`) so there is time to revise.
+  Set it to `0` if you prefer only the usual notices.
+- **Power lock.** While the bot is open, it prevents Windows from sleeping or
+  hibernating the computer (if it suspended, the WhatsApp connection dropped).
+  It uses `SetThreadExecutionState` with a small helper process: it does not
+  change any PC setting and releases itself when the bot closes. Controlled by
+  the `despierto` and `pantalla` settings (and the `PREVENT_SLEEP` and
+  `KEEP_DISPLAY` variables).
+- **Who can message it privately.** New `privado` setting with four options:
+  `dueno` (only you, by default), `admins` (you and the administrators), `todos`
+  (anyone) or `nadie`. Changed with `!claw ajustes privado <value>` (or
+  `PRIVATE_MODE`). Before it was a simple yes/no and, with yes, anyone could
+  message it.
+- **Banning someone (stopping them from using Claw).** New `!claw prohibir
+  <number>` and `!claw permitir <number>` commands (owner/admin), and `!claw
+  vetados` to see the list. The bot ignores a banned person completely: it does
+  not answer Claw, does not reply to mentions and does not accept `!claw`
+  commands from them. The owner and administrators cannot be banned. It can also
+  be set at startup with `WHATSAPP_BLOCKED`.
+- **Swear counter.** The bot counts the swear words said in the group (per
+  person): besides being viewable with `!claw palabrotas`, the ranking **appears
+  on its own** as soon as someone swears (with a small margin between notices so
+  it does not spam). It is reset with `!claw palabrotas reset` (owner/admin) and
+  controlled with `!claw ajustes palabrotas`/`palabrotas_aviso`/`palabrotas_espera`
+  or the `COUNT_SWEARS`/`SWEAR_ALERT`/`SWEAR_COOLDOWN` variables. It recognises
+  whole words (so "computadora" does not count as "puta") and it does not censor
+  or scold anyone.
+- **Image generation (experimental).** New `!claw imagen <what>` command that
+  requests the image from a local endpoint compatible with OpenAI Images. The
+  `imagenes`, `imagen_modelo` and `imagen_endpoint` settings are added (and the
+  `IMAGE_GEN_ENABLED`, `IMAGE_GEN_ENDPOINT`, `IMAGE_GEN_MODEL`,
+  `IMAGE_GEN_API_KEY`, `IMAGE_GEN_SIZE` and `IMAGE_GEN_TIMEOUT` variables). **It
+  is off out of the box on purpose**: the bot does not generate any image on its
+  own (not even if someone asks for one while talking); it only draws if someone
+  types `!claw imagen ...` by hand and someone with permission has enabled the
+  `imagenes` setting beforehand.
+- **The image AI is already installed (and it is local).** An AI that really
+  draws has been set up on the computer (Stable Diffusion 1.5, inside
+  `sdserver\`), so image generation is no longer an empty gap: if it is ever
+  switched on, it works. The default engine is `cli` (it calls `sd-cli.exe`, with
+  no server open) and it can also point to an OpenAI Images compatible server
+  with the `http` engine. New settings: `imagen_motor`, `imagen_pasos` and
+  `imagen_negativo`; new variables: `IMAGE_GEN_BACKEND`, `IMAGE_GEN_BIN`,
+  `IMAGE_GEN_MODEL_PATH`, `IMAGE_GEN_STEPS`, `IMAGE_GEN_WIDTH`,
+  `IMAGE_GEN_HEIGHT` and `IMAGE_GEN_NEGATIVE`. It is still **off out of the box**.
+- **Changelog notice in the group.** When something is added to the bot, the
+  group finds out: a summary of what is new is sent, **once per change** (so it
+  does not spam on every restart). It can be seen again at any time with `!claw
+  novedades` and is controlled by the `novedades` setting (or
+  `CHANGELOG_NOTIFY`).
+- **"Typing…" while it draws.** Drawing an image takes close to a minute and,
+  with no signal at all, it looked like the bot had hung. It now shows
+  "typing…" in the group while it works and clears it when done. And when the
+  image is requested it also sends a **"🎨 Generating, please wait…"**.
+- **Image prompts translated into English.** Stable Diffusion is trained in
+  English and we were sending it the text in Spanish as-is, so it
+  misinterpreted many requests. The text model now translates and cleans up the
+  request **literally** (it translates, but does not invent objects or change the
+  subject) and that version is what goes to the engine. Disabled with
+  `IMAGE_GEN_ENHANCE=false`.
+- **Fine image settings.** New `IMAGE_GEN_CFG`, `IMAGE_GEN_SAMPLER` (default
+  `dpm++2m`), `IMAGE_GEN_SCHEDULER` (`karras`), `IMAGE_GEN_SEED` (default `-1`,
+  **random seed**: before, the same composition always came out, 42) and
+  `IMAGE_GEN_NEGATIVE`, whose default value is now in English, which is how the
+  engine understands it best.
+- **Own chess engine.** Claw no longer uses the text AI to play: a minimax with
+  alpha-beta pruning and position tables decides the moves. The AI only comments
+  on the game. Configurable with `CHESS_THINK_MS` (milliseconds it thinks per
+  move, 1200 by default).
+- **Redesigned website with code access.** The landing page (`/`) and the login
+  (`/entrar/`) have been rebuilt: black-green background with lime accents, its
+  own typography, smooth animations, feature cards with detail and a chat
+  preview. Login asks for the `@alu.edu.gva.es` email and a six-digit code in
+  separate boxes (10 minutes, five attempts); afterwards you can chat with Claw
+  and manage shared homework and exams. The website is served by PickleBrain
+  itself, locally or through ngrok.
 
-### Cambiado
+### Changed
 
-- **Las respuestas que usan internet dicen de dónde salen.** Cuando Claw busca en
-  la web, la respuesta empieza por "Según DuckDuckGo" (lo pide el propio
-  asistente y, si se le olvida, se le añade la fuente de forma automática).
+- **Replies that use the internet say where they come from.** When Claw searches
+  the web, the reply starts with "According to DuckDuckGo" (the assistant is
+  asked to do so and, if it forgets, the source is added automatically).
 
-- **Claw no insulta ni falta al respeto.** Se ha añadido una regla a las
-  instrucciones del asistente (y a los comentarios de ajedrez y a los resúmenes)
-  para que nunca use insultos, tacos ni descalificaciones, ni siquiera si le
-  provocan. Si le faltan al respeto, responde con educación.
-- **Los deberes ahora muestran siempre su plazo.** Antes, si un deber no tenía
-  fecha, esa parte ni aparecía y no se sabía si es que no había plazo o es que no
-  se mostraba. Ahora `!claw deberes` (y `!claw apuntes`) dicen siempre para
-  cuándo es, o "sin fecha" si no se sabe.
+- **Claw does not insult or show disrespect.** A rule has been added to the
+  assistant instructions (and to the chess comments and the summaries) so it
+  never uses insults, swear words or put-downs, not even if provoked. If someone
+  is disrespectful to it, it replies politely.
+- **Homework now always shows its deadline.** Before, if a task had no date, that
+  part did not appear at all and it was impossible to tell whether there was no
+  deadline or it was simply not shown. Now `!claw deberes` (and `!claw apuntes`)
+  always say when it is due, or "no date" if it is unknown.
 
-- **Claw ya no tiene límite de líneas.** Antes el asistente estaba forzado a
-  responder en "1 o 2 frases" y como máximo 300 caracteres (con un tope de salida
-  de 260 tokens y un recorte a 900 caracteres). Ahora responde con la extensión
-  que haga falta: una frase si la pregunta es corta, o todas las líneas que
-  necesite —con listas y numeración— si le piden algo largo o detallado.
-- **Claw recuerda más la conversación.** Ahora mira los últimos 10 mensajes
-  (antes 6) y guarda hasta 12 (antes 8), así que hay menos que repetirle.
-- **Claw dice "No lo sé" en vez de inventar.** A las instrucciones se les ha
-  añadido que no invente hechos, que use el contexto que se le da y que responda
-  con claridad cuando no sabe algo.
+- **Claw no longer has a line limit.** Before, the assistant was forced to reply
+  in "1 or 2 sentences" and at most 300 characters (with an output cap of 260
+  tokens and a cut at 900 characters). Now it replies with whatever length is
+  needed: one sentence if the question is short, or as many lines as necessary —
+  with lists and numbering — if it is asked for something long or detailed.
+- **Claw remembers more of the conversation.** It now looks at the last 10
+  messages (before 6) and keeps up to 12 (before 8), so there is less to repeat.
+- **Claw says "I don't know" instead of making things up.** The instructions now
+  say not to invent facts, to use the context it is given and to answer clearly
+  when it does not know something.
 
-### Arreglado
+### Fixed
 
-- **Bucle de error 440 ("Connection Replaced").** Al perderse la conexión, el bot
-  abría un socket nuevo *sin cerrar el anterior* y sin evitar reconexiones
-  solapadas. Dos sockets con la misma sesión se pisaban entre sí y WhatsApp
-  devolvía el 440 en bucle infinito (conectar → 440 → conectar → 440…). Ahora,
-  antes de reconectar, el socket viejo se cierra de verdad y solo puede haber una
-  reconexión pendiente a la vez.
-- **Avisos que se daban por enviados sin haber salido.** Si la conexión aún no
-  estaba lista (o se iba internet), el bot daba por enviado el aviso de novedades,
-  los recordatorios de exámenes y el resumen semanal **aunque el mensaje no
-  hubiera salido**, y ya no lo repetía: se perdían. Ahora solo se dan por enviados
-  si salen de verdad, y se reintentan en cuanto vuelva a haber conexión.
-- **La IA de imágenes fallaba por falta de memoria gráfica.** La causa de verdad
-  de los fallos ("unet segment failed during workspace capacity check" → "generate
-  failed") era que en una gráfica de 4 GB **no caben a la vez el modelo de texto de
-  Ollama y el de imágenes**: al pedir una imagen con Ollama cargado (2,1 GB de
-  VRAM), al motor de imágenes le faltaba memoria y fallaba. Ahora, **antes de
-  dibujar, el bot suelta el modelo de texto** para dejar sitio; Ollama lo vuelve a
-  cargar solo, en un par de segundos, la próxima vez que se le pregunte algo. Se
-  puede desactivar con `IMAGE_GEN_FREE_VRAM=false` si tienes una gráfica grande.
-- **La IA de imágenes fallaba si se pedían dos seguidas.** Si alguien pedía una
-  imagen y, sin esperar a que acabara, pedía otra, se lanzaban **dos generaciones a
-  la vez**, la gráfica se quedaba sin memoria y **fallaban las dos**. Encima los
-  procesos se quedaban colgados comiendo CPU y memoria. Ahora se dibuja **de una en
-  una**: la segunda espera su turno y, si ya hay cola, se le dice en claro que está
-  ocupado ("dame un momento") en vez de soltarle un error que asuste. Y
-  si una se pasa de tiempo, se mata de verdad (en Windows `kill()` no bastaba: ahora
-  se usa `taskkill`).
-- **El error de las imágenes no decía nada útil.** Antes se quedaba con la última
-  línea del motor (el genérico `generate failed`). Ahora busca la causa de verdad
-  —falta de memoria, modelo mal, etc.— y la muestra.
-- **El modo ajedrez era imposible de jugar.** Para mover, el bot le pedía a la IA
-  de texto (un modelo de 3B) que eligiera entre las jugadas legales. Ese modelo es
-  incapaz de jugar al ajedrez: elegía casi al azar y acababa **moviendo el mismo
-  caballo de h6 a g4 y de g4 a h6 sin parar**, así que la partida no iba a
-  ninguna parte. Además, si Ollama tardaba, cada jugada suya podía quedarse
-  esperando hasta dos minutos. Ahora las jugadas las decide el motor propio
-  (rápido, ~1,2 s) y la IA solo comenta.
-- **Las imágenes salían siempre con la misma composición.** No se enviaba semilla
-  al motor, que usaba siempre la 42 de fábrica: todas las generaciones repetían
-  el mismo encuadre. Ahora cada imagen usa una semilla aleatoria.
-- **"Castellano" no se reconocía como asignatura.** `!claw apunta deberes
-  castellano …` no sabía a qué asignatura pertenecía y respondía con los ejemplos
-  en vez de apuntar. Ahora `castellano`, `castellana` y `lengua y castellano` se
-  guardan como Lengua; de paso se añadieron otros nombres que faltaban (Dibujo,
-  Plástica, Sociología, Deporte, Tutoría…), así que tampoco hace falta poner la
-  fecha ni la asignatura "oficial" para que el apunte entre.
-- **La web no podía usar la API a través de ngrok.** El navegador envía el dominio
-  del túnel como origen y el servidor lo rechazaba con un 403. Ahora los dominios
-  de ngrok se aceptan automáticamente y la propia web rellena la dirección del
-  servidor con la del túnel, sin que el estudiante tenga que escribirla.
-- **ngrok sin instalar ya no llena el registro.** Si falta el binario, Claw avisa
-  una sola vez y desactiva el túnel en vez de reintentar cada 5 segundos.
+- **440 error loop ("Connection Replaced").** When the connection was lost, the
+  bot opened a new socket *without closing the previous one* and without
+  preventing overlapping reconnects. Two sockets with the same session stepped on
+  each other and WhatsApp returned 440 in an infinite loop (connect → 440 →
+  connect → 440…). Now, before reconnecting, the old socket is really closed and
+  only one pending reconnect can exist at a time.
+- **Notices marked as sent without having gone out.** If the connection was not
+  ready yet (or the internet dropped), the bot considered the changelog notice,
+  the exam reminders and the weekly summary **sent even though the message had
+  not gone out**, and never repeated them: they were lost. Now they are only
+  marked as sent if they really go out, and they are retried as soon as the
+  connection is back.
+- **Image AI failed for lack of graphics memory.** The real cause of the failures
+  ("unet segment failed during workspace capacity check" → "generate failed") was
+  that on a 4 GB card **the Ollama text model and the image model do not fit at
+  the same time**: when asking for an image with Ollama loaded (2.1 GB of VRAM),
+  the image engine ran out of memory and failed. Now, **before drawing, the bot
+  releases the text model** to make room; Ollama loads it again by itself, in a
+  couple of seconds, the next time it is asked something. It can be disabled with
+  `IMAGE_GEN_FREE_VRAM=false` if you have a large card.
+- **Image AI failed if two were requested in a row.** If someone asked for an
+  image and, without waiting for it to finish, asked for another, **two
+  generations ran at once**, the card ran out of memory and **both failed**. On
+  top of that the processes stayed hung, eating CPU and memory. Now it draws
+  **one at a time**: the second waits its turn and, if there is already a queue,
+  it is told clearly that it is busy ("give me a moment") instead of throwing a
+  scary error. And if one takes too long, it is really killed (on Windows
+  `kill()` was not enough: now `taskkill` is used).
+- **The image error said nothing useful.** It kept the last line from the engine
+  (the generic `generate failed`). Now it looks for the real cause — lack of
+  memory, wrong model, etc. — and shows it.
+- **Chess mode was impossible to play.** To move, the bot asked the text AI (a 3B
+  model) to choose among the legal moves. That model is incapable of playing
+  chess: it chose almost at random and ended up **moving the same knight from h6
+  to g4 and from g4 to h6 non-stop**, so the game went nowhere. Also, if Ollama
+  was slow, each of its moves could wait up to two minutes. Now the moves are
+  decided by the engine itself (fast, ~1.2 s) and the AI only comments.
+- **Images always came out with the same composition.** No seed was sent to the
+  engine, which always used the factory 42: every generation repeated the same
+  framing. Now each image uses a random seed.
+- **"Castellano" was not recognised as a subject.** `!claw apunta deberes
+  castellano …` did not know which subject it belonged to and replied with the
+  examples instead of recording it. Now `castellano`, `castellana` and `lengua y
+  castellano` are stored as Lengua; while at it, other missing names were added
+  (Dibujo, Plástica, Sociología, Deporte, Tutoría…), so there is no need to enter
+  the date or the "official" subject for the note to be saved.
+- **The website could not use the API through ngrok.** The browser sends the
+  tunnel domain as the origin and the server rejected it with a 403. Now ngrok
+  domains are accepted automatically and the website itself fills in the server
+  address with the tunnel one, without the student having to type it.
+- **Ngrok not installed no longer floods the log.** If the binary is missing,
+  Claw warns once and disables the tunnel instead of retrying every 5 seconds.
 
 ---
 
 ## [1.0.0] — 2026-10-15
 
-Primera versión completa y funcional: un bot de WhatsApp con IA local que vive en
-el grupo de un instituto, aprende los deberes y los exámenes que se dicen por ahí
-y solo habla cuando le preguntas.
+First complete and functional version: a WhatsApp bot with local AI that lives in
+a high school group, learns the homework and exams mentioned there and only
+speaks when asked.
 
-### Añadido
+### Added
 
-- **Escucha silenciosa.** El bot lee todo lo que pasa en el grupo pero no dice
-  nada salvo que le pregunten, le mencionen o escriban `Claw ...`.
-- **Aprendizaje de deberes y exámenes.** Detecta cuándo alguien *cuenta* algo
-  ("el examen de historia es el 20 de octubre") y lo guarda; detecta cuándo
-  alguien *pregunta* y abre una **pregunta pendiente** de 15 minutos para captar
-  la respuesta del grupo.
-- **Respuestas instantáneas.** Si preguntan por deberes o exámenes conocidos,
-  contesta al momento desde la base de datos, sin IA y sin esperas.
-- **Modo Claw.** Escribiendo `Claw` + lo que sea (`Claw, ¿cuánto son 2+2?`) el
-  bot se convierte en un asistente general con IA local.
-- **Chat privado y chat propio.** Responde a los mensajes directos y a los
-  mensajes del chat "contigo mismo"; en privado todo va al asistente.
-- **Menciones.** Contesta cuando le mencionan en el grupo.
-- **Notas de voz.** Transcribe los audios en local con Whisper (ffmpeg + modelo
-  `Xenova/whisper-base`) y los trata como si fueran texto. También en notas de
-  voz, no solo en mensajes escritos.
-- **Fotos, PDFs y documentos.** Guarda los que van de deberes o exámenes, los
-  enlaza al examen correspondiente y los reenvía cuando alguien lo pide.
-- **Aviso de espacio en disco.** Si al disco le queda poco, no guarda y lo avisa
-  en vez de fallar en silencio. Limpieza automática de fotos y exámenes caducados.
-- **Recordatorios de exámenes.** Avisa la tarde antes y la mañana del examen.
-- **Resumen semanal.** Resume lo que se ha hablado y lo apuntado (por defecto,
-  los domingos por la tarde).
-- **Exportar a calendario.** `!claw calendario` descarga los exámenes en un
-  archivo `.ics`.
-- **Varios grupos a la vez.** El bot se puede vincular a más de un grupo, y cada
-  grupo tiene sus propios deberes y exámenes (los apuntes quedan separados por
-  grupo).
-- **Modo ajedrez.** `!claw ajedrez` para jugar una partida contra Claw,
-  `!claw ajedrez e4` para mover (acepta `Nf3`, `O-O` o `e2e4`) y
-  `!claw analiza <FEN>` para analizar una posición con comentarios de gran
-  maestro (análisis determinista, sin depender de la IA).
-- **Bienvenida con `@todos`.** Al vincularse, el bot se presenta en el grupo
-  mencionando a todo el mundo.
-- **Ajustes en caliente desde WhatsApp.** El dueño y los administradores pueden
-  ver y cambiar los ajustes sin reiniciar, con `!claw ajustes`.
-- **Administradores.** El dueño puede añadir o quitar administradores con
-  `!claw admins +600111222` / `!claw admins -600111222`.
-- **Modo mantenimiento.** `!claw mantenimiento si` deja al bot completamente
-  mudo: no contesta, no apunta deberes ni exámenes y no envía recordatorios ni
-  resúmenes. Solo los administradores pueden activarlo o quitarlo, con
+- **Silent listening.** The bot reads everything that happens in the group but
+  says nothing unless asked, mentioned or addressed with `Claw ...`.
+- **Learning homework and exams.** It detects when someone *states* something
+  ("the history exam is on October 20") and stores it; it detects when someone
+  *asks* and opens a 15-minute **pending question** to capture the group's
+  answer.
+- **Instant replies.** If someone asks about known homework or exams, it answers
+  immediately from the database, with no AI and no waiting.
+- **Claw mode.** By writing `Claw` plus anything (`Claw, what is 2+2?`) the bot
+  becomes a general assistant with local AI.
+- **Private chat and own chat.** It replies to direct messages and to messages in
+  the "message yourself" chat; privately everything goes to the assistant.
+- **Mentions.** It replies when mentioned in the group.
+- **Voice notes.** It transcribes audio locally with Whisper (ffmpeg + the
+  `Xenova/whisper-base` model) and treats it as text. Also in voice notes, not
+  just written messages.
+- **Photos, PDFs and documents.** It stores those related to homework or exams,
+  links them to the corresponding exam and forwards them when asked.
+- **Disk space warning.** If the disk is running out, it does not save and warns
+  instead of failing silently. Automatic cleanup of expired photos and exams.
+- **Exam reminders.** It warns the evening before and the morning of the exam.
+- **Weekly summary.** It summarises what has been talked about and recorded (by
+  default, Sunday afternoons).
+- **Export to calendar.** `!claw calendario` downloads the exams as an `.ics`
+  file.
+- **Several groups at once.** The bot can be linked to more than one group, and
+  each group has its own homework and exams (notes are kept separate per group).
+- **Chess mode.** `!claw ajedrez` to play a game against Claw, `!claw ajedrez e4`
+  to move (it accepts `Nf3`, `O-O` or `e2e4`) and `!claw analiza <FEN>` to
+  analyse a position with grandmaster comments (deterministic analysis, without
+  relying on the AI).
+- **Welcome with `@todos`.** When linked, the bot introduces itself in the group
+  mentioning everyone.
+- **Live settings from WhatsApp.** The owner and the administrators can view and
+  change the settings without restarting, with `!claw ajustes`.
+- **Administrators.** The owner can add or remove administrators with `!claw
+  admins +600111222` / `!claw admins -600111222`.
+- **Maintenance mode.** `!claw mantenimiento si` leaves the bot completely mute:
+  it does not reply, does not record homework or exams and does not send
+  reminders or summaries. Only the administrators can turn it on or off, with
   `!claw mantenimiento no`.
-- **Herramientas de desarrollo.** Simulador sin WhatsApp (`npm run sim`),
-  comprobador del sistema (`npm run doctor`), envío manual de mensajes
-  (`npm run enviar`) y una batería de **113 pruebas** de integración (`npm test`).
-- **Comando `!claw olvida <texto>`** para borrar un apunte equivocado.
+- **Development tools.** WhatsApp-free simulator (`npm run sim`), system checker
+  (`npm run doctor`), manual message sending (`npm run enviar`) and a battery of
+  **113 integration tests** (`npm test`).
+- **`!claw olvida <text>` command** to delete a wrong note.
 
-### Cambiado
+### Changed
 
-- **Los comandos pasan de `!pickle` a `!claw`.** `!pickle` se mantiene como
-  alias para no romper nada.
-- **Personalidad de Claw más amable y natural.** Respuestas cortas, en español
-  de España y con el tono de WhatsApp.
-- **La fecha de hoy se inyecta siempre en el contexto del asistente**, para que
-  no se líe con los años.
-- **Los datos de deberes y exámenes solo se le pasan a la IA cuando la pregunta
-  va de eso**, para que no mezcle información que no viene al caso.
-- **La identidad del dueño incluye tanto el número como el `@lid`** de la
-  cuenta (ver *Arreglado*).
+- **Commands go from `!pickle` to `!claw`.** `!pickle` is kept as an alias so
+  nothing breaks.
+- **Friendlier and more natural Claw personality.** Short replies, in Spanish
+  from Spain and with a WhatsApp tone.
+- **Today's date is always injected into the assistant context**, so it does not
+  get the years wrong.
+- **Homework and exam data is only passed to the AI when the question is about
+  that**, so it does not mix in irrelevant information.
+- **The owner identity includes both the number and the `@lid`** of the account
+  (see *Fixed*).
 
-### Arreglado
+### Fixed
 
-- **El dueño no se escuchaba.** Los mensajes propios llegaban con el
-  identificador nuevo de WhatsApp (`@lid`) en vez del número, así que el bot no
-  reconocía a su dueño y los ignoraba. Ahora reconoce tanto el número como el
-  `@lid`, y también se leen bien los campos de identidad alternativos de Baileys.
-- **La IA "se rallaba".** Dos fallos en el prompt: la fecha se metía *dentro de
-  la pregunta* (el modelo pequeño respondía con la fecha a cualquier cosa) y los
-  datos de deberes se le pasaban *siempre* (copiaba el encabezado
-  "DEBERES CONOCIDOS:" como respuesta). Ahora la fecha va en el contexto del
-  sistema y los datos solo se incluyen si la pregunta va de deberes o exámenes.
-- **`stats()` fallaba con error de SQL.** Las consultas de `messages` y `media`
-  encadenaban un `AND` sin `WHERE`, lo que rompía el comando de estado. Corregido.
-- **ffmpeg no se encontraba.** Se puede fijar su ruta absoluta en `FFMPEG_PATH`,
-  así las notas de voz vuelven a funcionar aunque no esté en el PATH.
-- **Año incorrecto.** El asistente respondía "2023" a preguntas sobre el año;
-  ahora responde correctamente con la fecha inyectada.
-- **Movilidad mal calculada en el análisis de ajedrez.** El análisis muestra
-  ahora el número correcto de jugadas disponibles para cada bando.
-- **Detección de grupos.** La lista de grupos se lee primero de los ajustes y,
-  si no, del `.env`; los grupos fijados en el `.env` no se pueden desvincular por
-  error desde WhatsApp.
-- **Bienvenida por grupo.** El "ya me he presentado" se guarda por grupo, de
-  modo que al añadir un grupo nuevo el bot se presenta también ahí.
+- **The owner could not hear itself.** Its own messages arrived with the new
+  WhatsApp identifier (`@lid`) instead of the number, so the bot did not
+  recognise its owner and ignored them. It now recognises both the number and the
+  `@lid`, and the alternative identity fields from Baileys are read correctly
+  too.
+- **The AI "went off the rails".** Two prompt bugs: the date was inserted *inside
+  the question* (the small model answered with the date to anything) and the
+  homework data was passed *always* (it copied the "KNOWN HOMEWORK:" header as
+  the reply). Now the date goes in the system context and the data is only
+  included if the question is about homework or exams.
+- **`stats()` failed with an SQL error.** The `messages` and `media` queries
+  chained an `AND` without a `WHERE`, which broke the status command. Fixed.
+- **ffmpeg was not found.** Its absolute path can be set in `FFMPEG_PATH`, so
+  voice notes work again even when it is not on the PATH.
+- **Wrong year.** The assistant answered "2023" to questions about the year; it
+  now answers correctly with the injected date.
+- **Mobility miscalculated in chess analysis.** The analysis now shows the
+  correct number of available moves for each side.
+- **Group detection.** The group list is read first from the settings and, if not,
+  from the `.env`; groups fixed in the `.env` cannot be unlinked by mistake from
+  WhatsApp.
+- **Welcome per group.** The "already introduced myself" flag is stored per
+  group, so when a new group is added the bot introduces itself there too.
 
 ---
 
-## Notas
+## Notes
 
-- Todo el proyecto funciona **en local**: ni los mensajes ni la IA salen de tu
-  ordenador. Lo único que se descarga la primera vez es el modelo de voz. La
-  única excepción es la **búsqueda en internet** (DuckDuckGo), que se puede
-  desactivar con `WEB_SEARCH=false`.
-- El bot **no es un repositorio git**; todos los cambios viven en el disco.
-- Para arrancarlo: doble clic en `arrancar.bat` o `npm start`.
+- The whole project runs **locally**: neither the messages nor the AI leave your
+  computer. The only thing downloaded the first time is the voice model. The only
+  exception is **web search** (DuckDuckGo), which can be disabled with
+  `WEB_SEARCH=false`.
+- The bot **is not a git repository**; all changes live on disk.
+- To start it: double click `arrancar.bat` or `npm start`.

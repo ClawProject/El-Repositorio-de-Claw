@@ -1,11 +1,11 @@
-// Carga de configuracion. Lee el archivo .env sin dependencias externas.
+// Configuration loading. Reads the .env file without external dependencies.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-/** Carpeta de datos: por defecto `data/`, o `PICKLEBRAIN_DATA_DIR` si está puesta. */
+/** Data folder: `data/` by default, or `PICKLEBRAIN_DATA_DIR` when set. */
 function resolverDataDir() {
   const raw = String(process.env.PICKLEBRAIN_DATA_DIR || '').trim();
   return raw ? path.resolve(rootDir, raw) : path.join(rootDir, 'data');
@@ -33,7 +33,7 @@ function loadEnvFile(file) {
 
 loadEnvFile(path.join(rootDir, '.env'));
 
-// La carpeta de datos también puede tener su propio .env (útil con Homebrew).
+// The data folder can also have its own .env (useful with Homebrew).
 export const dataDir = resolverDataDir();
 loadEnvFile(path.join(dataDir, '.env'));
 
@@ -47,7 +47,7 @@ function num(value, fallback) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-/** Normaliza el modo de privados: 'dueno' | 'admins' | 'todos' | 'nadie'. */
+/** Normalises the private-chat mode: 'dueno' | 'admins' | 'todos' | 'nadie'. */
 export function modoPrivado(value, fallback = 'dueno') {
   const v = String(value ?? '').trim().toLowerCase();
   if (!v) return fallback;
@@ -75,7 +75,7 @@ export function modoPrivado(value, fallback = 'dueno') {
   return alias[v] || fallback;
 }
 
-/** "34600111222" o "34600111222:83@s.whatsapp.net" -> "34600111222@s.whatsapp.net" */
+/** "34600111222" or "34600111222:83@s.whatsapp.net" -> "34600111222@s.whatsapp.net" */
 export function normalizarJid(value, dominio = 's.whatsapp.net') {
   const limpio = String(value || '').trim();
   if (!limpio) return null;
@@ -86,7 +86,7 @@ export function normalizarJid(value, dominio = 's.whatsapp.net') {
   return `${numero}@${der || dominio}`;
 }
 
-/** El numero de la propia cuenta del bot, sacado de la sesion guardada. */
+/** The bot's own account number, taken from the saved session. */
 export function jidDeLaCuenta() {
   try {
     const texto = fs.readFileSync(path.join(dataDir, 'auth', 'creds.json'), 'utf8');
@@ -96,9 +96,9 @@ export function jidDeLaCuenta() {
   }
 }
 
-/** El identificador "@lid" de la propia cuenta. WhatsApp manda muchos mensajes
- *  (sobre todo los tuyos) con este formato en vez del numero de telefono, asi
- *  que hay que conocerlo para reconocerte a ti mismo. */
+/** The "@lid" identifier of the account itself. WhatsApp sends many messages
+ *  (especially your own) in this format instead of the phone number, so it has
+ *  to be known in order to recognise yourself. */
 export function jidLidDeLaCuenta() {
   try {
     const texto = fs.readFileSync(path.join(dataDir, 'auth', 'creds.json'), 'utf8');
@@ -108,7 +108,7 @@ export function jidLidDeLaCuenta() {
   }
 }
 
-/** Lista separada por comas -> lista de numeros limpios. */
+/** Comma-separated list -> list of clean numbers. */
 export function listaDeJids(value) {
   return String(value || '')
     .split(/[,;\s]+/)
@@ -122,183 +122,188 @@ export const config = {
   authDir: path.join(dataDir, 'auth'),
   dbPath: process.env.PICKLEBRAIN_DB || path.join(dataDir, 'picklebrain.db'),
 
-  // --- IA local ---
+  // --- Local AI ---
   ollamaUrl: (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/+$/, ''),
-  // Qwen3 4B Q4 da mejor conversación sin exceder la memoria total del equipo;
-  // Ollama puede repartir trabajo entre la GTX 1650 y la CPU si hace falta.
+  // Qwen3 4B Q4 gives better conversation without exceeding the machine's total
+  // memory; Ollama can split the work between the GTX 1650 and the CPU if needed.
   ollamaPrimaryModel: (process.env.OLLAMA_MODEL || 'qwen3:4b').trim(),
   ollamaFallbackModel: (process.env.OLLAMA_MODEL_FALLBACK || 'qwen2.5:3b').trim(),
   ollamaModel: (process.env.OLLAMA_MODEL || 'qwen3:4b').trim(),
-  // Modelo que usa el "cerebro" (apuntar deberes y examenes). Va a ser un modelo
-  // chico y rapido: su chiste es seguir instrucciones de formato, no pensar mucho.
-  // Si no se configura, usa el mismo que el principal.
+  // Model used by the "brain" (recording homework and exams). It is meant to be a
+  // small, fast model: its job is following format instructions, not thinking hard.
+  // If unset, it uses the same one as the primary model.
   ollamaBrainModel: (process.env.OLLAMA_MODEL_BRAIN || 'qwen2.5:3b').trim(),
   ollamaTimeoutMs: num(process.env.OLLAMA_TIMEOUT_MS, 120000),
-  // cuanto tiempo mantiene Ollama el modelo cargado en memoria
+  // how long Ollama keeps the model loaded in memory
   ollamaKeepAlive: process.env.OLLAMA_KEEP_ALIVE || '30m',
 
-  // --- Servicio Python local (voz e imágenes) ---
-  // Node sigue haciendo el resto; este servicio solo transcribe audio y dibuja.
-  // Si no está arrancado, se usan los motores antiguos (transformers.js/sd-cli).
+  // --- Local Python service (voice and images) ---
+  // Node keeps doing the rest; this service only transcribes audio and draws.
+  // If it is not running, the legacy engines are used (transformers.js/sd-cli).
   pythonAiEnabled: bool(process.env.PYTHON_AI_ENABLED, true),
   pythonAiUrl: (process.env.PYTHON_AI_URL || 'http://127.0.0.1:5050').replace(/\/+$/, ''),
   pythonAiTimeoutMs: num(process.env.PYTHON_AI_TIMEOUT_MS, 120000),
   pythonAiHealthTimeoutMs: num(process.env.PYTHON_AI_HEALTH_TIMEOUT_MS, 2500),
-  // Si el servicio Python falla a mitad, ¿probamos el motor antiguo?
+  // If the Python service fails halfway, do we try the legacy engine?
   pythonAiFallback: bool(process.env.PYTHON_AI_FALLBACK, true),
 
-  // --- Zona horaria ---
+  // --- Time zone ---
   timezone: process.env.TZ || 'Europe/Madrid',
 
-  // --- Grupo ---
-  // Se puede fijar uno varios grupos a la vez, separados por comas:
+  // --- Language ---
+  // The language is chosen the first time it starts (web /setup) and stored in
+  // the database. CLAW_LANGUAGE fixes it in advance and skips that initial
+  // setup (useful for tests and for fixed installations).
+  idioma: (process.env.CLAW_LANGUAGE || '').trim().toLowerCase() || null,
+
+  // --- Group ---
+  // One or several groups can be fixed at once, separated by commas:
   //   WHATSAPP_GROUP_JID=120363...@g.us,120363...@g.us
   groupJid: (process.env.WHATSAPP_GROUP_JID || '').trim().split(',')[0]?.trim() || null,
   groupJids: (process.env.WHATSAPP_GROUP_JID || '')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),
-  // El grupo se fija por identificador (WHATSAPP_GROUP_JID) o escribiendo
-  // "!claw aqui". Nunca por nombre: dos grupos pueden llamarse igual y
-  // cualquiera puede renombrarlo, asi que el nombre no sirve para decidir
-  // donde hablar.
+  // The group is set by identifier (WHATSAPP_GROUP_JID) or by typing
+  // "!claw aqui". Never by name: two groups can be called the same and
+  // anyone can rename it, so the name cannot decide where to talk.
 
-  // --- Dueno y administradores ---
-  // El dueno es quien manda de verdad: es el unico que puede tocar los ajustes
-  // y nombrar administradores. Vacio = el numero de la propia cuenta del bot.
+  // --- Owner and administrators ---
+  // The owner is really in charge: the only one who can change the settings and
+  // appoint administrators. Empty = the bot's own account number.
   ownerJid: normalizarJid(process.env.WHATSAPP_OWNER_JID) || jidDeLaCuenta(),
-  // Administradores de arranque (luego se anaden desde WhatsApp). Separados por comas.
+  // Startup administrators (added later from WhatsApp). Comma-separated.
   adminJids: listaDeJids(process.env.WHATSAPP_ADMINS),
-  // Gente vetada de arranque: no pueden usar a Claw (ni hablarle ni comandos).
+  // People banned at startup: they cannot use Claw (neither talk to it nor run commands).
   blockedJids: listaDeJids(process.env.WHATSAPP_BLOCKED),
-  // Palabras que activan los comandos: "!claw aqui", "!pickle aqui"...
+  // Words that trigger the commands: "!claw aqui", "!pickle aqui"...
   commandNames: ['claw', 'pickle'],
-  // Quién puede escribirle por privado (mensajes directos):
-  //   'dueno'  = solo el dueño (por defecto)
-  //   'admins' = el dueño y los administradores
-  //   'todos'  = cualquiera
-  //   'nadie'  = nadie (ignora todos los privados)
-  // Se puede cambiar desde WhatsApp: "!claw ajustes privado <valor>".
+  // Who can message it privately (direct messages):
+  //   'dueno'  = only the owner (default)
+  //   'admins' = the owner and the administrators
+  //   'todos'  = anyone
+  //   'nadie'  = nobody (ignores every private message)
+  // It can be changed from WhatsApp: "!claw ajustes privado <value>".
   privateMode: modoPrivado(process.env.PRIVATE_MODE || process.env.PRIVATE_CHAT, 'dueno'),
-  // Contestar cuando le mencionan directamente en el grupo
+  // Reply when mentioned directly in the group
   replyToMentions: bool(process.env.REPLY_TO_MENTIONS, true),
-  // Llevar la cuenta de las palabrotas del grupo (para "!claw palabrotas")
+  // Keep count of the group's swear words (for "!claw palabrotas")
   countSwears: bool(process.env.COUNT_SWEARS, true),
-  // Sacar el ranking enseguida cuando alguien suelta una palabrota
+  // Show the ranking right away when someone swears
   swearAlert: bool(process.env.SWEAR_ALERT, true),
-  // Segundos minimos entre avisos de palabrotas en el mismo grupo (para no spamear)
+  // Minimum seconds between swear notices in the same group (to avoid spam)
   swearCooldown: num(process.env.SWEAR_COOLDOWN, 30),
-  // --- Generación de imágenes (experimental) ---
-  // IMPORTANTE: por defecto apagada. El bot NUNCA genera imágenes por su cuenta;
-  // solo cuando alguien escribe "!claw imagen ..." a mano Y el ajuste está activo.
+  // --- Image generation (experimental) ---
+  // IMPORTANT: off by default. The bot NEVER generates images on its own; only
+  // when someone types "!claw imagen ..." by hand AND the setting is enabled.
   imageGenEnabled: bool(process.env.IMAGE_GEN_ENABLED, false),
-  // Motor: 'auto' (Python si está disponible; si no, cli), 'python' (diffusers),
-  // 'cli' (sd-cli.exe local) o 'http' (servidor tipo OpenAI Images).
+  // Engine: 'auto' (Python when available; otherwise cli), 'python' (diffusers),
+  // 'cli' (local sd-cli.exe) or 'http' (an OpenAI Images style server).
   imageGenBackend: String(process.env.IMAGE_GEN_BACKEND || 'auto').toLowerCase(),
-  // Rutas del motor "cli" (si son relativas, cuelgan de la carpeta del proyecto)
+  // Paths for the "cli" engine (when relative, they hang from the project folder)
   imageGenBin: process.env.IMAGE_GEN_BIN || '',
   imageGenModelPath: process.env.IMAGE_GEN_MODEL_PATH || '',
-  // Cuántos pasos dar y en qué tamaño (512x512 va bien incluso con poca GPU)
+  // How many steps to take and at what size (512x512 works even with a small GPU)
   imageGenSteps: num(process.env.IMAGE_GEN_STEPS, 20),
   imageGenWidth: num(process.env.IMAGE_GEN_WIDTH, 512),
   imageGenHeight: num(process.env.IMAGE_GEN_HEIGHT, 512),
-  // Lo que NO queremos que salga en la imagen
+  // What we do NOT want to appear in the image
   imageGenNegative:
     process.env.IMAGE_GEN_NEGATIVE ||
     'blurry, low quality, worst quality, low resolution, jpeg artifacts, duplicate objects, text, watermark, signature, deformed, bad anatomy, poorly drawn hands, extra fingers, missing fingers, extra limbs, disfigured',
-  // Ajustes de muestreo para mejorar calidad (SD1.5)
+  // Sampling settings to improve quality (SD1.5)
   imageGenCfg: num(process.env.IMAGE_GEN_CFG, 7),
   imageGenSampler: process.env.IMAGE_GEN_SAMPLER || 'dpm++2m',
   imageGenScheduler: process.env.IMAGE_GEN_SCHEDULER || 'karras',
   imageGenSeed: process.env.IMAGE_GEN_SEED === undefined || process.env.IMAGE_GEN_SEED === '' ? -1 : num(process.env.IMAGE_GEN_SEED, -1),
-  // Traducir y mejorar el prompt a inglés (recomendado)
+  // Translate and improve the prompt into English (recommended)
   imageGenEnhance: bool(process.env.IMAGE_GEN_ENHANCE, true),
-  // --- motor "http" (opcional) ---
+  // --- "http" engine (optional) ---
   imageGenModel: process.env.IMAGE_GEN_MODEL || '',
   imageGenEndpoint: process.env.IMAGE_GEN_ENDPOINT || 'http://127.0.0.1:1234/v1/images/generations',
   imageGenApiKey: process.env.IMAGE_GEN_API_KEY || '',
-  // Segundos que espera la respuesta antes de rendirse (dibujar en local tarda)
+  // Seconds it waits for the response before giving up (drawing locally takes a while)
   imageGenTimeout: num(process.env.IMAGE_GEN_TIMEOUT, 300),
-  // En una gráfica pequeña (4 GB) no caben a la vez el modelo de texto de Ollama
-  // y el de imágenes: antes de dibujar se suelta el de texto para dejar sitio
-  // (Ollama lo recarga solo cuando haga falta). Con una gráfica grande, ponlo en
-  // `false` para no recargar el modelo de texto cada vez.
+  // On a small card (4 GB) the Ollama text model and the image model do not fit
+  // at the same time: before drawing, the text model is released to make room
+  // (Ollama reloads it by itself when needed). With a large card, set it to
+  // `false` to avoid reloading the text model every time.
   imageGenFreeVram: bool(process.env.IMAGE_GEN_FREE_VRAM, true),
-  // --- Ajedrez ---
-  // Cuánto piensa Claw cada jugada (milisegundos). Más = juega mejor pero
-  // bloquea al bot un momento. 1200 va sobrado para un grupo de clase.
+  // --- Chess ---
+  // How long Claw thinks per move (milliseconds). More = better play but it
+  // blocks the bot for a moment. 1200 is more than enough for a class group.
   chessThinkMs: num(process.env.CHESS_THINK_MS, 1200),
-  // --- Recordatorios de examenes ---
+  // --- Exam reminders ---
   reminderEnabled: bool(process.env.REMINDER_ENABLED, true),
-  // hora del aviso la tarde anterior
+  // time of the notice the evening before
   reminderHour: num(process.env.REMINDER_HOUR, 20),
-  // hora del aviso la manana del examen
+  // time of the notice on the morning of the exam
   reminderMorningHour: num(process.env.REMINDER_MORNING_HOUR, 8),
-  // dias de antelacion del aviso previo de examenes (0 o 1 = no avisar antes)
+  // days in advance for the extra exam notice (0 or 1 = do not warn early)
   reminderAdvanceDays: num(process.env.REMINDER_ADVANCE_DAYS, 3),
 
-  // --- Resumenes ---
+  // --- Summaries ---
   summaryEnabled: bool(process.env.SUMMARY_ENABLED, true),
-  // dia de la semana del resumen (0 = domingo)
+  // day of the week for the summary (0 = Sunday)
   summaryDay: num(process.env.SUMMARY_DAY, 0),
   summaryHour: num(process.env.SUMMARY_HOUR, 19),
-  // guardar de que se habla en el grupo para poder hacer resumenes
+  // store what is talked about in the group so summaries can be made
   storeMessages: bool(process.env.STORE_MESSAGES, true),
   storeMessagesDays: num(process.env.STORE_MESSAGES_DAYS, 45),
-  // mensajes que como mucho se le pasan a la IA para un resumen
+  // maximum messages passed to the AI for a summary
   summaryMaxMessages: num(process.env.SUMMARY_MAX_MESSAGES, 200),
-  // --- Novedades (changelog) ---
-  // Contarle al grupo lo que se ha añadido al bot, una sola vez por novedad.
+  // --- Changelog notices ---
+  // Tell the group what has been added to the bot, once per change.
   changelogNotify: bool(process.env.CHANGELOG_NOTIFY, true),
 
-  // --- Documentos (PDF, temarios, fichas) ---
+  // --- Documents (PDFs, syllabi, worksheets) ---
   docsEnabled: bool(process.env.DOCS_ENABLED, true),
 
-  // --- Modo ajedrez ---
+  // --- Chess mode ---
   chessEnabled: bool(process.env.CHESS_ENABLED, true),
 
-  // --- Mensaje de bienvenida ---
-  // La primera vez que se arranca, el bot se presenta en el grupo. Solo una vez.
+  // --- Welcome message ---
+  // The first time it starts, the bot introduces itself in the group. Only once.
   welcomeEnabled: bool(process.env.WELCOME_ENABLED, true),
-  // true = se presenta cada vez que arranca (normalmente molesto; dejalo en false)
+  // true = introduce itself on every start (usually annoying; leave it at false)
   welcomeAlways: bool(process.env.WELCOME_ALWAYS, false),
-  // Texto propio para la bienvenida. Vacio = el mensaje de siempre.
+  // Custom welcome text. Empty = the usual message.
   welcomeMessage: (process.env.WELCOME_MESSAGE || '').trim(),
 
   // --- Claw ---
   clawTrigger: (process.env.CLAW_TRIGGER || 'claw').trim(),
   clawMaxPerMinute: num(process.env.CLAW_MAX_PER_MINUTE, 6),
-  // Marcar las respuestas del asistente con una cabecera "🪝 Claw" para poder
-  // distinguirlas de un vistazo de los avisos de deberes/exámenes.
+  // Mark assistant replies with a "🪝 Claw" header so they can be told apart at
+  // a glance from the homework/exam notices.
   clawSignature: bool(process.env.CLAW_SIGNATURE, true),
-  // Si está activo, CUALQUIERA del grupo puede usar "!claw apunta ..." para
-  // añadir o corregir deberes/exámenes con su fecha a mano. Si se pone en
-  // "no", queda solo para el dueño y los administradores.
+  // When enabled, ANYONE in the group can use "!claw apunta ..." to add or
+  // correct homework/exams with the date by hand. If set to "no", it is
+  // restricted to the owner and the administrators.
   apuntaLibre: bool(process.env.APUNTA_LIBRE, true),
 
-  // --- Energía ---
-  // Mientras el bot está abierto, evita que el ordenador se duerma o se hiberne
-  // (así no se cae la conexión con WhatsApp). No cambia nada del sistema: el
-  // candado se suelta solo al cerrar el bot.
+  // --- Power ---
+  // While the bot is open, it prevents the computer from sleeping or hibernating
+  // (otherwise the WhatsApp connection drops). It changes nothing in the system:
+  // the lock is released by itself when the bot closes.
   preventSleep: bool(process.env.PREVENT_SLEEP, true),
-  // Además de no dormirse, ¿tampoco apagar la pantalla? (por defecto no)
+  // Besides not sleeping, should it also keep the display on? (no by default)
   keepDisplay: bool(process.env.KEEP_DISPLAY, false),
 
-  // --- Búsqueda en internet (DuckDuckGo) ---
-  // Cuando está activo, Claw mira en internet si la pregunta pide información
-  // actual (noticias, precios, resultados...) o si se lo piden a la fuerza con
-  // "!claw busca ...". OJO: en ese momento la pregunta sale a internet.
+  // --- Web search (DuckDuckGo) ---
+  // When enabled, Claw looks on the internet if the question asks for current
+  // information (news, prices, results...) or if it is forced with
+  // "!claw busca ...". CAREFUL: at that moment the question leaves to the internet.
   webSearchEnabled: bool(process.env.WEB_SEARCH, true),
   webAllowedOrigins: String(process.env.WEB_ALLOWED_ORIGINS || '')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean),
   ngrokEnabled: bool(process.env.NGROK_ENABLED, true),
-  // Dominio fijo del tunel de PickleBrain. Se puede sobreescribir con
-  // NGROK_DOMAIN, pero por defecto siempre es este.
+  // Fixed domain for the PickleBrain tunnel. It can be overridden with
+  // NGROK_DOMAIN, but by default it is always this one.
   ngrokDomain: String(process.env.NGROK_DOMAIN || 'dawn-greeter-grazing.ngrok-free.dev').trim(),
-  // Código corto de depuración para el dueño: abre una sesión con acceso total
-  // desde la pantalla de acceso. Vacío = desactivado.
+  // Short debug code for the owner: opens a session with full access from the
+  // login screen. Empty = disabled.
   debugCode: String(process.env.WEB_DEBUG_CODE === undefined ? '0912' : process.env.WEB_DEBUG_CODE).trim(),
   smtpHost: String(process.env.SMTP_HOST || '').trim(),
   smtpPort: num(process.env.SMTP_PORT, 465),
@@ -307,53 +312,53 @@ export const config = {
   smtpPassword: String(process.env.SMTP_PASSWORD || ''),
   smtpFrom: String(process.env.SMTP_FROM || 'ClawBot <clawbot@astermail.org>').trim(),
 
-  // --- Imagenes y archivos ---
+  // --- Images and files ---
   mediaEnabled: bool(process.env.MEDIA_ENABLED, true),
   mediaDir: process.env.MEDIA_DIR || path.join(dataDir, 'media'),
-  // 'contexto' = solo si tienen que ver con deberes/examenes | 'todo' | 'nada'
+  // 'contexto' = only when related to homework/exams | 'todo' | 'nada'
   mediaMode: (process.env.MEDIA_MODE || 'contexto').trim().toLowerCase(),
-  // no descargar archivos mas grandes que esto (MB)
+  // do not download files larger than this (MB)
   mediaMaxMb: num(process.env.MEDIA_MAX_MB, 12),
-  // si al disco le quedan menos de estos MB, no descargamos nada
+  // if the disk has less than these MB left, nothing is downloaded
   mediaMinFreeMb: num(process.env.MEDIA_MIN_FREE_MB, 800),
-  // tope total de la carpeta de medios (MB). Si se supera, borra lo mas antiguo
+  // total cap for the media folder (MB). If exceeded, it deletes the oldest
   mediaMaxTotalMb: num(process.env.MEDIA_MAX_TOTAL_MB, 2048),
-  // dias que se guarda una imagen sin fecha asociada
+  // days an image without an associated date is kept
   mediaRetentionDays: num(process.env.MEDIA_RETENTION_DAYS, 14),
-  // cuantas fotos como mucho se reenvian de golpe al preguntar
+  // how many photos at most are forwarded at once when asked
   mediaSendMax: num(process.env.MEDIA_SEND_MAX, 3),
 
-  // --- Limpieza automatica ---
-  // dias de margen tras un examen antes de borrar sus fotos y olvidarlo
+  // --- Automatic cleanup ---
+  // grace days after an exam before deleting its photos and forgetting it
   cleanupExamGraceDays: num(process.env.CLEANUP_EXAM_GRACE_DAYS, 3),
-  // tambien borrar el texto del examen, no solo las fotos
+  // also delete the exam text, not only the photos
   cleanupRemoveEntries: bool(process.env.CLEANUP_REMOVE_ENTRIES, true),
   cleanupIntervalMinutes: num(process.env.CLEANUP_INTERVAL_MINUTES, 60),
 
-  // --- Notas de voz ---
+  // --- Voice notes ---
   transcribeEnabled: bool(process.env.TRANSCRIBE_ENABLED, true),
-  // 'todo' = transcribir todas | 'contexto' = preguntas abiertas y trigger Claw | 'nada'
+  // 'todo' = transcribe all | 'contexto' = pending questions and the Claw trigger | 'nada'
   transcribeMode: (process.env.TRANSCRIBE_MODE || 'todo').trim().toLowerCase(),
-  // no transcribir audios mas largos que esto (segundos)
+  // do not transcribe audio longer than this (seconds)
   transcribeMaxSeconds: num(process.env.TRANSCRIBE_MAX_SECONDS, 180),
   whisperModel: process.env.WHISPER_MODEL || 'Xenova/whisper-base',
   whisperDtype: process.env.WHISPER_DTYPE || 'q8',
   ffmpegPath: process.env.FFMPEG_PATH || 'ffmpeg',
-  // mostrar en el grupo lo que ha entendido de cada nota de voz (por defecto no)
+  // show in the group what it understood from each voice note (no by default)
   showTranscriptions: bool(process.env.SHOW_TRANSCRIPTIONS, false),
 
-  // --- Comportamiento ---
+  // --- Behaviour ---
   answerWindowMinutes: num(process.env.ANSWER_WINDOW_MINUTES, 15),
   contextMessages: num(process.env.CONTEXT_MESSAGES, 6),
   ackSaves: bool(process.env.ACK_SAVES, false),
   minSecondsBetweenReplies: num(process.env.MIN_SECONDS_BETWEEN_REPLIES, 30),
-  // aprender tambien de los mensajes que escribes tu mismo (solo util con numero propio)
+  // also learn from the messages you write yourself (only useful with your own number)
   learnFromOwnMessages: bool(process.env.LEARN_FROM_OWN_MESSAGES, false),
 
-  // --- Mantenimiento ---
-  // Con esto activo el bot se queda callado: no contesta, no apunta deberes ni
-  // examenes y no reenvia archivos. Solo los administradores pueden seguir dando
-  // ordenes "!claw ..." (por ejemplo, para quitarlo). Se cambia desde WhatsApp.
+  // --- Maintenance ---
+  // With this enabled the bot goes silent: it does not reply, does not record
+  // homework or exams and does not forward files. Only the administrators can
+  // still give "!claw ..." orders (for example, to remove it). Changed from WhatsApp.
   maintenance: bool(process.env.MAINTENANCE, false),
 
   logLevel: process.env.LOG_LEVEL || 'info'

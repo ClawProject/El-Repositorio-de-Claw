@@ -1,5 +1,5 @@
-// Pruebas de integracion: una conversacion completa por el router real,
-// sobre una base de datos temporal. Uso:  npm test
+// Integration tests: a full conversation through the real router, on top of a
+// temporary database. Usage:  npm test
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -69,14 +69,14 @@ async function say(text, who = 'Ana') {
   return { ...result, reply, ms };
 }
 
-// Un PNG de 1x1, para simular fotos sin depender de archivos externos.
+// A 1x1 PNG, to simulate photos without relying on external files.
 const TINY_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==',
   'base64'
 );
 
-/** Un servidor local de mentira que devuelve una imagen, para probar sin red.
- *  Con `retardo` se puede comprobar que no se piden dos imágenes a la vez. */
+/** A fake local server that returns an image, to test without network.
+ *  `retardo` makes it possible to check that two images are not requested at once. */
 async function servidorImagen(payload, { retardo = 0 } = {}) {
   let aLaVez = 0;
   const estado = { maxALaVez: 0, peticiones: 0 };
@@ -143,10 +143,10 @@ async function sendMedia(kind, buffer, { text = '', who = 'Ana', seconds = 0, fi
 async function main() {
   const stamp = Date.now();
   const tmpDb = path.join(os.tmpdir(), `picklebrain-test-${stamp}.db`);
-  // Los tests no deben tocar los archivos ni la base de datos de verdad.
+  // The tests must not touch the real files or database.
   config.dataDir = path.join(os.tmpdir(), `picklebrain-test-${stamp}`);
   config.mediaDir = path.join(config.dataDir, 'media');
-  // No abrir un candado de energía real mientras corren las pruebas.
+  // Do not open a real power lock while the tests run.
   config.preventSleep = false;
   await memory.init(tmpDb);
   resetTransientState();
@@ -162,7 +162,7 @@ async function main() {
     return;
   }
 
-  // ---- 1. No responde a charla normal -------------------------------
+  // ---- 1. Does not answer normal chat -------------------------------
   console.log('\n\x1b[1m--- Charla normal: no debe hablar ---\x1b[0m');
   let r = await say('jajajaja que bueno');
   check('Ignora los memes', r.replies.length === 0 && r.action === 'silencio', `action=${r.action}`);
@@ -170,12 +170,12 @@ async function main() {
   r = await say('quedamos a las 5 en la puerta');
   check('Ignora la charla sin deberes ni examenes', r.replies.length === 0, `action=${r.action}`);
 
-  // ---- 2. Pregunta sin datos: no inventa ----------------------------
+  // ---- 2. Question without data: it invents nothing ----------------------------
   console.log('\n\x1b[1m--- Pregunta sin datos: no debe inventarse nada ---\x1b[0m');
   r = await say('que deberes hay de lengua?');
   check('No se inventa deberes', /no tengo apuntado nada/i.test(r.reply), r.reply.slice(0, 80));
 
-  // ---- 3. Alguien contesta: debe guardarlo en silencio --------------
+  // ---- 3. Someone answers: it must save it quietly --------------
   console.log('\n\x1b[1m--- Alguien contesta: lo aprende en silencio ---\x1b[0m');
   const fechaTarea = addDays(todayISO(), 1);
   const diaTarea = longDate(fechaTarea).split(' ')[0];
@@ -190,13 +190,13 @@ async function main() {
     `guardado=${saved[0]?.fecha} esperado=${fechaTarea}`
   );
 
-  // ---- 4. Ahora si pregunta: responde al instante -------------------
+  // ---- 4. Now they ask: it answers instantly -------------------
   console.log('\n\x1b[1m--- Vuelve a preguntar: responde desde la memoria ---\x1b[0m');
   r = await say('alguien sabe que deberes hay de lengua?');
   check('Responde con los deberes guardados', /30 a 32/i.test(r.reply), r.reply.slice(0, 120));
   check('La respuesta es instantanea (<1s)', r.ms < 1000, `${r.ms} ms`);
 
-  // ---- 5. Examenes -------------------------------------------------
+  // ---- 5. Exams -------------------------------------------------
   console.log('\n\x1b[1m--- Examenes ---\x1b[0m');
   const fechaExamen = addDays(todayISO(), 6);
   r = await say('el examen de historia es el ' + longDate(fechaExamen).split(' ').slice(1).join(' ') + ', entra el tema 4', 'Lucia');
@@ -207,19 +207,19 @@ async function main() {
   check('La fecha del examen es correcta', r.reply.includes(String(Number(fechaExamen.split('-')[2]))), r.reply.slice(0, 150));
   check('Respuesta instantanea (<1s)', r.ms < 1000, `${r.ms} ms`);
 
-  // ---- 6. Cambio de fecha: reemplaza ------------------------------
+  // ---- 6. Date change: it replaces ------------------------------
   console.log('\n\x1b[1m--- Cambian la fecha del examen: debe reemplazar ---\x1b[0m');
   const nueva = addDays(todayISO(), 9);
   await say(`el examen de historia se ha movido al ${longDate(nueva).split(' ').slice(1).join(' ')}`, 'Lucia');
   r = await say('cuando es el examen de historia?');
   check('La fecha nueva sustituye a la vieja', r.reply.includes(String(Number(nueva.split('-')[2]))), r.reply.slice(0, 150));
 
-  // ---- 7. Pregunta por asignatura desconocida ---------------------
+  // ---- 7. Question about an unknown subject ---------------------
   console.log('\n\x1b[1m--- Pregunta de algo que no sabe ---\x1b[0m');
   r = await say('cuando es el examen de filosofia?');
   check('No se inventa el examen de filosofia', /no tengo apuntado/i.test(r.reply), r.reply.slice(0, 120));
 
-  // ---- 8. Modo Claw ------------------------------------------------
+  // ---- 8. Claw mode ------------------------------------------------
   console.log('\n\x1b[1m--- Modo Claw ---\x1b[0m');
   r = await say('Claw cuanto son 2+2');
   check('Claw responde al calculo', /4/.test(r.reply), r.reply.slice(0, 120));
@@ -230,7 +230,7 @@ async function main() {
   r = await say('Claw');
   check('Claw solo no da error', r.replies.length === 1 && r.reply.length > 5, r.reply);
 
-  // ---- 9. No se contesta a si mismo -------------------------------
+  // ---- 9. It does not answer itself -------------------------------
   console.log('\n\x1b[1m--- No debe contestarse a si mismo ---\x1b[0m');
   const ownId = 'BOT-msg-' + Date.now();
   rememberBotMessage(ownId);
@@ -247,7 +247,7 @@ async function main() {
   });
   check('Ignora los mensajes que ha enviado el mismo', selfReply.replies.length === 0, `action=${selfReply.action}`);
 
-  // ---- 10. Fotos: recordar "lo que entra" -------------------------
+  // ---- 10. Photos: remember "what is on the exam" -------------------------
   console.log('\n\x1b[1m--- Fotos: recuerda lo que entra en el examen ---\x1b[0m');
   resetTransientState();
   r = await sendMedia('image', TINY_PNG, { who: 'Marcos' });
@@ -272,7 +272,7 @@ async function main() {
   check('Al preguntar, reenvía la foto', r.media.length >= 1, `archivos=${r.media.length}`);
   check('Sigue dando el texto del examen', /tema 4|historia/i.test(r.reply), r.reply.slice(0, 120));
 
-  // ---- 10-bis. PDFs: se guardan y se reenvían ---------------------
+  // ---- 10-bis. PDFs: they are saved and forwarded ---------------------
   console.log('\n\x1b[1m--- PDFs: guarda el temario y lo reenvía ---\x1b[0m');
   const PDF = Buffer.from('%PDF-1.4 ejemplo minimo de temario');
   const docsAntes = memory.allMedia().length;
@@ -294,7 +294,7 @@ async function main() {
   check('Al preguntar, reenvía el PDF como documento', Boolean(docItem), `tipos=${r.media.map((m) => m.kind).join(',')}`);
   check('El PDF se reenvía con su nombre', docItem?.filename === 'tema-4-historia.pdf', String(docItem?.filename));
 
-  // Si los PDFs están desactivados, se ignoran.
+  // When PDFs are disabled, they are ignored.
   const guardDocs = config.docsEnabled;
   config.docsEnabled = false;
   const docsAntes2 = memory.allMedia().length;
@@ -302,18 +302,18 @@ async function main() {
   check('Con los PDFs desactivados, no se guardan', memory.allMedia().length === docsAntes2, `archivos=${memory.allMedia().length}`);
   config.docsEnabled = guardDocs;
 
-  // ---- 11. Disco lleno --------------------------------------------
+  // ---- 11. Full disk --------------------------------------------
   console.log('\n\x1b[1m--- Disco lleno: avisa con educación ---\x1b[0m');
   const fotosOk = memory.allMedia().length;
   const keepReal = config.mediaMinFreeMb;
-  config.mediaMinFreeMb = 10000000; // exigimos 10 TB libres: imposible
+  config.mediaMinFreeMb = 10000000; // require 10 TB free: impossible
   resetTransientState();
   r = await sendMedia('image', TINY_PNG, { text: 'esto entra en el examen de historia', who: 'Marcos' });
   check('Avisa de que no hay espacio 😣', /no queda espacio/i.test(r.reply), r.reply.slice(0, 120));
   check('No guarda nada si no hay espacio', memory.allMedia().length === fotosOk, `archivos=${memory.allMedia().length}`);
   config.mediaMinFreeMb = keepReal;
 
-  // ---- 12. Notas de voz -------------------------------------------
+  // ---- 12. Voice notes -------------------------------------------
   console.log('\n\x1b[1m--- Notas de voz: las entiende ---\x1b[0m');
   const voiceFixture = process.env.WHISPER_TEST_AUDIO ||
     path.join(config.rootDir, 'src', 'tools', 'fixtures', 'nota-de-voz.ogg');
@@ -337,8 +337,8 @@ async function main() {
       `transcrito=${JSON.stringify(String(r.transcript || '').slice(0, 90))}`
     );
     const historial = memory.findPending({ kind: 'examen', subjectKey: 'historia' })[0];
-    // En la nota se dice "el 20 de octubre" (sin año): si ese día ya ha pasado
-    // este año, la fecha se refiere al siguiente.
+    // The note says "el 20 de octubre" (no year): if that day has already passed
+    // this year, the date means the next year's.
     const ejercicio = `${todayISO().slice(0, 4)}-10-20`;
     const esperado = ejercicio >= todayISO() ? ejercicio : `${Number(todayISO().slice(0, 4)) + 1}-10-20`;
     check(
@@ -348,7 +348,7 @@ async function main() {
     );
   }
 
-  // ---- 13. Limpieza automática ------------------------------------
+  // ---- 13. Automatic cleanup ------------------------------------
   console.log('\n\x1b[1m--- Limpieza: borra lo que caduca ---\x1b[0m');
   const mediaLib = await import('../media.js');
   const vieja = mediaLib.saveImage({
@@ -367,12 +367,12 @@ async function main() {
   check('La limpieza olvida el examen que ya pasó', !memory.listEntries().some((e) => e.subjectKey === 'filosofia'), `caducados=${limpieza.expired}, apuntes=${limpieza.entries}`);
   check('La limpieza no toca los exámenes que aún no han pasado', memory.findPending({ kind: 'examen' }).length > 0, '');
 
-  // ---- 14. Aguanta sin Ollama -------------------------------------
+  // ---- 14. It holds up without Ollama -------------------------------------
   console.log('\n\x1b[1m--- Resistencia: la IA no responde ---\x1b[0m');
-  resetTransientState(); // partimos de cero para saltarnos el anti-repeticion
+  resetTransientState(); // start from scratch to skip the anti-repetition
   const { config: cfg } = await import('../config.js');
   const realUrl = cfg.ollamaUrl;
-  cfg.ollamaUrl = 'http://127.0.0.1:59999'; // puerto muerto
+  cfg.ollamaUrl = 'http://127.0.0.1:59999'; // dead port
   try {
     r = await say('cuando es el examen de historia?');
     check('Sigue respondiendo con la IA caida (ruta rapida)', /historia/i.test(r.reply), r.reply.slice(0, 100));
@@ -384,12 +384,12 @@ async function main() {
     cfg.ollamaUrl = realUrl;
   }
 
-  // ---- 15. Vinculacion del grupo (solo por identificador) -----------
+  // ---- 15. Group binding (by identifier only) -----------
   console.log('\n\x1b[1m--- Vinculación del grupo (sin mirar el nombre) ---\x1b[0m');
   memory.setSetting('group_jid', null);
   memory.setSetting('group_name', null);
   memory.setSetting('welcome_sent', null);
-  // Ana hace de administradora para poder vincular y desvincular.
+  // Ana acts as administrator so the group can be linked and unlinked.
   memory.setSetting('cfg:admins', JSON.stringify(['ana@s.whatsapp.net']));
 
   const enOtro = async (chatJid, chatName, text) =>
@@ -439,12 +439,12 @@ async function main() {
     `vinculado=${boundGroupJid()} reply=${fuera.replies.join(' ').slice(0, 80)}`
   );
 
-  // Dejamos todo como estaba para no confundir a nadie.
+  // Leave everything as it was so nobody gets confused.
   memory.setSetting('group_jid', JID);
   memory.setSetting('group_name', null);
   memory.setSetting('cfg:admins', null);
 
-  // ---- 16. Comandos, ajustes y permisos ----------------------------
+  // ---- 16. Commands, settings and permissions ----------------------------
   console.log('\n\x1b[1m--- Comandos "!claw" y ajustes (solo el dueño/admin) ---\x1b[0m');
 
   const dice = async (text, who, extra = {}, dependencies = {}) =>
@@ -465,7 +465,7 @@ async function main() {
 
   const texto = (r) => [...r.replies, ...r.notices].join(' | ');
 
-  // Un chaval cualquiera (no admin) no puede tocar los ajustes.
+  // Any random kid (not an admin) cannot touch the settings.
   const intruso = await dice('!claw ajustes', 'Bea');
   check(
     'Sin ser admin, "!claw ajustes" se rechaza',
@@ -473,7 +473,7 @@ async function main() {
     `dice=${texto(intruso).slice(0, 80)}`
   );
 
-  // El dueño sí (es el número de la propia cuenta del bot).
+  // The owner can (it is the bot account's own number).
   const duenoJid = admins.duenoJid();
   const delDueno = await dice('!claw ajustes', 'Dueno', {
     senderJid: duenoJid,
@@ -559,7 +559,7 @@ async function main() {
   );
   memory.setSetting('ollama_model_active', null);
 
-  // Cambiamos un ajuste y se aplica en caliente a config.
+  // Change a setting and it is applied live to config.
   const antesAck = config.ackSaves;
   const setAck = await dice('!claw ajustes ack si', 'Dueno', { senderJid: duenoJid, fromMe: true });
   check(
@@ -574,7 +574,7 @@ async function main() {
     `ack=${ajustes.get('ack')} (esperado ${antesAck})`
   );
 
-  // La lista de administradores solo la toca el dueño.
+  // Only the owner touches the administrator list.
   const otraAdmin = 'bea@s.whatsapp.net';
   const addAdmin = await dice('!claw admins +600111222', 'Dueno', { senderJid: duenoJid, fromMe: true });
   check(
@@ -596,7 +596,7 @@ async function main() {
   );
   memory.setSetting('cfg:admins', null);
 
-  // Consultas rápidas de deberes/exámenes/próximo.
+  // Quick homework/exam/next queries.
   const listaDeberes = await dice('!claw deberes', 'Ana');
   check(
     '"!claw deberes" lista lo apuntado',
@@ -610,7 +610,7 @@ async function main() {
     `dice=${texto(proximo).slice(0, 80)}`
   );
 
-  // Olvidar un apunte: solo administradores.
+  // Forgetting an entry: administrators only.
   const olvidaIntruso = await dice('!claw olvida historia', 'Bea');
   check(
     'Sin ser admin, "!claw olvida" se rechaza',
@@ -624,7 +624,7 @@ async function main() {
     `dice=${texto(olvidaDueno).slice(0, 80)}`
   );
 
-  // Ver de un vistazo TODO lo que hay apuntado (deberes y exámenes).
+  // See EVERYTHING noted down at a glance (homework and exams).
   memory.saveEntry({ kind: 'deberes', subject: 'biologia', content: 'ejercicios 7 y 8', chatJid: JID });
   memory.saveEntry({ kind: 'examen', subject: 'ingles', content: 'tema 2', fecha: addDays(todayISO(), 5), chatJid: JID });
   const listaApuntes = await dice('!claw apuntes', 'Ana');
@@ -636,7 +636,7 @@ async function main() {
     `dice=${texto(listaApuntes).slice(0, 100)}`
   );
 
-  // La fecha se encuentra en el texto, pero el contenido queda limpio.
+  // The date is found in the text, but the content stays clean.
   const dp = extractDatePhrase('hacer la ficha 3 para el viernes');
   check(
     'extractDatePhrase saca la fecha y la frase exacta',
@@ -644,7 +644,7 @@ async function main() {
     JSON.stringify(dp)
   );
 
-  // Sin año, la fecha se refiere a la próxima vez que caiga ese día.
+  // Without a year, the date means the next time that day comes around.
   check(
     'Una fecha sin año que aún no ha llegado se queda en este año',
     extractDatePhrase('el 20 de octubre', '2026-10-10')?.iso === '2026-10-20',
@@ -656,8 +656,8 @@ async function main() {
     JSON.stringify(extractDatePhrase('el 20 de octubre', '2026-10-29'))
   );
 
-  // Apuntar/editar a mano un deber, con su fecha límite.
-  // Por defecto lo puede usar cualquiera del grupo.
+  // Note down/edit a homework item by hand, with its deadline.
+  // By default anyone in the group can use it.
   const apuntaCualquiera = await dice('!claw apunta deberes mates hacer la ficha 3 para el 20 de diciembre', 'Bea');
   check(
     'Por defecto cualquiera puede usar "!claw apunta"',
@@ -665,7 +665,7 @@ async function main() {
     `dice=${texto(apuntaCualquiera).slice(0, 80)}`
   );
 
-  // El dueño puede restringirlo a dueño y admins.
+  // The owner can restrict it to owner and admins.
   await dice('!claw ajustes apunta no', 'Dueno', { senderJid: duenoJid, fromMe: true });
   const apuntaIntruso = await dice('!claw apunta deberes mates otra cosa', 'Bea');
   check(
@@ -687,7 +687,7 @@ async function main() {
     `dice=${texto(apuntaDueno).slice(0, 120)}`
   );
 
-  // Al consultarlos, aparece el contenido (sin la asignatura repetida) y el plazo.
+  // When queried, the content shows (without the repeated subject) along with the deadline.
   const deberesMates = await dice('!claw deberes mates', 'Ana');
   check(
     '"!claw deberes mates" lo muestra limpio y con su fecha de entrega',
@@ -697,7 +697,7 @@ async function main() {
     `dice=${texto(deberesMates).slice(0, 120)}`
   );
 
-  // Cambiar solo la fecha (sin repetir el contenido) lo conserva.
+  // Changing only the date (without repeating the content) keeps it.
   await dice('!claw apunta deberes mates para el 25 de diciembre', 'Dueno', { senderJid: duenoJid, fromMe: true });
   const deberesMates2 = await dice('!claw deberes mates', 'Ana');
   check(
@@ -706,7 +706,7 @@ async function main() {
     `dice=${texto(deberesMates2).slice(0, 120)}`
   );
 
-  // Un deber sin fecha lo dice claramente.
+  // Homework with no date says so clearly.
   memory.saveEntry({ kind: 'deberes', subject: 'filosofia', content: 'leer el tema 1', chatJid: JID });
   const deberesSinFecha = await dice('!claw deberes filosofia', 'Ana');
   check(
@@ -715,7 +715,7 @@ async function main() {
     `dice=${texto(deberesSinFecha).slice(0, 120)}`
   );
 
-  // También sirve para exámenes.
+  // It also works for exams.
   const apuntaExamen = await dice('!claw apunta examen historia tema 4 para el 21 de octubre', 'Dueno', {
     senderJid: duenoJid,
     fromMe: true
@@ -728,7 +728,7 @@ async function main() {
     `dice=${texto(apuntaExamen).slice(0, 120)}`
   );
 
-  // Sin datos, pide instrucciones.
+  // With no data, it asks for instructions.
   const apuntaVacio = await dice('!claw apunta deberes', 'Dueno', { senderJid: duenoJid, fromMe: true });
   check(
     '"!claw apunta" sin datos pide instrucciones',
@@ -736,10 +736,10 @@ async function main() {
     `dice=${texto(apuntaVacio).slice(0, 100)}`
   );
 
-  // ¡Sin fecha y con "castellano"! Antes fallaba: "castellano" no estaba en la
-  // lista de asignaturas (solo "lengua"), el parser devolvía asignatura=null y
-  // el bot se limitaba a enseñar los ejemplos sin apuntar nada. Ni la
-  // asignatura ni la fecha son obligatorias: basta con entender qué se apunta.
+  // No date and "castellano"! It used to fail: "castellano" was not in the
+  // subject list (only "lengua"), the parser returned subject=null and the bot
+  // just showed the examples without noting anything down. Neither the subject
+  // nor the date is mandatory: understanding what is being noted is enough.
   const apuntaCastellano = await dice('!claw apunta deberes castellano pagina 37 ejercicios 3-5-6', 'Ana');
   check(
     'Apunta un deber con "castellano" (sin fecha) en vez de dar la ayuda',
@@ -754,7 +754,7 @@ async function main() {
     `dice=${texto(apuntaCastellano).slice(0, 160)}`
   );
 
-  // "!claw <lo que sea>" es una pregunta para Claw (con la IA caída avisará).
+  // "!claw <anything>" is a question for Claw (with the AI down it warns).
   const pregunta = await dice('!claw cuanto son 2+2', 'Ana');
   check(
     '"!claw <pregunta>" entra en modo Claw',
@@ -762,15 +762,15 @@ async function main() {
     `action=${pregunta.action}`
   );
 
-  // ---- 17. Mensajes privados y chat propio -------------------------
+  // ---- 17. Private messages and own chat -------------------------
   console.log('\n\x1b[1m--- Privados: hablarle a Claw y panel del dueño ---\x1b[0m');
 
-  // Partimos del valor por defecto ("privado = dueno"), sin depender de lo que
-  // tenga configurado el .env de verdad (aquí puede estar en "todos").
+  // Start from the default ("privado = dueno"), without depending on what the
+  // real .env has configured (here it may be "todos").
   memory.setSetting('cfg:privado', null);
   config.privateMode = 'dueno';
 
-  // Por defecto ("privado = dueno") solo el dueño puede escribirle por privado.
+  // By default ("privado = dueno") only the owner can write privately.
   const privadoAjeno = await handleMessage({
     chatJid: 'ana@s.whatsapp.net',
     isGroup: false,
@@ -789,7 +789,7 @@ async function main() {
     `action=${privadoAjeno.action}`
   );
 
-  // El dueño puede abrir los privados a cualquiera.
+  // The owner can open private messages to anyone.
   const abrePrivados = await dice('!claw ajustes privado todos', 'Dueno', { senderJid: duenoJid });
   check(
     'Con "privado todos", el ajuste queda en "cualquiera"',
@@ -883,8 +883,8 @@ async function main() {
     `action=${chatPropioClaw.action}`
   );
 
-  // Lo que se escribe por privado (DM o chat propio) se apunta en el GRUPO.
-  // Abrimos los privados para que el DM de alguien que no es el dueño también llegue.
+  // Whatever is written privately (DM or own chat) is noted in the GROUP.
+  // Private messages are opened so a non-owner's DM gets through too.
   await dice('!claw ajustes privado todos', 'Dueno', { senderJid: duenoJid });
   const dmApunta = await handleMessage({
     chatJid: 'bea@s.whatsapp.net',
@@ -945,7 +945,7 @@ async function main() {
     histGrupo.some((e) => /8 y 9/i.test(e.content)) && histPrivado.length === 0,
     `enGrupo=${histGrupo.length} enPrivado=${histPrivado.length} action=${dmDato.action}`
   );
-  // Volvemos a dejar los privados solo para el dueño.
+  // Set private messages back to owner-only.
   await dice('!claw ajustes privado dueno', 'Dueno', { senderJid: duenoJid });
 
   const propioDato = await handleMessage({
@@ -993,7 +993,7 @@ async function main() {
     `action=${mencion.action} dice=${texto(mencion).slice(0, 60)}`
   );
 
-  // ---- 17-bis. Vetados: prohibir usar a Claw -----------------------
+  // ---- 17-bis. Banned: forbid using Claw -----------------------
   console.log('\n\x1b[1m--- Vetados: prohibir usar a Claw ---\x1b[0m');
 
   const vetar = await dice('!claw prohibir +600555444', 'Dueno', { senderJid: duenoJid });
@@ -1024,8 +1024,8 @@ async function main() {
     `action=${vetadoMencion.action}`
   );
 
-  // WhatsApp puede identificar a la misma persona con su número o con su @lid.
-  // Si el mensaje llega solo con el @lid, el veto por número también debe valer.
+  // WhatsApp can identify the same person by number or by @lid.
+  // If the message arrives with only the @lid, a ban by number must apply too.
   recordarAlias('998877665544@lid', '600555444@s.whatsapp.net');
   const vetadoLid = await dice('!claw apuntes', 'Caco', { senderJid: '998877665544@lid' });
   check(
@@ -1076,7 +1076,7 @@ async function main() {
     `action=${libreLid.action}`
   );
 
-  // Y al revés: vetar por @lid bloquea también los mensajes con el número.
+  // And the other way round: banning by @lid also blocks messages with the number.
   await dice('!claw prohibir 998877665544@lid', 'Dueno', { senderJid: duenoJid });
   const vetadoPorLid = await dice('!claw apuntes', 'Caco', { senderJid: '600555444@s.whatsapp.net' });
   check(
@@ -1085,7 +1085,7 @@ async function main() {
     `action=${vetadoPorLid.action}`
   );
 
-  // Perdonar por número quita el veto guardado como @lid.
+  // Allowing by number lifts a ban stored as an @lid.
   const perdonaAlias = await dice('!claw permitir +600555444', 'Dueno', { senderJid: duenoJid });
   check(
     'Perdonar por número quita un veto guardado como @lid',
@@ -1093,7 +1093,7 @@ async function main() {
     `dice=${texto(perdonaAlias).slice(0, 80)}`
   );
 
-  // El número se puede escribir con o sin el prefijo del país.
+  // The number can be written with or without the country prefix.
   await dice('!claw prohibir 600777888', 'Dueno', { senderJid: duenoJid });
   const vetadoSinPrefijo = await dice('!claw apuntes', 'Caco', { senderJid: '34600777888@s.whatsapp.net' });
   check(
@@ -1105,7 +1105,7 @@ async function main() {
 
   memory.setSetting('cfg:vetados', null);
 
-  // ---- 17-ter. Contador de palabrotas ------------------------------
+  // ---- 17-ter. Swear counter ------------------------------
   console.log('\n\x1b[1m--- Contador de palabrotas ---\x1b[0m');
 
   const t1 = contarPalabrotas('que puta mierda, joder!');
@@ -1118,7 +1118,7 @@ async function main() {
     `t1=${t1.total} computadora=${contarPalabrotas('la computadora es conocida').total} cono=${contarPalabrotas('un cono de helado').total}`
   );
 
-  // Sin espera entre avisos, para probar el ranking automático sin líos de tiempo.
+  // No wait between notices, to test the automatic ranking without timing issues.
   await dice('!claw ajustes palabrotas_espera 0', 'Dueno', { senderJid: duenoJid });
 
   const antesPal = memory.swearTotal(JID);
@@ -1142,7 +1142,7 @@ async function main() {
     `dice=${texto(rankingPal).slice(0, 120)}`
   );
 
-  // Con una espera larga, no vuelve a sacar el ranking tan pronto (no spamea).
+  // With a long wait, it does not post the ranking again so soon (no spam).
   await dice('!claw ajustes palabrotas_espera 120', 'Dueno', { senderJid: duenoJid });
   const sw3 = await say('menuda mierda de dia', 'Pablo');
   check(
@@ -1175,7 +1175,7 @@ async function main() {
   );
   await dice('!claw ajustes palabrotas si', 'Dueno', { senderJid: duenoJid });
 
-  // ---- 17-cuatro. Generación de imágenes (experimental) ---------------
+  // ---- 17-four. Image generation (experimental) ---------------
   console.log('\n\x1b[1m--- Generación de imágenes (experimental) ---\x1b[0m');
 
   check(
@@ -1197,7 +1197,7 @@ async function main() {
     `openai=${parseOpenAi?.buffer?.length} ollama=${parseOllama?.buffer?.length} mime=${sniffMime(TINY_PNG)}`
   );
 
-  // De fábrica apagada: no genera nada, ni siquiera cuando lo piden con el comando.
+  // Off from the factory: it generates nothing, not even when asked with the command.
   const prevImagen = {
     enabled: config.imageGenEnabled,
     backend: config.imageGenBackend,
@@ -1209,16 +1209,16 @@ async function main() {
     negative: config.imageGenNegative
   };
 
-  // En una gráfica pequeña (4 GB) hay que soltar el modelo de texto antes de
-  // dibujar, o al motor de imágenes le falta memoria y falla. Esta es la causa
-  // real de los fallos "unet segment failed during workspace capacity check".
+  // On a small GPU (4 GB) the text model must be released before drawing, or
+  // the image engine runs out of memory and fails. This is the real cause of
+  // the "unet segment failed during workspace capacity check" failures.
   check(
     'Antes de dibujar se suelta el modelo de texto (para que quepa en la VRAM)',
     typeof liberarVram === 'function' && config.imageGenFreeVram === true,
     `freeVram=${config.imageGenFreeVram}`
   );
 
-  // Los argumentos del motor local (sd-cli) se montan a mano, sin usar la shell.
+  // The local engine arguments (sd-cli) are built by hand, without a shell.
   const args = argsCli({
     prompt: 'un gato',
     out: 'C:\\tmp\\x.png',
@@ -1247,7 +1247,7 @@ async function main() {
     `media=${apagada.media?.length || 0} dice=${texto(apagada).slice(0, 70)}`
   );
 
-  // Encendida pero con el motor local apuntando a un ejecutable que no existe.
+  // On, but with the local engine pointing at a non-existent executable.
   config.imageGenEnabled = true;
   config.imageGenBackend = 'cli';
   config.imageGenBin = 'sdserver\\NO-EXISTE-sd-cli.exe';
@@ -1258,7 +1258,7 @@ async function main() {
     `media=${sinMotor.media?.length || 0} dice=${texto(sinMotor).slice(0, 90)}`
   );
 
-  // Encendida, motor http, y sin nadie escuchando: explica el fallo.
+  // On, http engine, and nobody listening: it explains the failure.
   config.imageGenBackend = 'http';
   config.imageGenEndpoint = 'http://127.0.0.1:1/v1/images/generations';
   config.imageGenTimeout = 5;
@@ -1269,7 +1269,7 @@ async function main() {
     `media=${sinServidor.media?.length || 0} dice=${texto(sinServidor).slice(0, 90)}`
   );
 
-  // Encendida, motor http y con un servidor local de mentira: genera y adjunta.
+  // On, http engine and a fake local server: it generates and attaches.
   const srv = await servidorImagen({ data: [{ b64_json: TINY_PNG.toString('base64') }] });
   config.imageGenEndpoint = srv.url;
   const generada = await dice('!claw imagen un pingüino con gafas de sol', 'Ana');
@@ -1283,14 +1283,14 @@ async function main() {
     try {
       fs.rmSync(enviada.filePath, { force: true });
     } catch {
-      /* nada: la limpiaría el cleanup igualmente */
+      /* nothing: cleanup would remove it anyway */
     }
   }
   await srv.close();
 
-  // --- No se puede dibujar dos veces a la vez -------------------------
-  // La tarjeta gráfica tiene 4 GB: dos generaciones a la vez se quedan sin
-  // memoria y fallan las dos. Esto comprueba que van de una en una.
+  // --- Two drawings cannot run at once --------------------------------
+  // The GPU has 4 GB: two generations at once run out of memory and both fail.
+  // This checks that they go one at a time.
   const srvLento = await servidorImagen({ data: [{ b64_json: TINY_PNG.toString('base64') }] }, { retardo: 250 });
   config.imageGenBackend = 'http';
   config.imageGenEndpoint = srvLento.url;
@@ -1308,8 +1308,8 @@ async function main() {
     `a la vez=${srvLento.estado.maxALaVez} ok=${salieron} avisados=${ocupados}`
   );
 
-  // Y por el camino "de verdad" (el mensaje del grupo), el que llega tarde recibe
-  // un aviso claro de "estoy ocupado", no un mensaje de error que asuste.
+  // And through the "real" path (the group message), whoever arrives late gets a
+  // clear "I am busy" notice, not a scary error message.
   const [rUno, rDos, rTres] = await Promise.all([
     dice('!claw imagen un perro', 'Ana'),
     dice('!claw imagen un gato', 'Bea'),
@@ -1330,13 +1330,13 @@ async function main() {
       try {
         fs.rmSync(f, { force: true });
       } catch {
-        /* nada */
+        /* nothing */
       }
     }
   }
   await srvLento.close();
 
-  // --- El aviso de error tiene que decir POR QUÉ falla -----------------
+  // --- The error notice must say WHY it fails -----------------
   const pista = pistaDeError(
     [
       'loading model from ...',
@@ -1361,7 +1361,7 @@ async function main() {
   config.imageGenSteps = prevImagen.steps;
   config.imageGenNegative = prevImagen.negative;
 
-  // ---- 17-quinto. Novedades del bot (changelog) -----------------------
+  // ---- 17-five. Bot changelog -----------------------
   console.log('\n\x1b[1m--- Novedades del bot (changelog) ---\x1b[0m');
 
   const mdPrueba = [
@@ -1424,8 +1424,8 @@ async function main() {
   );
   memory.setSetting(key, null);
 
-  // Sin conexión NO se puede dar nada por enviado (esto evitaba que el aviso se
-  // "perdiera": se marcaba como enviado aunque el mensaje no hubiera salido).
+  // Without a connection NOTHING can be taken as sent (this used to make the
+  // notice "get lost": it was marked as sent even when the message never left).
   check('Sin conexión, el bot sabe que no está conectado', estaConectado() === false, String(estaConectado()));
   const sinConexion = await sendReplies('120363427797260523@g.us', ['hola']);
   check(
@@ -1444,10 +1444,10 @@ async function main() {
     String(avisoDisparado)
   );
 
-  // ---- 18. Recordatorios y resumen ---------------------------------
+  // ---- 18. Reminders and summary ---------------------------------
   console.log('\n\x1b[1m--- Recordatorios de exámenes y resumen semanal ---\x1b[0m');
 
-  // Fabricamos exámenes de mentira: uno mañana y otro hoy.
+  // Make up fake exams: one tomorrow and one today.
   const mananaISO = addDays(todayISO(), 1);
   const examenes = [
     { id: 9001, subject: 'Historia', fecha: mananaISO, content: 'tema 4 y 5' },
@@ -1456,7 +1456,7 @@ async function main() {
   ];
   const enviados = new Set();
 
-  // A las 21:00 toca el aviso de la tarde (víspera) y el de "hoy".
+  // At 21:00 the evening notice (eve) and the "today" one are due.
   const noche = new Date(`${todayISO()}T21:00:00`);
   const avisosNoche = avisosPendientes({ exams: examenes, now: noche, yaEnviado: (k) => enviados.has(k) });
   check(
@@ -1470,7 +1470,7 @@ async function main() {
     avisosNoche.map((a) => a.texto.split('\n')[0]).join(' | ')
   );
 
-  // A las 8:00 toca el aviso de "hoy es el examen".
+  // At 8:00 the "the exam is today" notice is due.
   const temprano = new Date(`${todayISO()}T08:30:00`);
   const avisosManana = avisosPendientes({ exams: examenes, now: temprano, yaEnviado: (k) => enviados.has(k) });
   check(
@@ -1479,7 +1479,7 @@ async function main() {
     avisosManana.map((a) => a.texto.split('\n')[0]).join(' | ')
   );
 
-  // Aviso con antelación (3 días por defecto) para poder repasar.
+  // Advance notice (3 days by default) so there is time to revise.
   const guardAdvance = config.reminderAdvanceDays;
   config.reminderAdvanceDays = 3;
   const avisoPrevio = avisosPendientes({
@@ -1494,24 +1494,24 @@ async function main() {
   );
   config.reminderAdvanceDays = guardAdvance;
 
-  // Un aviso ya enviado no se repite.
+  // A notice already sent is not repeated.
   for (const a of avisosNoche) enviados.add(a.clave);
   const repetido = avisosPendientes({ exams: examenes, now: noche, yaEnviado: (k) => enviados.has(k) });
   check('Un recordatorio ya enviado no se repite', repetido.length === 0, `quedan=${repetido.length}`);
 
-  // Los exámenes sin fecha no generan avisos.
+  // Exams without a date generate no notices.
   const sinFecha = avisosPendientes({
     exams: [{ id: 9004, subject: 'Física', fecha: null, content: 'Examen' }],
     now: noche
   });
   check('Los exámenes sin fecha no generan avisos', sinFecha.length === 0, `avisos=${sinFecha.length}`);
 
-  // El resumen semanal solo toca el día y la hora configurados.
+  // The weekly summary is only due on the configured day and hour.
   const guardDay = config.summaryDay;
   const guardHour = config.summaryHour;
   config.summaryDay = 0; // domingo
   config.summaryHour = 19;
-  const domingo = new Date('2026-10-18T19:30:00'); // 18/10/2026 es domingo
+  const domingo = new Date('2026-10-18T19:30:00'); // 18/10/2026 is a Sunday
   const sabado = new Date('2026-10-17T19:30:00');
   const domingoPronto = new Date('2026-10-18T10:00:00');
   check('El resumen semanal toca el domingo por la tarde', tocaResumenSemanal(domingo, null) === true);
@@ -1524,10 +1524,10 @@ async function main() {
   config.summaryDay = guardDay;
   config.summaryHour = guardHour;
 
-  // ---- 19. Modo ajedrez --------------------------------------------
+  // ---- 19. Chess mode --------------------------------------------
   console.log('\n\x1b[1m--- Modo ajedrez: jugar, analizar y hablar como gran maestro ---\x1b[0m');
 
-  // Comprobamos el tablero y el análisis sin depender de la IA.
+  // Check the board and the analysis without depending on the AI.
   const inicial = new Chess().fen();
   check('Saca el FEN de un texto', ajedrez.extraeFen(`mira: ${inicial}`) === inicial, String(ajedrez.extraeFen(`mira: ${inicial}`)));
   check('Sin FEN no hay nada que sacar', ajedrez.extraeFen('hola que tal') === null);
@@ -1536,7 +1536,7 @@ async function main() {
   check('Dibuja el tablero con las piezas', /[♔♕♖♗♘♙♚♛♜♝♞♟]/.test(tablero) && /a b c d e f g h/.test(tablero), tablero.split('\n')[0]);
   check('Distingue blancas y negras', tablero.includes('♙') && tablero.includes('♟'));
 
-  const mateFen = 'rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3'; // mate del loco
+  const mateFen = 'rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3'; // fool's mate
   check('Detecta el jaque mate en la posición', /jaque mate/i.test(ajedrez.analiza(mateFen)), ajedrez.analiza(mateFen).replace(/\n/g, ' / '));
   check('Sabe terminar la partida', /Jaque mate/i.test(ajedrez.finDePartida(new Chess(mateFen))), ajedrez.finDePartida(new Chess(mateFen)));
   check('Un FEN inválido se trata con cariño', /no me cuadra/i.test(ajedrez.analiza('esto no es un fen')), ajedrez.analiza('esto no es un fen'));
@@ -1546,9 +1546,9 @@ async function main() {
   check('Cuenta la movilidad de los dos bandos', /20 jugadas blancas, 20 negras/.test(analisis), analisis.replace(/\n/g, ' / '));
   check('Con el tablero lleno, la posición está equilibrada', /equilibrada|igualdad/i.test(analisis), analisis.replace(/\n/g, ' / '));
 
-  // El motor propio: antes la IA de 3B jugaba casi al azar (movía el caballo de
-  // h6 a g4 y vuelta) y era imposible jugar. Ahora las jugadas las elige un
-  // minimax con poda alfa-beta, así que tiene que ver lo evidente.
+  // Our own engine: the 3B AI used to play almost at random (moving the knight
+  // from h6 to g4 and back) and it was impossible to play. Now the moves are
+  // chosen by a minimax with alpha-beta pruning, so it has to see the obvious.
   const mateEnUno = eligeJugadaMotor(new Chess('6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1'), { tiempoMaxMs: 800 });
   check('El motor ve un mate en 1', mateEnUno?.san === 'Ra8#', String(mateEnUno?.san));
 
@@ -1562,8 +1562,8 @@ async function main() {
     String(salida?.san)
   );
 
-  // A partir de aquí, sin Ollama (puerto muerto): la jugada de Claw la decide el
-  // motor propio, que no depende de la IA.
+  // From here on, without Ollama (dead port): Claw's move is decided by our own
+  // engine, which does not depend on the AI.
   const ajRealUrl = config.ollamaUrl;
   config.ollamaUrl = 'http://127.0.0.1:59999';
   try {
@@ -1599,17 +1599,17 @@ async function main() {
     config.ollamaUrl = ajRealUrl;
   }
 
-  // Con el modo ajedrez desactivado, no se juega.
+  // With chess mode off, there is no playing.
   const ajGuard = config.chessEnabled;
   config.chessEnabled = false;
   r = await say('!claw ajedrez');
   check('Con el ajedrez desactivado, lo dice', /desactivado/i.test(r.reply), r.reply.split('\n')[0]);
   config.chessEnabled = ajGuard;
 
-  // ---- 20. Modo mantenimiento --------------------------------------
+  // ---- 20. Maintenance mode --------------------------------------
   console.log('\n\x1b[1m--- Modo mantenimiento: el bot se queda callado ---\x1b[0m');
 
-  // Un chaval cualquiera no puede activarlo.
+  // Any random kid cannot switch it on.
   const mantIntruso = await dice('!claw mantenimiento si', 'Bea');
   check(
     'Un no-admin no puede activar el mantenimiento',
@@ -1617,7 +1617,7 @@ async function main() {
     `config=${config.maintenance} dice=${texto(mantIntruso).slice(0, 80)}`
   );
 
-  // El dueño lo activa (con el atajo, que es lo mismo que "ajustes mantenimiento").
+  // The owner switches it on (with the shortcut, same as "ajustes mantenimiento").
   const mantOn = await dice('!claw mantenimiento si', 'Dueno', { senderJid: duenoJid, fromMe: true });
   check(
     'El dueño activa el modo mantenimiento',
@@ -1625,7 +1625,7 @@ async function main() {
     `config=${config.maintenance} dice=${texto(mantOn).slice(0, 80)}`
   );
 
-  // Estando en mantenimiento, no contesta a nada.
+  // While in maintenance it answers nothing.
   const enMant = await dice('Claw hola, ¿qué tal?', 'Ana');
   check(
     'En mantenimiento no contesta a Claw',
@@ -1633,7 +1633,7 @@ async function main() {
     `action=${enMant.action} replies=${enMant.replies.length}`
   );
 
-  // Ni apunta deberes/exámenes que se digan en el grupo.
+  // Nor does it note down homework/exams said in the group.
   const antesEntradas = memory.listEntries().length;
   await dice('mañana hay examen de historia', 'Ana');
   check(
@@ -1642,7 +1642,7 @@ async function main() {
     `antes=${antesEntradas} ahora=${memory.listEntries().length}`
   );
 
-  // Un no-admin tampoco consigue respuestas a otros comandos.
+  // A non-admin gets no answers to other commands either.
   const comandoIntruso = await dice('!claw deberes', 'Bea');
   check(
     'En mantenimiento, un no-admin no consigue respuesta ni a comandos',
@@ -1650,7 +1650,7 @@ async function main() {
     `action=${comandoIntruso.action} replies=${comandoIntruso.replies.length}`
   );
 
-  // El propio dueño sí puede consultar y quitarlo.
+  // The owner can query it and turn it off.
   const mantEstado = await dice('!claw mantenimiento', 'Dueno', { senderJid: duenoJid, fromMe: true });
   check(
     'El dueño ve el estado del mantenimiento',
@@ -1664,7 +1664,7 @@ async function main() {
     `config=${config.maintenance} dice=${texto(mantOff).slice(0, 80)}`
   );
 
-  // Y todo vuelve a la normalidad.
+  // And everything goes back to normal.
   resetTransientState();
   r = await say('Claw, ¿cuánto es 2+2?');
   check(
@@ -1673,10 +1673,10 @@ async function main() {
     `action=${r.action}`
   );
 
-  // ---- 21. Búsqueda en internet (DuckDuckGo) -----------------------
+  // ---- 21. Web search (DuckDuckGo) -----------------------
   console.log('\n\x1b[1m--- Búsqueda en internet: cuándo y cómo ---\x1b[0m');
 
-  // Cuándo conviene buscar.
+  // When a search is worth it.
   check(
     'Detecta que una pregunta pide buscar en internet',
     necesitaBuscar('quién ganó el último partido del Real Madrid') &&
@@ -1694,7 +1694,7 @@ async function main() {
     'debería ser false'
   );
 
-  // El parser de resultados (offline, con HTML de ejemplo).
+  // The result parser (offline, with sample HTML).
   const htmlDDG = [
     '<a rel="nofollow" class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fejemplo.com%2Funo&rut=x">Resultado <b>uno</b></a>',
     '<a class="result__snippet" href="#">Un resumen del <b>primer</b> resultado.</a>',
@@ -1711,7 +1711,7 @@ async function main() {
       parsed[1].url === 'https://ejemplo.com/dos',
     `len=${parsed.length} url0=${parsed[0]?.url}`
   );
-  // Cuando la respuesta viene de internet, se nota que es de DuckDuckGo.
+  // When the answer comes from the web, the DuckDuckGo source is visible.
   const conFuente = conFuenteWeb('El resultado es 42.');
   check(
     'Una respuesta de internet dice "según DuckDuckGo"',
@@ -1735,21 +1735,21 @@ async function main() {
     `len=${parsedLite.length} url0=${parsedLite[0]?.url}`
   );
 
-  // Ajuste del propietario.
+  // Owner setting.
   check(
     'Existe el ajuste "buscar" y viene activado de fábrica',
     Boolean(ajustes.CATALOGO.buscar) && ajustes.get('buscar') === true,
     `valor=${ajustes.get('buscar')}`
   );
 
-  // Quién puede usar "!claw apunta" (por defecto, cualquiera).
+  // Who may use "!claw apunta" (anyone, by default).
   check(
     'Existe el ajuste "apunta" y viene abierto a todos de fábrica',
     Boolean(ajustes.CATALOGO.apunta) && ajustes.get('apunta') === true,
     `valor=${ajustes.get('apunta')}`
   );
 
-  // Candado de energía: evita que el ordenador se duerma/hiberne con el bot abierto.
+  // Power lock: stops the computer sleeping/hibernating while the bot is open.
   check(
     'Existen los ajustes "despierto" y "pantalla" del candado de energía',
     Boolean(ajustes.CATALOGO.despierto) &&
@@ -1766,7 +1766,7 @@ async function main() {
       (() => {
         const guard = config.preventSleep;
         config.preventSleep = false;
-        power.sync(); // no debe lanzar ni abrir ningún proceso
+        power.sync(); // it must not throw or open any process
         const ok = power.activo() === false;
         config.preventSleep = guard;
         return ok;
@@ -1774,9 +1774,8 @@ async function main() {
     `activo=${power.activo()}`
   );
 
-  // El "cerebro" (apuntar deberes/exámenes) puede usar un modelo distinto al de
-  // Claw, que es lo que permite tener un 7b listo para charlar y un 3b obediente
-  // para extraer datos.
+  // The "brain" (noting homework/exams) can use a different model from Claw's,
+  // which is what allows a 7b ready to chat and an obedient 3b to extract data.
   check(
     'El cerebro puede usar un modelo distinto al de Claw',
     Boolean(ajustes.CATALOGO.modelo_cerebro) &&
@@ -1785,7 +1784,7 @@ async function main() {
     `cerebro=${config.ollamaBrainModel} claw=${config.ollamaModel}`
   );
 
-  // El dueño lo apaga y "!claw busca" avisa de que está desactivado.
+  // The owner switches it off and "!claw busca" says it is disabled.
   await dice('!claw ajustes buscar no', 'Dueno', { senderJid: duenoJid, fromMe: true });
   const buscaOff = await dice('!claw busca algo', 'Dueno', { senderJid: duenoJid, fromMe: true });
   check(
@@ -1793,7 +1792,7 @@ async function main() {
     config.webSearchEnabled === false && /desactivad/i.test(texto(buscaOff)),
     `config=${config.webSearchEnabled} dice=${texto(buscaOff).slice(0, 80)}`
   );
-  // Sin decir qué buscar, pide el texto.
+  // Without saying what to search, it asks for the text.
   await dice('!claw ajustes buscar si', 'Dueno', { senderJid: duenoJid, fromMe: true });
   const buscaVacio = await dice('!claw busca', 'Dueno', { senderJid: duenoJid, fromMe: true });
   check(
@@ -1802,7 +1801,7 @@ async function main() {
     `dice=${texto(buscaVacio).slice(0, 80)}`
   );
 
-  // ---- 22. Firma de Claw: se distingue de los avisos -----------------
+  // ---- 22. Claw signature: it stands out from the notices -----------------
   console.log('\n\x1b[1m--- Firma de Claw: se distingue de los avisos ---\x1b[0m');
 
   const firmaAntes = config.clawSignature;
@@ -1821,7 +1820,7 @@ async function main() {
     `action=${r.action} reply=${r.reply.slice(0, 60)}`
   );
 
-  // Un aviso normal de deberes (sin pasar por Claw) NO lleva la cabecera.
+  // A normal homework notice (not through Claw) does NOT carry the header.
   resetTransientState();
   r = await say('alguien sabe que deberes hay de lengua?');
   check(
@@ -1830,7 +1829,7 @@ async function main() {
     r.reply.slice(0, 60)
   );
 
-  // Se puede quitar con el ajuste.
+  // It can be removed with the setting.
   config.clawSignature = false;
   check(
     'Con la firma apagada, las respuestas de Claw van sin cabecera',
@@ -1839,7 +1838,7 @@ async function main() {
   );
   config.clawSignature = firmaAntes;
 
-  // ---- 22-bis. Marcar como hecho -------------------------------------
+  // ---- 22-bis. Marking as done -------------------------------------
   console.log('\n\x1b[1m--- Marcar deberes y exámenes como hechos ---\x1b[0m');
 
   await dice('!claw apunta deberes filosofia leer el capitulo 2 para el viernes', 'Ana');
@@ -1862,7 +1861,7 @@ async function main() {
     `dice=${texto(hechoNada).slice(0, 90)}`
   );
 
-  // ---- 23. Ver y borrar todo de golpe --------------------------------
+  // ---- 23. See and delete everything at once --------------------------------
   console.log('\n\x1b[1m--- Borrar TODOS los apuntes de golpe ---\x1b[0m');
 
   memory.saveEntry({ kind: 'deberes', subject: 'lengua', content: 'paginas 1 a 3', chatJid: JID });
@@ -1883,7 +1882,7 @@ async function main() {
     `antes=${antesTodo} despues=${despuesTodo} dice=${texto(borraTodo).slice(0, 80)}`
   );
 
-  // ---- Resumen -----------------------------------------------------
+  // ---- Summary -----------------------------------------------------
   console.log('\n\x1b[1m=== Resumen ===\x1b[0m');
   console.log(`  ${passed} correctas, ${failed} fallidas`);
   if (failures.length) {
@@ -1898,7 +1897,7 @@ async function main() {
     for (const suffix of ['', '-wal', '-shm']) fs.rmSync(tmpDb + suffix, { force: true });
     fs.rmSync(config.dataDir, { recursive: true, force: true });
   } catch {
-    /* ignorar */
+    /* ignore */
   }
   process.exitCode = failed ? 1 : 0;
 }

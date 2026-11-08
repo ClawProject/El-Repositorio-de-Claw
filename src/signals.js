@@ -1,6 +1,6 @@
-// Señales rapidas (sin IA). Sirven para:
-//  1) descartar mensajes irrelevantes sin gastar GPU,
-//  2) responder INSTANTANEAMENTE a las preguntas tipicas de deberes/examenes.
+// Fast signals (no AI). They are used to:
+//  1) discard irrelevant messages without burning GPU time,
+//  2) answer INSTANTLY to typical homework/exam questions.
 import { config } from './config.js';
 import { detectSubject, stripAccents } from './subjects.js';
 
@@ -37,9 +37,9 @@ const EXAMEN_WORDS = ['examen', 'control', 'prueba', 'parcial', 'recuperacion', 
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// Cada mensaje comprueba alrededor de 90 palabras, y antes se construia un
-// RegExp nuevo por palabra y por mensaje. Se compilan una vez y se reutilizan:
-// es el mayor coste del triaje sin IA.
+// Every message checks about 90 words, and a new RegExp used to be built for
+// each word and message. They are compiled once and reused: this was the biggest
+// cost of the AI-free triage.
 const wordReCache = new Map();
 
 function wordRegex(word) {
@@ -56,7 +56,7 @@ function hasWord(haystack, word) {
   return wordRegex(word).test(haystack);
 }
 
-/** ¿Merece la pena pasar este mensaje por la IA? */
+/** Is this message worth passing through the AI? */
 export function looksRelevant(text) {
   const n = normalize(text);
   if (n.length < 2) return false;
@@ -67,7 +67,7 @@ export function looksRelevant(text) {
   return false;
 }
 
-/** ¿El mensaje es una pregunta (y no una afirmación)? */
+/** Is the message a question (and not a statement)? */
 export function isQuestion(text) {
   const raw = String(text || '');
   if (/[?¿]/.test(raw)) return true;
@@ -77,8 +77,8 @@ export function isQuestion(text) {
 }
 
 /**
- * ¿Menciona deberes o exámenes? Devuelve 'deberes', 'examen' o null.
- * Si menciona ambos, gana el que aparezca con la palabra más específica.
+ * Does it mention homework or exams? Returns 'deberes', 'examen' or null.
+ * If it mentions both, the more specific word wins.
  */
 export function detectKind(text) {
   const n = normalize(text);
@@ -87,7 +87,7 @@ export function detectKind(text) {
   if (hasExam && !hasHomework) return 'examen';
   if (hasHomework && !hasExam) return 'deberes';
   if (hasExam && hasHomework) {
-    // "¿qué deberes hay para el examen?" -> pregunta por deberes
+    // "¿qué deberes hay para el examen?" -> it asks about homework
     const examIdx = Math.min(...EXAMEN_WORDS.map((w) => (n.indexOf(w) === -1 ? Infinity : n.indexOf(w))));
     const hwIdx = Math.min(...DEBERES_WORDS.map((w) => (n.indexOf(w) === -1 ? Infinity : n.indexOf(w))));
     return hwIdx <= examIdx ? 'deberes' : 'examen';
@@ -96,8 +96,8 @@ export function detectKind(text) {
 }
 
 /**
- * Ruta rápida: si el mensaje es claramente una pregunta sobre deberes o exámenes,
- * podemos responder desde la base de datos sin llamar a la IA.
+ * Fast route: if the message is clearly a question about homework or exams, we
+ * can answer from the database without calling the AI.
  * @returns {{kind:'deberes'|'examen', subjectKey:string|null, subjectLabel:string|null}|null}
  */
 export function fastRoute(text) {
@@ -107,7 +107,7 @@ export function fastRoute(text) {
   if (!kind) return null;
 
   const looksLikeQuestion = isQuestion(text) || /\bque\b|\bqué\b/.test(n) || n.endsWith('?');
-  // "no hay deberes" / "hay que hacer la página 5" son datos, no preguntas.
+  // "no hay deberes" / "hay que hacer la página 5" are data, not questions.
   const looksLikeStatement = /^\s*(no\s+)?hay\s+que\b/.test(n) && !/[?¿]/.test(String(text));
   if (!looksLikeQuestion || looksLikeStatement) return null;
 
@@ -119,17 +119,17 @@ export function fastRoute(text) {
   };
 }
 
-// La expresión del trigger también se compila una sola vez por configuración.
+// The trigger expression is also compiled only once per configuration.
 const clawReCache = new Map();
 
-/** Detecta la palabra clave del modo Claw como palabra suelta. */
+/** Detects the Claw mode keyword as a standalone word. */
 export function clawMatch(text) {
   const configuredTrigger = String(config.clawTrigger || '').trim();
   if (!configuredTrigger) return null;
 
   const triggers = [configuredTrigger];
   if (normalize(configuredTrigger) === 'claw') {
-    // Whisper suele transcribir el nombre pronunciado en español por su sonido.
+    // Whisper often transcribes the name, as pronounced in Spanish, by its sound.
     triggers.push('clau', 'clao');
   }
   const key = triggers.join('\u0000');
@@ -147,7 +147,7 @@ export function clawMatch(text) {
   return { before, after, index };
 }
 
-/** Quita "Claw" y los signos de alrededor: "Claw, cuanto son 2+2" -> "cuanto son 2+2" */
+/** Strips "Claw" and the surrounding punctuation: "Claw, cuanto son 2+2" -> "cuanto son 2+2" */
 export function clawQuestion(text) {
   const m = clawMatch(text);
   if (!m) return String(text || '').trim();

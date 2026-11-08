@@ -1,16 +1,17 @@
-// Ajustes que se pueden ver y cambiar desde WhatsApp (solo administradores).
+// Settings that can be seen and changed from WhatsApp (administrators only).
 //
-// Truco: cada ajuste está enganchado a una variable de `config`. Al cambiarlo
-// desde WhatsApp se guarda en la base de datos y se actualiza `config` en
-// caliente, así que todo el bot empieza a usar el valor nuevo sin reiniciar.
-// El valor del .env sigue siendo el de fábrica (para poder volver con reset).
+// Trick: every setting is hooked to a `config` variable. Changing it from
+// WhatsApp stores it in the database and updates `config` live, so the whole bot
+// starts using the new value without a restart. The .env value stays as the
+// factory default (so it can be restored with reset).
 import { config, listaDeJids } from './config.js';
 import * as memory from './memory.js';
 import * as power from './power.js';
+import * as i18n from './i18n.js';
 
 const PREFIJO = 'cfg:';
 
-// ajuste -> nombre de la variable en config
+// setting -> name of the variable in config
 const EN_CONFIG = {
   modelo: 'ollamaModel',
   modelo_cerebro: 'ollamaBrainModel',
@@ -44,10 +45,11 @@ const EN_CONFIG = {
   imagen_motor: 'imageGenBackend',
   imagen_pasos: 'imageGenSteps',
   imagen_negativo: 'imageGenNegative',
-  novedades: 'changelogNotify'
+  novedades: 'changelogNotify',
+  idioma: 'idioma'
 };
 
-// Los valores de fábrica (los del .env), guardados antes de tocar nada.
+// The factory values (the ones from .env), saved before touching anything.
 const DE_FABRICA = {};
 for (const nombre of Object.values(EN_CONFIG)) DE_FABRICA[nombre] = config[nombre];
 
@@ -93,19 +95,21 @@ export const CATALOGO = {
   imagen_pasos: { etiqueta: 'pasos de la imagen (más = mejor y más lento; 20 va bien, 8 es rapidísimo)', tipo: 'num', min: 1, max: 50 },
   imagen_negativo: { etiqueta: 'lo que NO debe salir en la imagen (prompt negativo)', tipo: 'texto' },
   novedades: { etiqueta: 'contarle al grupo lo que se ha añadido al bot (una sola vez por novedad)', tipo: 'bool' },
+  idioma: { etiqueta: 'idioma en el que habla Claw (código: es, en, fr, de...)', tipo: 'texto' },
   admins: { etiqueta: 'administradores de Claw', tipo: 'lista' },
   vetados: { etiqueta: 'personas vetadas: no pueden usar a Claw', tipo: 'lista' }
 };
 
-/** Valor de fábrica de un ajuste (el del .env). */
+/** Factory value of a setting (the one from .env). */
 export function defecto(clave) {
   if (clave === 'admins') return config.adminJids || [];
   if (clave === 'vetados') return config.blockedJids || [];
+  if (clave === 'idioma') return DE_FABRICA.idioma || 'es';
   const nombre = EN_CONFIG[clave];
   return nombre ? DE_FABRICA[nombre] : undefined;
 }
 
-/** Convierte lo guardado (texto JSON) al tipo que toca. */
+/** Converts the stored value (JSON text) into the right type. */
 function convertir(texto, def) {
   let valor;
   try {
@@ -126,7 +130,7 @@ function convertir(texto, def) {
   return String(valor);
 }
 
-// Alias que la gente puede escribir para cada valor de un ajuste de opciones.
+// Aliases people can write for each value of an options setting.
 const ALIAS_OPCIONES = {
   dueno: 'dueno',
   dueño: 'dueno',
@@ -153,7 +157,7 @@ function normalizaOpcion(valor) {
   return String(valor ?? '').trim().toLowerCase();
 }
 
-/** Valor legible de una opción (para la lista de ajustes). */
+/** Readable value of an option (for the settings list). */
 const BONITO_OPCION = {
   dueno: 'solo el dueño',
   admins: 'dueño y admins',
@@ -165,7 +169,7 @@ function claveDe(def) {
   return Object.keys(CATALOGO).find((k) => CATALOGO[k] === def);
 }
 
-/** Valor actual de un ajuste (lo guardado, o si no el del .env). */
+/** Current value of a setting (the stored one, or the .env one otherwise). */
 export function get(clave) {
   const def = CATALOGO[clave];
   if (!def) return undefined;
@@ -174,13 +178,17 @@ export function get(clave) {
   return convertir(guardado, def);
 }
 
-/** Pasa el valor de un ajuste a `config` (para que el bot lo use ya). */
+/** Pushes a setting's value into `config` (so the bot uses it right away). */
 function aplicar(clave, valor) {
+  if (clave === 'idioma') {
+    i18n.setIdioma(valor);
+    return;
+  }
   const nombre = EN_CONFIG[clave];
   if (nombre) config[nombre] = valor;
 }
 
-/** Carga en `config` todos los ajustes guardados. Se llama al arrancar. */
+/** Loads every stored setting into `config`. Called on startup. */
 export function aplicarTodos() {
   for (const clave of Object.keys(CATALOGO)) aplicar(clave, get(clave));
   const modeloGuardado = memory.getSetting('ollama_model_active');
@@ -193,7 +201,7 @@ export function aplicarTodos() {
   }
 }
 
-/** Cambia y persiste el modelo conversacional activo (el cerebro escolar no cambia). */
+/** Changes and persists the active chat model (the school brain does not change). */
 export function usarModelo(modelo) {
   const nombre = String(modelo || '').trim();
   if (!nombre) return { ok: false, error: 'Dime el nombre del modelo de Ollama.' };
@@ -203,7 +211,7 @@ export function usarModelo(modelo) {
   return { ok: true, model: nombre };
 }
 
-/** Vuelve al modelo conversacional definido como principal en la configuración. */
+/** Goes back to the chat model set as primary in the configuration. */
 export function restaurarModeloPrincipal() {
   memory.setSetting(PREFIJO + 'modelo', null);
   memory.setSetting('ollama_model_active', null);
@@ -215,11 +223,11 @@ function guardar(clave, valor) {
   memory.setSetting(PREFIJO + clave, JSON.stringify(valor));
   if (clave === 'modelo') memory.setSetting('ollama_model_active', JSON.stringify(valor));
   aplicar(clave, valor);
-  power.sync(); // por si el ajuste era el del candado de energía
+  power.sync(); // in case the setting was the power-lock one
   return { ok: true, clave, valor };
 }
 
-/** Cambia un ajuste a partir de lo que ha escrito una persona. */
+/** Changes a setting from what a person typed. */
 export function setDesdeTexto(clave, texto) {
   const def = CATALOGO[clave];
   if (!def) {
@@ -274,7 +282,7 @@ export function setDesdeTexto(clave, texto) {
   return guardar(clave, t);
 }
 
-/** Guarda una lista ya decidida (se usa desde admins.js). */
+/** Stores an already decided list (used from admins.js). */
 export function setLista(clave, valores) {
   const def = CATALOGO[clave];
   if (!def || def.tipo !== 'lista') return { ok: false, error: 'Ese ajuste no es una lista.' };
@@ -289,11 +297,11 @@ export function reset(clave) {
   if (clave === 'modelo') memory.setSetting('ollama_model_active', null);
   const valor = defecto(clave);
   aplicar(clave, valor);
-  power.sync(); // por si el ajuste era el del candado de energía
+  power.sync(); // in case the setting was the power-lock one
   return { ok: true, clave, valor };
 }
 
-/** Todos los ajustes con su valor actual. */
+/** Every setting with its current value. */
 export function list() {
   return Object.keys(CATALOGO).map((clave) => ({
     clave,
@@ -303,7 +311,7 @@ export function list() {
   }));
 }
 
-/** Cómo se escribe un valor para que se lea bien en WhatsApp. */
+/** How a value is written so it reads well in WhatsApp. */
 export function bonito(valor) {
   if (valor === true) return 'sí';
   if (valor === false) return 'no';
@@ -314,7 +322,7 @@ export function bonito(valor) {
   return String(valor);
 }
 
-/** Texto con la lista de ajustes, para WhatsApp. */
+/** Text with the settings list, for WhatsApp. */
 export function formato() {
   const filas = list().map((a) => `• *${a.clave}* (${bonito(a.valor)}) — ${a.etiqueta}`);
   return [

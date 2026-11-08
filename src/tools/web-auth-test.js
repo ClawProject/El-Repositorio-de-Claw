@@ -100,7 +100,7 @@ test('el modo debug abre una sesión de administrador y limita los intentos', ()
   auth.logout(session);
   assert.equal(auth.authenticate(`Bearer ${login.token}`), null);
 
-  // Tras demasiados fallos, se bloquea por IP durante la ventana.
+  // After too many failures, it blocks by IP for the window.
   for (let attempt = 0; attempt < 10; attempt += 1) {
     assert.throws(
       () => auth.loginDebug('1111', 'client-limit'),

@@ -1,19 +1,19 @@
-// Motor de ajedrez propio (minimax con poda alfa-beta).
+// Own chess engine (minimax with alpha-beta pruning).
 //
-// ¿Por qué existe esto? Antes, para mover, le pedíamos a la IA de texto (un
-// modelo de 3B) que eligiera entre las jugadas legales. Un modelo tan pequeño
-// es incapaz de jugar al ajedrez: elegía jugadas al azar y se dedicaba a mover
-// el caballo de h6 a g4 y vuelta ("es imposible de jugar"). Ahora la IA solo
-// comenta la partida; las jugadas las decide este motor, que es rápido y juega
-// con criterio: material, posición de las piezas, capturas y mates.
+// Why does this exist? Before, to move, we asked the text AI (a 3B model) to
+// choose among the legal moves. Such a small model cannot play chess: it picked
+// moves at random and kept moving the knight from h6 to g4 and back ("impossible
+// to play"). Now the AI only comments on the game; the moves are decided by this
+// engine, which is fast and plays with judgement: material, piece placement,
+// captures and mates.
 //
-// No es Stockfish, pero para un grupo de clase va sobrado.
+// It is not Stockfish, but for a class group it is more than enough.
 
-/** Valor material en centipeones. */
+/** Material value in centipawns. */
 const VALOR = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 0 };
 
-// Tablas de casillas (piece-square tables). Van escritas "como se ve el
-// tablero": el índice 0 es a8 y el 63 es h1. Para las negras se reflejan.
+// Piece-square tables. They are written "as the board is seen": index 0 is a8
+// and 63 is h1. For Black they are mirrored.
 const PST = {
   p: [
     0, 0, 0, 0, 0, 0, 0, 0,
@@ -77,10 +77,10 @@ const PST = {
   ]
 };
 
-/** Un mate vale más que cualquier material, y cuanto antes mejor. */
+/** A mate is worth more than any material, and the sooner the better. */
 export const VALOR_MATE = 100000;
 
-/** Valor de la posición desde el punto de vista de quien tiene el turno. */
+/** Position value from the point of view of the side to move. */
 export function evaluarLado(game) {
   let blancas = 0;
   const board = game.board();
@@ -88,7 +88,7 @@ export function evaluarLado(game) {
     for (let c = 0; c < 8; c++) {
       const pieza = board[f][c];
       if (!pieza) continue;
-      // Para las blancas la tabla se usa tal cual; para las negras, del revés.
+      // For White the table is used as is; for Black, flipped.
       const idx = pieza.color === 'w' ? f * 8 + c : (7 - f) * 8 + c;
       const valor = VALOR[pieza.type] + PST[pieza.type][idx];
       blancas += pieza.color === 'w' ? valor : -valor;
@@ -97,7 +97,7 @@ export function evaluarLado(game) {
   return game.turn() === 'w' ? blancas : -blancas;
 }
 
-/** Prioriza capturas (MVV-LVA), promociones y jaques, para podar antes. */
+/** Prioritises captures (MVV-LVA), promotions and checks, to prune sooner. */
 function ordenar(movs) {
   return movs
     .map((m) => {
@@ -135,16 +135,16 @@ function negamax(game, prof, alfa, beta, ctx) {
     if (ctx.abortado) return mejor === -Infinity ? 0 : mejor;
     if (v > mejor) mejor = v;
     if (v > alfa) alfa = v;
-    if (alfa >= beta) break; // poda
+    if (alfa >= beta) break; // prune
   }
   return mejor;
 }
 
 /**
- * Elige la mejor jugada con búsqueda en profundidad creciente.
+ * Picks the best move with iterative deepening.
  * @param {import('chess.js').Chess} game
  * @param {{tiempoMaxMs?:number, maxProfundidad?:number}} opciones
- * @returns {object|null} jugada (objeto verbose de chess.js)
+ * @returns {object|null} move (a chess.js verbose move object)
  */
 export function eligeJugada(game, { tiempoMaxMs = 1200, maxProfundidad = 4 } = {}) {
   const legales = game.moves({ verbose: true });
@@ -166,7 +166,7 @@ export function eligeJugada(game, { tiempoMaxMs = 1200, maxProfundidad = 4 } = {
     ctx.nodos = 0;
 
     const movs = ordenar(legales);
-    // Lo que funcionó en la vuelta anterior se prueba primero.
+    // Whatever worked in the previous iteration is tried first.
     const i = movs.findIndex((m) => m.san === mejor.san);
     if (i > 0) movs.unshift(movs.splice(i, 1)[0]);
 
@@ -176,7 +176,7 @@ export function eligeJugada(game, { tiempoMaxMs = 1200, maxProfundidad = 4 } = {
     for (const m of movs) {
       game.move(m.san);
       let v = -negamax(game, prof - 1, -Infinity, -alfa, ctx);
-      // "Bailoteo": repetir posición tres veces no nos interesa casi nunca.
+      // Shuffling: repeating a position three times is almost never interesting.
       if (game.isThreefoldRepetition()) v -= 60;
       game.undo();
       if (ctx.abortado) break;
@@ -189,7 +189,7 @@ export function eligeJugada(game, { tiempoMaxMs = 1200, maxProfundidad = 4 } = {
 
     if (localMejor && !ctx.abortado) mejor = localMejor;
     if (ctx.abortado) break;
-    if (localPuntos >= VALOR_MATE - 1000) break; // mate encontrado
+    if (localPuntos >= VALOR_MATE - 1000) break; // mate found
     if (Date.now() > ctx.fin) break;
   }
 

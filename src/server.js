@@ -1,4 +1,4 @@
-// Servidor HTTP API y Aplicación Web para PickleBrain y Claw Companion (Metro UI 3 Pro).
+// HTTP API server and Web App for PickleBrain and Claw Companion (Metro UI 3 Pro).
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,6 +14,8 @@ import { generarImagen, esPedidoDeImagen } from './imagegen.js';
 import { isValidISO } from './dates.js';
 import { AuthError, createWebAuth } from './web-auth.js';
 import * as settings from './settings.js';
+import * as i18n from './i18n.js';
+import { setupPage } from './setup-page.js';
 
 const PORT = Number(process.env.PORT || 3000);
 const ANDROID_RELEASE_APK_URL =
@@ -80,8 +82,8 @@ const LOCAL_WEB_ORIGINS = new Set([
   `http://127.0.0.1:${PORT}`
 ]);
 
-// ngrok sirve la propia web, asi que el navegador envia su dominio como Origin.
-// Sin esto, cualquier peticion desde el tunel acabaria en un 403.
+// ngrok serves the web itself, so the browser sends its domain as Origin.
+// Without this, any request from the tunnel would end up as a 403.
 const NGROK_ORIGIN = /^https:\/\/[a-z0-9-]+\.ngrok(?:-free)?\.(?:app|dev|io)$/i;
 
 function isAllowedOrigin(origin) {
@@ -112,7 +114,7 @@ function startNgrok(server) {
     tunnel.once('spawn', () => log.info(`Túnel ngrok activo en https://${config.ngrokDomain} → puerto ${PORT}.`));
     tunnel.once('error', (err) => {
       if (err.code === 'ENOENT') {
-        // Sin el binario no tiene sentido reintentar cada 5 s: avisa una vez.
+        // Without the binary there is no point retrying every 5 s: warn once.
         stopping = true;
         log.warn('No se encontró ngrok; el túnel público queda desactivado. Instálalo o pon NGROK_ENABLED=false.');
         return;
@@ -159,7 +161,7 @@ async function parseJsonBody(req) {
   });
 }
 
-/** IP real del cliente (ngrok añade X-Forwarded-For). */
+/** Real client IP (ngrok adds X-Forwarded-For). */
 function clientAddressOf(req) {
   const forwardedFor = String(req.headers['x-forwarded-for'] || '').split(',').pop().trim();
   return forwardedFor || req.socket.remoteAddress || 'unknown';
@@ -174,8 +176,8 @@ function textoCorto(value, max) {
 }
 
 /**
- * Datos de registro que llegan con la petición del código.
- * Devuelve null si no se ha enviado ninguno (clientes antiguos).
+ * Registration data that arrives with the code request.
+ * Returns null when none was sent (older clients).
  */
 function perfilDeRegistro(body) {
   const fuente = body?.profile && typeof body.profile === 'object' ? body.profile : body || {};
@@ -215,7 +217,7 @@ export function startServer({ auth = webAuth } = {}) {
     try {
       if (pathname === '/api/auth/request-code' && req.method === 'POST') {
         const body = await parseJsonBody(req);
-        // El registro es obligatorio antes de pedir el código.
+        // Registration is mandatory before requesting the code.
         const profile = perfilDeRegistro(body);
         const result = await auth.requestCode(body.email, clientAddressOf(req));
         if (profile) {
@@ -243,12 +245,43 @@ export function startServer({ auth = webAuth } = {}) {
         return sendJson(res, 200, { ...login, student });
       }
 
-      // Modo debug: un código corto abre sesión de administrador sin correo.
-      // Solo funciona desde un origen web permitido y con límite de intentos.
+      // Debug mode: a short code opens an administrator session without email.
+      // It only works from an allowed web origin and with a rate limit.
       if (pathname === '/api/auth/debug' && req.method === 'POST') {
         const body = await parseJsonBody(req);
         const code = String(body.code ?? body.email ?? '').trim();
         return sendJson(res, 200, auth.loginDebug(code, clientAddressOf(req)));
+      }
+
+      // ------------------------------------------------ initial setup
+      // These routes work without a session: they are the ones that allow
+      // choosing a language the first time. Once saved, changing the language
+      // from outside is only allowed locally (or with an admin session).
+      if (pathname === '/api/setup/status' && req.method === 'GET') {
+        return sendJson(res, 200, {
+          needed: i18n.necesitaSetup(),
+          language: i18n.idioma(),
+          name: i18n.infoIdioma().name,
+          languages: i18n.LANGUAGES
+        });
+      }
+
+      if (pathname === '/api/setup/language' && req.method === 'POST') {
+        const body = await parseJsonBody(req);
+        const remoto = String(req.socket.remoteAddress || '');
+        const esLocal = remoto === '127.0.0.1' || remoto === '::1' || remoto === '::ffff:127.0.0.1';
+        if (!i18n.necesitaSetup() && !esLocal) {
+          return sendJson(res, 403, { error: 'El idioma ya está configurado.' });
+        }
+        const codigo = body.language ?? body.idioma ?? body.code;
+        if (!i18n.guardarIdioma(codigo)) {
+          return sendJson(res, 400, { ok: false, error: 'Idioma no válido.' });
+        }
+        return sendJson(res, 200, {
+          ok: true,
+          language: i18n.idioma(),
+          name: i18n.infoIdioma().name
+        });
       }
 
       const session = pathname.startsWith('/api/')
@@ -277,8 +310,8 @@ export function startServer({ auth = webAuth } = {}) {
         return sendJson(res, 200, { success: true });
       }
 
-      // ------------------------------------------------------ administración
-      // Solo las sesiones de depuración (dueño del bot) pueden entrar aquí.
+      // ------------------------------------------------------ administration
+      // Only debug sessions (the bot owner) can get in here.
       if (pathname === '/api/admin/overview' && req.method === 'GET') {
         if (!session.debug) return sendJson(res, 403, { error: 'Solo el modo debug puede ver la administración.' });
         return sendJson(res, 200, {
@@ -326,8 +359,24 @@ export function startServer({ auth = webAuth } = {}) {
         });
       }
 
-      // Servir la Web App en la raíz (GET /)
+      // Initial setup (choosing a language). It opens by itself on first start.
+      if ((pathname === '/setup' || pathname === '/setup/') && req.method === 'GET') {
+        return sendHtml(
+          res,
+          setupPage({
+            actual: i18n.idioma(),
+            sugerido: i18n.idiomaDeCabecera(req.headers['accept-language'])
+          })
+        );
+      }
+
+      // Serve the Web App at the root (GET /)
       if (pathname === '/' && req.method === 'GET') {
+        // First start: before anything else, choose a language.
+        if (i18n.necesitaSetup()) {
+          res.writeHead(302, { Location: '/setup' });
+          return res.end();
+        }
         const page = await fs.promises.readFile(path.join(config.rootDir, 'docs', 'index.html'), 'utf8');
         return sendHtml(res, page);
       }
@@ -352,13 +401,13 @@ export function startServer({ auth = webAuth } = {}) {
         });
       }
 
-      // Mantener compatibilidad con clientes anteriores y enviarlos a GitHub Releases.
+      // Keep compatibility with older clients and send them to GitHub Releases.
       if (pathname === '/api/download-apk' && req.method === 'GET') {
         res.writeHead(302, { Location: ANDROID_RELEASE_APK_URL });
         return res.end();
       }
 
-      // Si el servidor está en mantenimiento, bloquea las operaciones normales del API
+      // If the server is under maintenance, block the normal API operations
       if (config.maintenance) {
         return sendJson(res, 503, {
           maintenance: true,
@@ -366,7 +415,7 @@ export function startServer({ auth = webAuth } = {}) {
         });
       }
 
-      // Conversación con Claw e imágenes integradas.
+      // Conversation with Claw plus built-in image generation.
       if (pathname === '/api/chat' && req.method === 'POST') {
         const body = await parseJsonBody(req);
         const question = (body.question || body.prompt || '').trim();
@@ -374,7 +423,7 @@ export function startServer({ auth = webAuth } = {}) {
           return sendJson(res, 400, { error: 'Falta el parámetro question o prompt' });
         }
 
-        // Detectar si el usuario pide una imagen (ej: "!claw imagen...", "dibuja un perro", etc.)
+        // Detect whether the user is asking for an image (e.g. "!claw imagen...", "dibuja un perro", etc.)
         const partes = question.split(/\s+/);
         const primerPalabra = partes[0].toLowerCase().replace(/^!/, '');
         const esImagen = esPedidoDeImagen(primerPalabra) || esPedidoDeImagen(partes[1]);
@@ -402,7 +451,7 @@ export function startServer({ auth = webAuth } = {}) {
           }
         }
 
-        // Respuesta normal de conversación
+        // Normal conversation reply
         const answer = await clawAnswer({
           question: question,
           history: body.history || [],
@@ -417,7 +466,7 @@ export function startServer({ auth = webAuth } = {}) {
         });
       }
 
-      // Endpoint dedicado para la generación de imágenes
+      // Dedicated endpoint for image generation
       if (pathname === '/api/imagegen' && req.method === 'POST') {
         const body = await parseJsonBody(req);
         const prompt = (body.prompt || '').trim();
@@ -443,7 +492,7 @@ export function startServer({ auth = webAuth } = {}) {
         }
       }
 
-      // Obtener, agregar o borrar contexto escolar (deberes/exámenes)
+      // Read, add or delete school context (homework/exams)
       if (pathname === '/api/context') {
         if (req.method === 'DELETE' || (req.method === 'POST' && url.searchParams.get('action') === 'delete')) {
           const body = req.method === 'POST' ? await parseJsonBody(req) : {};
@@ -498,7 +547,7 @@ export function startServer({ auth = webAuth } = {}) {
         }
       }
 
-      // Transcripción de audio / notas de voz
+      // Audio / voice note transcription
       if (pathname === '/api/transcribe' && req.method === 'POST') {
         const body = await parseJsonBody(req);
         if (!body.audioBase64) {
@@ -532,7 +581,7 @@ export function startServer({ auth = webAuth } = {}) {
         }
       }
 
-      // Ruta no encontrada
+      // Route not found
       return sendJson(res, 404, { error: 'Ruta no encontrada' });
     } catch (err) {
       if (err instanceof AuthError) {

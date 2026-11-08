@@ -1,221 +1,218 @@
-# Cómo funciona PickleBrain y Claw
+# How PickleBrain and Claw work
 
-PickleBrain es el proceso que corre en el ordenador. Mantiene la conexión de
-WhatsApp, ejecuta la lógica del bot, consulta los modelos locales de Ollama y
-guarda los datos en SQLite. **Claw** es el asistente con el que hablan las
-personas desde WhatsApp o desde la interfaz web.
+PickleBrain is the process that runs on the computer. It keeps the WhatsApp
+connection open, runs the bot logic, queries the local Ollama models and stores
+data in SQLite. **Claw** is the assistant people talk to from WhatsApp or from
+the web interface.
 
-## Mapa del sistema
+## System map
 
 ```mermaid
 flowchart LR
-  WA[Grupo de WhatsApp] <-->|Baileys| BOT[PickleBrain · Node.js]
-  WEB[Navegador · docs/index.html] -->|HTTPS + CORS/sesión| API[API local · puerto 3000]
-  APP[Claw Companion · Android] -->|HTTPS| NG[Ngrok · dominio configurado]
-  NG -->|reenvío a localhost:3000| API
+  WA[WhatsApp group] <-->|Baileys| BOT[PickleBrain · Node.js]
+  WEB[Browser · docs/index.html] -->|HTTPS + CORS/session| API[Local API · port 3000]
+  APP[Claw Companion · Android] -->|HTTPS| NG[Ngrok · configured domain]
+  NG -->|forwards to localhost:3000| API
   API --> BOT
-  BOT --> ROUTER[Router y reglas]
-  ROUTER --> BRAIN[Clasificador local · Ollama]
-  ROUTER --> CLAW[Asistente Claw · Ollama]
+  BOT --> ROUTER[Router and rules]
+  ROUTER --> BRAIN[Local classifier · Ollama]
+  ROUTER --> CLAW[Claw assistant · Ollama]
   ROUTER <--> DB[(SQLite · data/picklebrain.db)]
-  BOT --> VOICE[Voz · servicio Python / Whisper Node]
-  BOT --> IMG[Imágenes · diffusers / stable-diffusion.cpp]
-  VOICE <-->|HTTP local :5050| PY[Servicio Python · faster-whisper + diffusers]
-  IMG <-->|HTTP local :5050| PY
-  CLAW -. búsqueda opcional .-> DDG[DuckDuckGo]
+  BOT --> VOICE[Voice · Python service / Node Whisper]
+  BOT --> IMG[Images · diffusers / stable-diffusion.cpp]
+  VOICE <-->|local HTTP :5050| PY[Python service · faster-whisper + diffusers]
+  IMG <-->|local HTTP :5050| PY
+  CLAW -. optional search .-> DDG[DuckDuckGo]
 ```
 
-La web la sirve el propio servidor PickleBrain, no un hosting externo. Ni
-GitHub Pages ni ningún servicio estático ejecutan Node.js, Ollama o la base de
-datos: el ordenador debe estar encendido y con PickleBrain en marcha para que la
-interfaz pueda usar la IA. La aplicación Android es un cliente separado; su
-código fuente no está incluido en esta carpeta.
+The website is served by the PickleBrain server itself, not by external hosting.
+Neither GitHub Pages nor any static service can run Node.js, Ollama or the
+database: the computer must be on and PickleBrain running for the interface to
+use the AI. The Android app is a separate client; its source code is not
+included in this folder.
 
-## Qué arranca cada comando
+## What each command starts
 
-| Comando | Qué inicia |
+| Command | What it starts |
 |---|---|
-| `npm start` | `src/index.js`: base SQLite, servidor HTTP, túnel ngrok, conexión WhatsApp, limpieza y avisos programados. |
-| `npm run web` | `src/web.js`: base SQLite y servidor HTTP/ngrok, sin iniciar WhatsApp. |
-| `npm run sim` | Simulador de mensajes que reutiliza el router sin conectarse a WhatsApp. |
-| `npm run doctor` | Diagnósticos de Ollama, modelos, base de datos y componentes disponibles. |
-| `npm test` | Suite de integración del bot. |
-| `npm run test:web` | Prueba autenticación por email, autorización API, CORS y sesiones temporales. |
-| `npm run test:python` | Contrato entre Node y el servicio Python, con un servidor HTTP falso (sin modelos). |
-| `npm run ia` | Arranca `python/server.py` (voz e imágenes). En Linux también `npm run ia:linux`. |
-| `npm run smtp` | Comprueba las credenciales SMTP de AsterMail; con un correo como argumento envía un código de prueba. |
+| `npm start` | `src/index.js`: SQLite database, HTTP server, ngrok tunnel, WhatsApp connection, cleanup and scheduled notices. |
+| `npm run web` | `src/web.js`: SQLite database and HTTP/ngrok server, without starting WhatsApp. |
+| `npm run sim` | Message simulator that reuses the router without connecting to WhatsApp. |
+| `npm run doctor` | Diagnostics for Ollama, models, database and available components. |
+| `npm test` | Bot integration suite. |
+| `npm run test:web` | Tests email authentication, API authorization, CORS and temporary sessions. |
+| `npm run test:python` | Contract between Node and the Python service, with a fake HTTP server (no models). |
+| `npm run ia` | Starts `python/server.py` (voice and images). On Linux also `npm run ia:linux`. |
+| `npm run smtp` | Checks the AsterMail SMTP credentials; with an email as argument it sends a test code. |
 
-El servidor HTTP escucha en `127.0.0.1:3000`. Si `NGROK_ENABLED=true`, inicia
-`ngrok http 3000 --url https://dawn-greeter-grazing.ngrok-free.dev` y reintenta
-cada cinco segundos si el proceso del túnel termina. Al cerrar el servidor,
-cierra ngrok también. El dominio es fijo y la web lo usa por defecto; puede
-sobreescribirse con `NGROK_DOMAIN`, pero no es necesario. Ngrok debe estar
-instalado y autenticado en el equipo anfitrión.
+The HTTP server listens on `127.0.0.1:3000`. If `NGROK_ENABLED=true`, it starts
+`ngrok http 3000 --url https://dawn-greeter-grazing.ngrok-free.dev` and retries
+every five seconds if the tunnel process exits. When the server shuts down, it
+closes ngrok too. The domain is fixed and the website uses it by default; it can
+be overridden with `NGROK_DOMAIN`, but that is not necessary. Ngrok must be
+installed and authenticated on the host machine.
 
-## Recorrido de un mensaje de WhatsApp
+## The journey of a WhatsApp message
 
-1. `src/whatsapp.js` recibe el evento de Baileys, extrae el texto y describe el
-   archivo adjunto si lo hay.
-2. `src/router.js` aplica las reglas de grupo, permisos, comandos, menciones y
-   modo mantenimiento. Los mensajes normales suelen ignorarse en silencio.
-3. Las preguntas conocidas de deberes o exámenes se responden directamente con
-   datos de SQLite. Otros mensajes pertinentes pasan al clasificador de
-   `src/brain.js`, que usa Ollama para producir datos estructurados.
-4. `src/memory.js` guarda los apuntes, las preguntas pendientes y, si está
-   activado, una ventana limitada de mensajes recientes. Las fechas relativas
-   se normalizan mediante `src/dates.js`.
-5. Si alguien invoca a Claw, `src/claw.js` construye la respuesta con el
-   historial permitido y los apuntes relacionados. La búsqueda en DuckDuckGo
-   es opcional y se controla con `WEB_SEARCH`.
-6. `src/whatsapp.js` envía las respuestas al chat correspondiente.
+1. `src/whatsapp.js` receives the Baileys event, extracts the text and describes
+   the attachment if there is one.
+2. `src/router.js` applies the group rules, permissions, commands, mentions and
+   maintenance mode. Ordinary messages are usually ignored silently.
+3. Known homework or exam questions are answered directly from SQLite. Other
+   relevant messages go to the classifier in `src/brain.js`, which uses Ollama
+   to produce structured data.
+4. `src/memory.js` stores the notes, the pending questions and, if enabled, a
+   limited window of recent messages. Relative dates are normalised through
+   `src/dates.js`.
+5. If someone invokes Claw, `src/claw.js` builds the reply from the allowed
+   history and the related notes. DuckDuckGo search is optional and controlled
+   by `WEB_SEARCH`.
+6. `src/whatsapp.js` sends the replies to the corresponding chat.
 
-Una pregunta escolar puede abrir una pregunta pendiente durante
-`ANSWER_WINDOW_MINUTES`. Si alguien contesta en ese intervalo, el router puede
-clasificar la respuesta como dato y guardarla. Una rectificación explícita
-actualiza el apunte anterior.
+A school question can open a pending question for `ANSWER_WINDOW_MINUTES`. If
+someone answers within that window, the router can classify the answer as data
+and store it. An explicit correction updates the previous note.
 
-## Voz, archivos e imágenes
+## Voice, files and images
 
-- **Servicio Python (opcional):** `python/server.py` es un servicio FastAPI que
-  escucha solo en `127.0.0.1:5050`. Node lo llama por HTTP con
-  `src/python-ai.js`. Hace dos cosas: transcribir audio con faster-whisper y
-  generar imágenes con diffusers. Si no está arrancado o falla, el bot sigue con
-  los motores antiguos; se controla con `PYTHON_AI_ENABLED` y
+- **Python service (optional):** `python/server.py` is a FastAPI service that
+  listens only on `127.0.0.1:5050`. Node calls it over HTTP from
+  `src/python-ai.js`. It does two things: transcribe audio with faster-whisper
+  and generate images with diffusers. If it is not running or it fails, the bot
+  keeps using the legacy engines; controlled by `PYTHON_AI_ENABLED` and
   `PYTHON_AI_FALLBACK`.
-- **Notas de voz:** `src/transcribe.js` pide la transcripción al servicio Python.
-  Si no está disponible, usa ffmpeg para convertir el audio y Whisper local
-  (transformers.js) para transcribirlo. El modelo puede descargarse la primera
-  vez. Whisper cambia solo a CPU si CUDA está presente pero faltan
-  `libcublas`/cuDNN.
-- **Fotos y documentos:** `src/media.js` guarda archivos pertinentes en
-  `data/media/`, comprueba el espacio disponible y aplica límites de tamaño y
-  caducidad. Los documentos dependen de `DOCS_ENABLED`.
-- **Generación de imágenes:** `src/imagegen.js` elige motor según
+- **Voice notes:** `src/transcribe.js` asks the Python service for the
+  transcription. If it is not available, it uses ffmpeg to convert the audio and
+  local Whisper (transformers.js) to transcribe it. The model may be downloaded
+  the first time. Whisper switches to CPU by itself if CUDA is present but
+  `libcublas`/cuDNN are missing.
+- **Photos and documents:** `src/media.js` stores relevant files in
+  `data/media/`, checks available space and applies size and expiry limits.
+  Documents depend on `DOCS_ENABLED`.
+- **Image generation:** `src/imagegen.js` picks the engine from
   `IMAGE_GEN_BACKEND`:
-  - `auto` (por defecto): Python/diffusers si está disponible; si no, `cli`.
-  - `python`: servicio Python con el modelo de `PYTHON_IMAGE_MODEL`.
-  - `cli`: Stable Diffusion local desde `sdserver/`.
-  - `http`: servidor compatible con OpenAI Images.
+  - `auto` (default): Python/diffusers when available; otherwise `cli`.
+  - `python`: Python service with the `PYTHON_IMAGE_MODEL` model.
+  - `cli`: local Stable Diffusion from `sdserver/`.
+  - `http`: an OpenAI Images compatible server.
 
-  Está desactivada de fábrica y requiere habilitarla expresamente. Con una GPU
-  pequeña, `IMAGE_GEN_FREE_VRAM=true` y `PYTHON_IMAGE_UNLOAD=true` liberan la
-  VRAM entre Ollama y el dibujo.
+  It is disabled out of the box and must be enabled explicitly. With a small
+  GPU, `IMAGE_GEN_FREE_VRAM=true` and `PYTHON_IMAGE_UNLOAD=true` free VRAM
+  between Ollama and drawing.
 
-## Web, API y Android
+## Web, API and Android
 
-`docs/index.html` es la portada que el servidor entrega en `/` y
-`docs/entrar/index.html` contiene el acceso de estudiantes en `/entrar/`. También
-pueden abrirse con el servidor local en `http://127.0.0.1:3000/` y
-`http://127.0.0.1:3000/entrar/`, o a través del túnel ngrok. El acceso usa la
-misma URL de PickleBrain que el bot, pide los datos de registro (nombre,
-apellidos, curso y grupo) y solicita un código por correo institucional. Tras
-entrar, permite chatear con Claw o gestionar apuntes compartidos. El token se
-guarda solo en `sessionStorage` y desaparece al cerrar la pestaña.
+`docs/index.html` is the landing page the server serves at `/` and
+`docs/entrar/index.html` holds the student login at `/entrar/`. They can also be
+opened with the local server at `http://127.0.0.1:3000/` and
+`http://127.0.0.1:3000/entrar/`, or through the ngrok tunnel. Login uses the
+same PickleBrain URL as the bot, asks for the registration details (name,
+surname, course and group) and requests a code by institutional email. Once
+inside, it allows chatting with Claw or managing shared notes. The token is kept
+only in `sessionStorage` and disappears when the tab is closed.
 
-Además, el dueño puede entrar en **modo debug** escribiendo el código corto de
-`WEB_DEBUG_CODE` (por defecto `0912`) en el campo del correo. Esa sesión lleva la
-marca `debug: true` y muestra una pestaña de administración con estadísticas,
-ajustes del bot y alumnado. Los intentos se limitan por IP. Deja
-`WEB_DEBUG_CODE` vacío para desactivarlo.
+The owner can also enter **debug mode** by typing the short code from
+`WEB_DEBUG_CODE` (default `0912`) in the email field. That session carries the
+`debug: true` flag and shows an administration tab with statistics, bot settings
+and students. Attempts are limited per IP. Leave `WEB_DEBUG_CODE` empty to
+disable it.
 
-La API actual incluye:
+The current API includes:
 
-| Ruta | Uso |
+| Route | Purpose |
 |---|---|
-| `POST /api/auth/request-code` | Registra al estudiante y envía un código al correo permitido `@alu.edu.gva.es`. |
-| `POST /api/auth/verify` | Verifica el código y entrega un token temporal de sesión. |
-| `POST /api/auth/debug` | Acceso de depuración con código corto; crea una sesión de administración. |
-| `GET /api/auth/me` | Devuelve identidad, caducidad, marca `debug` y perfil registrado. |
-| `POST /api/auth/logout` | Revoca la sesión actual. |
-| `GET /api/health` | Estado y capacidades anunciadas por el servidor; requiere sesión. |
-| `POST /api/chat` | Conversación con Claw usando Ollama. |
-| `GET /api/context` | Lista deberes y exámenes vigentes. |
-| `POST /api/context` | Crea un apunte manual. |
-| `DELETE /api/context?id=…` | Borra un apunte. |
-| `POST /api/imagegen` | Solicita una imagen al motor configurado. |
-| `POST /api/transcribe` | Transcribe un audio enviado en Base64. |
-| `GET /api/admin/overview` | Estadísticas, ajustes y alumnado; solo sesiones debug. |
-| `POST /api/admin/settings` | Cambia o restablece un ajuste; solo sesiones debug. |
-| `GET/DELETE /api/admin/students` | Lista o borra registros de alumnado; solo sesiones debug. |
-| `/api/settings` y `/api/dev/*` | Rutas heredadas de administración, bloqueadas para cuentas de estudiantes. |
-| `GET /api/download-apk` | Redirige al APK `ClawCompanion.apk` adjunto a la última GitHub Release. |
+| `POST /api/auth/request-code` | Registers the student and sends a code to the allowed `@alu.edu.gva.es` address. |
+| `POST /api/auth/verify` | Verifies the code and issues a temporary session token. |
+| `POST /api/auth/debug` | Debug access with a short code; creates an administration session. |
+| `GET /api/auth/me` | Returns identity, expiry, the `debug` flag and the registered profile. |
+| `POST /api/auth/logout` | Revokes the current session. |
+| `GET /api/health` | Status and capabilities announced by the server; requires a session. |
+| `POST /api/chat` | Conversation with Claw using Ollama. |
+| `GET /api/context` | Lists current homework and exams. |
+| `POST /api/context` | Creates a manual note. |
+| `DELETE /api/context?id=…` | Deletes a note. |
+| `POST /api/imagegen` | Requests an image from the configured engine. |
+| `POST /api/transcribe` | Transcribes audio sent in Base64. |
+| `GET /api/admin/overview` | Statistics, settings and students; debug sessions only. |
+| `POST /api/admin/settings` | Changes or resets a setting; debug sessions only. |
+| `GET/DELETE /api/admin/students` | Lists or deletes student records; debug sessions only. |
+| `/api/settings` and `/api/dev/*` | Legacy administration routes, blocked for student accounts. |
+| `GET /api/download-apk` | Redirects to the `ClawCompanion.apk` asset attached to the latest GitHub Release. |
 
-La app Android usa el túnel ngrok para consultar el servidor fuera de la red
-doméstica. La API anuncia el enlace de descarga de la última release de
-`ClawBott/ClawRepository`; hay que publicar el APK en esa release con el nombre
-exacto `ClawCompanion.apk`. Este repositorio contiene el servidor/API, no el
-proyecto nativo Android ni el proceso de compilación del APK. Los clientes
-anteriores que soliciten `/api/download-apk` reciben una redirección al mismo
-recurso de GitHub. Todos los endpoints de API, incluido el enlace de descarga,
-requieren una sesión; la versión Android actual tendrá que adaptarse al login
-por correo institucional.
+The Android app uses the ngrok tunnel to reach the server outside the home
+network. The API advertises the download link of the latest release of
+`ClawBott/ClawRepository`; the APK must be published on that release with the
+exact name `ClawCompanion.apk`. This repository contains the server/API, not the
+native Android project or the APK build process. Older clients requesting
+`/api/download-apk` receive a redirect to the same GitHub resource. Every API
+endpoint, including the download link, requires a session; the current Android
+version will have to adapt to institutional email login.
 
-### Publicación y seguridad
+### Publishing and security
 
-- El servidor sirve la propia web, así que no hace falta configurar ningún
-  hosting. Los orígenes locales y los dominios `*.ngrok-free.app` / `*.ngrok.app`
-  se aceptan automáticamente; si usas otro dominio, añádelo a
-  `WEB_ALLOWED_ORIGINS` separado por comas y sin `/` final.
-- Configura `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER` y
-  `SMTP_PASSWORD` en `.env`; el servidor envía los códigos como
-  `clawbot@astermail.org`. Nunca publiques las credenciales SMTP.
-- Los códigos tienen 6 dígitos, caducan a los 10 minutos, permiten hasta cinco
-  intentos y se limitan las solicitudes. Las sesiones expiran a las ocho horas,
-  se guardan en memoria y se revocan al cerrar sesión o reiniciar el servidor.
-- Todas las rutas operativas `/api/*` exigen un bearer token de sesión, también
-  las solicitudes sin `Origin`. Solo solicitar el código, verificar el código y
-  el acceso debug están abiertos para iniciar sesión; CORS restringe los sitios
-  web autorizados, pero no sustituye la validación del token.
-- `WEB_DEBUG_CODE` es una puerta trasera deliberada para el dueño. Cámbialo por
-  un valor privado, no lo compartas y vacíalo para desactivarlo. Las sesiones
-  normales reciben 403 en `/api/admin/*`.
-- Ngrok crea una dirección pública que reenvía al servidor. Mantén SMTP
-  configurado y usa HTTPS en el túnel. La app Android actual no implementa
-  este flujo y debe actualizarse antes de volver a llamar a la API.
-- La web y la API se sirven por HTTPS a través del túnel ngrok, así que el
-  navegador no necesita permisos especiales para hablar con el servidor. Abrir
-  los archivos con `file://` o llamar a `127.0.0.1` desde fuera no funciona: usa
-  siempre la URL del túnel.
+- The server serves the website itself, so no hosting needs to be configured.
+  Local origins and the `*.ngrok-free.app` / `*.ngrok.app` domains are accepted
+  automatically; if you use another domain, add it to `WEB_ALLOWED_ORIGINS`
+  separated by commas and without a trailing `/`.
+- Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER` and
+  `SMTP_PASSWORD` in `.env`; the server sends the codes as
+  `clawbot@astermail.org`. Never publish the SMTP credentials.
+- Codes have 6 digits, expire after 10 minutes, allow up to five attempts and
+  requests are rate limited. Sessions expire after eight hours, are kept in
+  memory and are revoked on logout or when the server restarts.
+- Every operational `/api/*` route requires a session bearer token, including
+  requests without an `Origin`. Only requesting the code, verifying the code and
+  debug access are open in order to sign in; CORS restricts the authorised
+  websites, but it does not replace token validation.
+- `WEB_DEBUG_CODE` is a deliberate backdoor for the owner. Change it to a
+  private value, do not share it and empty it to disable it. Normal sessions get
+  a 403 on `/api/admin/*`.
+- Ngrok creates a public address that forwards to the server. Keep SMTP
+  configured and use HTTPS on the tunnel. The current Android app does not
+  implement this flow and must be updated before calling the API again.
+- The website and the API are served over HTTPS through the ngrok tunnel, so the
+  browser needs no special permissions to talk to the server. Opening the files
+  with `file://` or calling `127.0.0.1` from outside does not work: always use
+  the tunnel URL.
 
-## Datos y privacidad
+## Data and privacy
 
-SQLite guarda los deberes, exámenes, preguntas, ajustes dinámicos y, si
-`STORE_MESSAGES` está activado, mensajes recientes. La autenticación de WhatsApp está en
-`data/auth/`; los archivos descargados o temporales están bajo `data/`. No
-compartas esas carpetas ni el `.env`.
+SQLite stores homework, exams, questions, dynamic settings and, if
+`STORE_MESSAGES` is enabled, recent messages. WhatsApp authentication lives in
+`data/auth/`; downloaded or temporary files are under `data/`. Do not share
+those folders or the `.env`.
 
-La generación de respuestas y la transcripción ocurren localmente. Hay
-excepciones de red que conviene conocer:
+Reply generation and transcription happen locally. There are network exceptions
+worth knowing about:
 
-- WhatsApp transmite los mensajes a través de su servicio y Baileys mantiene la
-  sesión con WhatsApp Web.
-- Ollama y Whisper pueden descargar sus modelos durante la instalación o el
-  primer uso.
-- Con `WEB_SEARCH=true`, la pregunta que requiere actualidad se envía a
+- WhatsApp transmits the messages through its service and Baileys keeps the
+  session with WhatsApp Web.
+- Ollama and Whisper may download their models during installation or first use.
+- With `WEB_SEARCH=true`, a question that needs current information is sent to
   DuckDuckGo.
-- El túnel ngrok transporta tanto la web como las solicitudes de Android entre
-  Internet y el servidor local.
+- The ngrok tunnel carries both the website and the Android requests between the
+  Internet and the local server.
 
-Para evitar la búsqueda externa, configura `WEB_SEARCH=false`. Para revisar
-todas las opciones, consulta `.env.example`.
+To avoid external search, set `WEB_SEARCH=false`. To review every option, see
+`.env.example`.
 
-## Módulos principales
+## Main modules
 
-| Archivo | Responsabilidad |
+| File | Responsibility |
 |---|---|
-| `src/index.js` | Arranque completo, WhatsApp y tareas periódicas. |
-| `src/web.js` | Arranque solo de la API y la web local. |
-| `src/server.js` | HTTP, API, CORS, restricciones web y túnel ngrok. |
-| `src/web-auth.js` | Códigos institucionales de un uso, límites y sesiones temporales. |
-| `src/whatsapp.js` | Sesión Baileys, eventos y envío de mensajes. |
-| `src/router.js` | Flujo de mensajes y decisiones del bot. |
-| `src/brain.js` | Clasificación estructurada con Ollama. |
-| `src/claw.js` | Asistente conversacional, contexto y búsqueda opcional. |
-| `src/ollama.js` | Cliente HTTP de Ollama y selección de modelos. |
-| `src/memory.js` | Esquema SQLite y operaciones de persistencia. |
-| `src/config.js` | Configuración desde `.env` y valores predeterminados. |
-| `src/dates.js`, `src/subjects.js`, `src/signals.js` | Fechas, asignaturas y detección rápida basada en texto. |
-| `src/media.js`, `src/transcribe.js`, `src/imagegen.js` | Gestión de archivos, voz e imágenes. |
-| `src/python-ai.js` | Cliente del servicio Python local (salud, transcripción e imágenes). |
-| `python/server.py` | Servicio FastAPI de voz (faster-whisper) e imágenes (diffusers). |
-| `src/tools/` | Simulador, diagnósticos y pruebas; `web-auth-test.js` cubre el acceso institucional y `python-ai-test.js` el contrato con Python. |
+| `src/index.js` | Full startup, WhatsApp and periodic tasks. |
+| `src/web.js` | Startup of the API and local website only. |
+| `src/server.js` | HTTP, API, CORS, web restrictions and ngrok tunnel. |
+| `src/web-auth.js` | Single-use institutional codes, limits and temporary sessions. |
+| `src/whatsapp.js` | Baileys session, events and message sending. |
+| `src/router.js` | Message flow and bot decisions. |
+| `src/brain.js` | Structured classification with Ollama. |
+| `src/claw.js` | Conversational assistant, context and optional search. |
+| `src/ollama.js` | Ollama HTTP client and model selection. |
+| `src/memory.js` | SQLite schema and persistence operations. |
+| `src/config.js` | Configuration from `.env` and default values. |
+| `src/dates.js`, `src/subjects.js`, `src/signals.js` | Dates, subjects and fast text-based detection. |
+| `src/media.js`, `src/transcribe.js`, `src/imagegen.js` | File handling, voice and images. |
+| `src/python-ai.js` | Client for the local Python service (health, transcription and images). |
+| `python/server.py` | FastAPI service for voice (faster-whisper) and images (diffusers). |
+| `src/tools/` | Simulator, diagnostics and tests; `web-auth-test.js` covers institutional access and `python-ai-test.js` the contract with Python. |

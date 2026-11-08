@@ -1,16 +1,16 @@
-# Servicio Python de Claw (voz e imágenes)
+# Claw Python service (voice and images)
 
-Node sigue siendo el dueño del bot (WhatsApp, base de datos y web). Este
-servicio solo hace las dos tareas pesadas:
+Node still owns the bot (WhatsApp, database and web). This service only does the
+two heavy jobs:
 
-- **Voz:** transcribe audio con [faster-whisper](https://github.com/SYSTRAN/faster-whisper).
-- **Imágenes:** genera imágenes con [diffusers](https://github.com/huggingface/diffusers).
+- **Voice:** transcribes audio with [faster-whisper](https://github.com/SYSTRAN/faster-whisper).
+- **Images:** generates images with [diffusers](https://github.com/huggingface/diffusers).
 
-Escucha únicamente en `127.0.0.1:5050` y no se expone a internet.
+It listens only on `127.0.0.1:5050` and is not exposed to the internet.
 
-## Instalación
+## Installation
 
-Desde la raíz del proyecto:
+From the project root:
 
 ```bash
 python3.12 -m venv .venv
@@ -18,96 +18,97 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r python/requirements.txt
 ```
 
-Para imágenes (pesado: torch, diffusers y sus dependencias):
+For images (heavy: torch, diffusers and their dependencies):
 
 ```bash
 pip install -r python/requirements-images.txt
 ```
 
-> Si no tienes GPU NVIDIA, instala torch para CPU antes de las imágenes:
+> If you do not have an NVIDIA GPU, install the CPU build of torch first:
 >
 > ```bash
 > pip install torch --index-url https://download.pytorch.org/whl/cpu
 > pip install -r python/requirements-images.txt
 > ```
 
-## Arranque
+## Starting the service
 
-En una terminal aparte, con el entorno virtual activado:
+In a separate terminal, with the virtual environment activated:
 
 ```bash
 python python/server.py
 ```
 
-O sin activarlo:
+Or without activating it:
 
 ```bash
 .venv/bin/python python/server.py       # Linux/macOS
 .venv\Scripts\python.exe python\server.py   # Windows
 ```
 
-El bot de Node lo detecta automáticamente. Si el servicio no está arrancado,
-Claw sigue usando los motores antiguos (transformers.js y sd-cli/HTTP).
+The Node bot detects it automatically. If the service is not running, Claw keeps
+using the legacy engines (transformers.js and sd-cli/HTTP).
 
-## Comprobar que funciona
+## Checking that it works
 
 ```bash
 curl http://127.0.0.1:5050/health
 ```
 
-Debe devolver `ok: true` y el estado de `voice` e `images`. Si `images.available`
-es `false`, faltan `torch`/`diffusers`; si `voice.available` es `false`, falta
-`faster-whisper`.
+It must return `ok: true` plus the status of `voice` and `images`. If
+`images.available` is `false`, `torch`/`diffusers` are missing; if
+`voice.available` is `false`, `faster-whisper` is missing.
 
-Probar una transcripción:
+Test a transcription:
 
 ```bash
-curl -F "file=@ruta/a/nota.ogg" http://127.0.0.1:5050/transcribe
+curl -F "file=@path/to/note.ogg" http://127.0.0.1:5050/transcribe
 ```
 
-Probar una imagen (necesita las dependencias de imágenes):
+Test an image (needs the image dependencies):
 
 ```bash
 curl -X POST http://127.0.0.1:5050/generate \
   -H "Content-Type: application/json" \
-  -d '{"prompt":"un pingüino con gafas de sol","steps":20,"width":512,"height":512}' \
-  --output imagen.png
+  -d '{"prompt":"a penguin wearing sunglasses","steps":20,"width":512,"height":512}' \
+  --output image.png
 ```
 
-## Variables de entorno
+## Environment variables
 
-Se leen del entorno o del `.env` de la raíz (si está instalado `python-dotenv`).
+They are read from the environment or from the root `.env` (if `python-dotenv` is
+installed).
 
-### Servicio
+### Service
 
-| Variable | Por defecto | Qué hace |
+| Variable | Default | What it does |
 |---|---|---|
-| `PYTHON_AI_HOST` | `127.0.0.1` | interfaz donde escucha |
-| `PYTHON_AI_PORT` | `5050` | puerto |
-| `PYTHON_AI_URL` | vacío | si Node usa otra URL, el servicio toma de aquí host/puerto |
-| `PYTHON_MODELS_DIR` | `data/models` | caché de modelos |
-| `PICKLEBRAIN_DATA_DIR` | vacío | si está puesto, también lee el `.env` de esa carpeta |
-| `PYTHON_MAX_UPLOAD_MB` | `64` | tamaño máximo de audio |
+| `PYTHON_AI_HOST` | `127.0.0.1` | interface it listens on |
+| `PYTHON_AI_PORT` | `5050` | port |
+| `PYTHON_AI_URL` | empty | if Node uses another URL, the service takes host/port from here |
+| `PYTHON_MODELS_DIR` | `data/models` | model cache |
+| `PICKLEBRAIN_DATA_DIR` | empty | if set, it also reads the `.env` from that folder |
+| `PYTHON_MAX_UPLOAD_MB` | `64` | maximum audio size |
 
-### Voz
+### Voice
 
-| Variable | Por defecto | Qué hace |
+| Variable | Default | What it does |
 |---|---|---|
 | `PYTHON_WHISPER_MODEL` | `base` | `tiny`, `base`, `small`, `medium`, `large-v3` |
 | `PYTHON_WHISPER_DEVICE` | `auto` | `auto`, `cuda`, `cpu` |
-| `PYTHON_WHISPER_COMPUTE` | vacío | `int8`, `float16`, `int8_float16` |
-| `PYTHON_WHISPER_LANGUAGE` | `es` | idioma de transcripción |
-| `PYTHON_WHISPER_BEAM` | `5` | precisión/velocidad |
+| `PYTHON_WHISPER_COMPUTE` | empty | `int8`, `float16`, `int8_float16` |
+| `PYTHON_WHISPER_LANGUAGE` | `es` | transcription language |
+| `PYTHON_WHISPER_BEAM` | `5` | accuracy/speed |
 
-### Imágenes
+### Images
 
-| Variable | Por defecto | Qué hace |
+| Variable | Default | What it does |
 |---|---|---|
-| `PYTHON_IMAGE_MODEL` | `stable-diffusion-v1-5/stable-diffusion-v1-5` | modelo de Hugging Face o ruta local |
+| `PYTHON_IMAGE_MODEL` | `stable-diffusion-v1-5/stable-diffusion-v1-5` | Hugging Face model or local path |
 | `PYTHON_IMAGE_DEVICE` | `auto` | `auto`, `cuda`, `cpu` |
-| `PYTHON_IMAGE_UNLOAD` | `true` | libera la GPU después de cada imagen |
-| `PYTHON_IMAGE_MAX_SIDE` | `1024` | lado máximo permitido |
-| `PYTHON_IMAGE_CPU_FALLBACK` | `false` | reservado para futuras versiones |
+| `PYTHON_IMAGE_UNLOAD` | `true` | frees the GPU after every image |
+| `PYTHON_IMAGE_MAX_SIDE` | `1024` | maximum allowed side |
+| `PYTHON_IMAGE_CPU_FALLBACK` | `false` | reserved for future versions |
 
-Con una GTX 1650 de 4 GB, deja `PYTHON_IMAGE_UNLOAD=true`: así Ollama recupera
-la VRAM cuando termina de dibujar.
+With a 4 GB GTX 1650, leave `PYTHON_IMAGE_UNLOAD=true`: that way Ollama gets its
+VRAM back once the drawing is done.

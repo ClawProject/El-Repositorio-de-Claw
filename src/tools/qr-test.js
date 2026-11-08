@@ -1,6 +1,6 @@
-// Comprueba que la conexion con WhatsApp funciona hasta el punto de generar
-// el codigo QR, sin necesidad de escanear nada.
-// Uso: node src/tools/qr-test.js
+// Checks that the WhatsApp connection works up to generating the QR code,
+// without having to scan anything.
+// Usage: node src/tools/qr-test.js
 import path from 'node:path';
 import os from 'node:os';
 import { config } from '../config.js';
@@ -8,7 +8,7 @@ import * as memory from '../memory.js';
 import { start, stop } from '../whatsapp.js';
 
 const tmpAuth = path.join(os.tmpdir(), `picklebrain-auth-${Date.now()}`);
-config.authDir = tmpAuth; // no tocamos la sesion real
+config.authDir = tmpAuth; // the real session is left untouched
 
 async function main() {
   await memory.init();
