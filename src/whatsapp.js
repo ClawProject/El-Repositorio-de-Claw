@@ -6,6 +6,7 @@ import * as memory from './memory.js';
 import { welcomeText } from './replies.js';
 import * as ajustes from './settings.js';
 import * as admins from './admins.js';
+import { recordarAlias, tieneTelefono } from './identities.js';
 import * as presence from './presence.js';
 import { handleMessage, rememberBotMessage, boundGroups, gruposFijos } from './router.js';
 
@@ -17,6 +18,7 @@ let stopping = false;
 let conectado = false;
 const alConectar = [];
 const groupNameCache = new Map();
+const aliasSyncAt = new Map();
 
 /** ¿Está la conexión con WhatsApp abierta ahora mismo? */
 export function estaConectado() {
@@ -215,6 +217,25 @@ async function groupMentions(jid) {
   }
 }
 
+/** Aprende qué @lid corresponde a cada número de teléfono mirando los
+ *  participantes del grupo. WhatsApp manda muchos mensajes solo con el @lid;
+ *  sin esta tabla, vetar un número no se aplicaría a esos mensajes. */
+async function sincronizarIdentidades(jid) {
+  if (!jid || !sock) return;
+  const ahora = Date.now();
+  if (ahora - (aliasSyncAt.get(jid) || 0) < 60000) return;
+  aliasSyncAt.set(jid, ahora);
+  try {
+    const meta = await sock.groupMetadata(jid);
+    for (const p of meta.participants || []) {
+      recordarAlias(p.id, p.lid, p.jid, p.phoneNumber);
+    }
+    log.debug(`Identificadores de "${jid}" sincronizados.`);
+  } catch (err) {
+    log.debug(`No pude leer los participantes de ${jid}: ${err.message}`);
+  }
+}
+
 /** Se presenta en los grupos la primera vez que se arranca. Una vez por grupo
  *  (o siempre, si WELCOME_ALWAYS). */
 export async function sendWelcome({ force = false } = {}) {
@@ -333,11 +354,29 @@ async function onSingleMessage(msg) {
   const isSelfChat = !isGroup && Boolean(selfJid && admins.sonIguales(remoteJid, selfJid));
 
   const senderJid = isGroup ? msg.key.participant || msg.participant || null : remoteJid;
-  // Alternativa "de verdad": Baileys pone el numero de telefono en participantPn
-  // (y el @lid en participantLid). Antes leiamos participantAlt, que no existe.
+  // WhatsApp identifica a la misma persona de dos formas: número de teléfono
+  // (@s.whatsapp.net) e identificador anónimo (@lid). Baileys pone el número
+  // en participantPn y el @lid en participantLid (antes se leía participantAlt,
+  // que no existe).
   const senderJidAlt = isGroup
     ? msg.key.participantPn || msg.key.participantLid || msg.key.participantAlt || msg.participantAlt || null
-    : remoteJid;
+    : (!fromMe ? msg.key.senderPn || msg.key.senderLid : null) || remoteJid;
+
+  // Guardamos la equivalencia número <-> @lid en cuanto la veamos. Es lo que
+  // hace que un veto por número se aplique también a los mensajes que llegan
+  // solo con el @lid (y al revés).
+  if (isGroup) {
+    if (senderJid) recordarAlias(senderJid, senderJidAlt, msg.key.participantPn, msg.key.participantLid);
+  } else if (!fromMe) {
+    recordarAlias(senderJid, msg.key.senderPn, msg.key.senderLid);
+  }
+
+  // Si el mensaje solo trae el @lid y todavía no sabemos su número, miramos los
+  // participantes del grupo (como mucho una vez por minuto y grupo).
+  if (isGroup && senderJid && senderJid.endsWith('@lid') && !tieneTelefono(senderJid)) {
+    await sincronizarIdentidades(remoteJid);
+  }
+
   const senderName = msg.pushName || (senderJid ? senderJid.split('@')[0] : 'alguien');
 
   // Los mensajes que manda el propio número del bot son "mios". Nos interesan en
@@ -475,6 +514,12 @@ export async function start() {
       }
 
       sendWelcome().catch((err) => log.debug(`No pude mandar la bienvenida: ${err.message}`));
+
+      // Aprendemos las equivalencias número <-> @lid de los grupos ya vinculados
+      // para que un veto por número funcione desde el primer mensaje.
+      for (const g of boundGroups()) {
+        sincronizarIdentidades(g.jid).catch(() => {});
+      }
     }
 
     if (connection === 'close') {

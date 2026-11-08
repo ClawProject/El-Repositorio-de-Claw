@@ -18,6 +18,7 @@
     "test:web": "node --test src/tools/server-test.js src/tools/web-auth-test.js",
     "test:ai": "node src/tools/ai-test.js",
     "test:voice": "node src/tools/voice-test.js",
+    "test:vetados": "node src/tools/vetados-test.mjs",
     "test:python": "node --test src/tools/python-ai-test.js",
     "ia": "python python/server.py",
     "ia:linux": "python3 python/server.py",

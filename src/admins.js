@@ -4,6 +4,7 @@
 // Solo el dueño y los administradores pueden ver y tocar los ajustes.
 import { config, jidDeLaCuenta, jidLidDeLaCuenta } from './config.js';
 import * as settings from './settings.js';
+import { identidades } from './identities.js';
 
 /** Solo los números, para comparar aunque el JID venga como "@lid" o con el dispositivo pegado.
  *  Si el JID no es numérico (los nombres de prueba), comparamos el nombre tal cual. */
@@ -13,7 +14,13 @@ export function numeroDe(jid) {
     .split(':')[0]
     .trim();
   const soloDigitos = local.replace(/[^0-9]/g, '');
-  return soloDigitos || local.toLowerCase();
+  if (!soloDigitos) return local.toLowerCase();
+  // Los móviles españoles tienen 9 dígitos (empiezan por 6 o 7) y WhatsApp los
+  // guarda con el 34 delante. Igualamos las dos formas para que "600111222" y
+  // "34600111222" cuenten como la misma persona: la gente (y el README) suele
+  // escribir el número sin prefijo.
+  if (/^[67]\d{8}$/.test(soloDigitos)) return `34${soloDigitos}`;
+  return soloDigitos;
 }
 
 export function sonIguales(a, b) {
@@ -50,18 +57,22 @@ export function vetados() {
 export function esDueno(...jids) {
   const ids = identidadesDueno();
   if (!ids.length) return false;
-  return jids.filter(Boolean).some((j) => ids.some((d) => sonIguales(j, d)));
+  const conocidos = identidades(...jids);
+  return conocidos.some((j) => ids.some((d) => sonIguales(j, d)));
 }
 
 export function esAdmin(...jids) {
   const lista = admins();
-  return jids.filter(Boolean).some((j) => lista.some((a) => sonIguales(a, j)));
+  const conocidos = identidades(...jids);
+  return conocidos.some((j) => lista.some((a) => sonIguales(j, a)));
 }
 
 /** ¿Está vetado (no puede usar a Claw)? El dueño y los admins nunca lo están. */
 export function esVetado(...jids) {
   if (esAdmin(...jids)) return false;
-  return jids.filter(Boolean).some((j) => vetados().some((v) => sonIguales(v, j)));
+  const lista = vetados();
+  const conocidos = identidades(...jids);
+  return conocidos.some((j) => lista.some((v) => sonIguales(j, v)));
 }
 
 /** Veta a alguien (no podrá usar a Claw). Devuelve false si ya lo estaba o es admin. */
@@ -73,10 +84,12 @@ export function addVetado(jid) {
   return true;
 }
 
-/** Quita el veto. Devuelve false si no estaba vetado. */
+/** Quita el veto. Devuelve false si no estaba vetado.
+ *  Acepta cualquier identidad conocida de la persona (número o @lid). */
 export function removeVetado(jid) {
   const actuales = settings.get('vetados') || [];
-  const quedan = actuales.filter((v) => !sonIguales(v, jid));
+  const ids = identidades(jid);
+  const quedan = actuales.filter((v) => !ids.some((id) => sonIguales(v, id)));
   if (quedan.length === actuales.length) return false;
   settings.setLista('vetados', quedan);
   return true;

@@ -15,6 +15,7 @@ import * as ajedrez from '../chess.js';
 import { eligeJugada as eligeJugadaMotor } from '../chessengine.js';
 import { Chess } from 'chess.js';
 import { handleMessage, resetTransientState, rememberBotMessage, boundGroupJid } from '../router.js';
+import { recordarAlias } from '../identities.js';
 import { sendReplies, estaConectado, cuandoConecte } from '../whatsapp.js';
 import { liberarVram } from '../ollama.js';
 import { necesitaBuscar, parsearResultadosDDG } from '../search.js';
@@ -1023,6 +1024,16 @@ async function main() {
     `action=${vetadoMencion.action}`
   );
 
+  // WhatsApp puede identificar a la misma persona con su número o con su @lid.
+  // Si el mensaje llega solo con el @lid, el veto por número también debe valer.
+  recordarAlias('998877665544@lid', '600555444@s.whatsapp.net');
+  const vetadoLid = await dice('!claw apuntes', 'Caco', { senderJid: '998877665544@lid' });
+  check(
+    'Un vetado por número sigue vetado cuando llega solo con @lid',
+    vetadoLid.action === 'vetado' && !texto(vetadoLid).trim(),
+    `action=${vetadoLid.action}`
+  );
+
   const sinPermisoVetar = await dice('!claw prohibir +600777888', 'Ana');
   check(
     'Sin ser admin, no se puede vetar a nadie',
@@ -1057,6 +1068,40 @@ async function main() {
     vetadoLibre.action === 'claw' || vetadoLibre.action === 'claw-limitado',
     `action=${vetadoLibre.action}`
   );
+
+  const libreLid = await dice('!claw apuntes', 'Caco', { senderJid: '998877665544@lid' });
+  check(
+    'Perdonar por número también le perdona cuando llega con @lid',
+    libreLid.action !== 'vetado',
+    `action=${libreLid.action}`
+  );
+
+  // Y al revés: vetar por @lid bloquea también los mensajes con el número.
+  await dice('!claw prohibir 998877665544@lid', 'Dueno', { senderJid: duenoJid });
+  const vetadoPorLid = await dice('!claw apuntes', 'Caco', { senderJid: '600555444@s.whatsapp.net' });
+  check(
+    'Vetar por @lid bloquea también el número',
+    vetadoPorLid.action === 'vetado',
+    `action=${vetadoPorLid.action}`
+  );
+
+  // Perdonar por número quita el veto guardado como @lid.
+  const perdonaAlias = await dice('!claw permitir +600555444', 'Dueno', { senderJid: duenoJid });
+  check(
+    'Perdonar por número quita un veto guardado como @lid',
+    /Ya puede usar a Claw/i.test(texto(perdonaAlias)) && !admins.esVetado('998877665544@lid'),
+    `dice=${texto(perdonaAlias).slice(0, 80)}`
+  );
+
+  // El número se puede escribir con o sin el prefijo del país.
+  await dice('!claw prohibir 600777888', 'Dueno', { senderJid: duenoJid });
+  const vetadoSinPrefijo = await dice('!claw apuntes', 'Caco', { senderJid: '34600777888@s.whatsapp.net' });
+  check(
+    'Vetar sin prefijo del país también bloquea el número completo',
+    vetadoSinPrefijo.action === 'vetado',
+    `action=${vetadoSinPrefijo.action}`
+  );
+  await dice('!claw permitir +34600777888', 'Dueno', { senderJid: duenoJid });
 
   memory.setSetting('cfg:vetados', null);
 
