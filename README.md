@@ -1,14 +1,31 @@
-# 🪝 Claw
+<p align="center">
+  <img src="assets/logo.svg" width="128" height="128" alt="Claw logo">
+</p>
+
+<h1 align="center">Claw — WhatsApp assistant with local AI for your class group</h1>
+
+<p align="center">
+  <a href="https://github.com/ClawProject/El-Repositorio-de-Claw/releases"><img src="https://img.shields.io/github/v/tag/ClawProject/El-Repositorio-de-Claw?label=release&color=f59e0b" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/Node.js-22%2B-339933?logo=node.js&logoColor=white" alt="Node.js 22 or newer">
+  <img src="https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-4B5563" alt="Windows, Linux and macOS">
+  <img src="https://img.shields.io/badge/AI-local%20with%20Ollama-111827" alt="Local AI with Ollama">
+  <img src="https://img.shields.io/badge/voice-Whisper-7c3aed" alt="Voice with Whisper">
+  <a href="https://discord.gg/DwbMbEqQ6E"><img src="https://img.shields.io/badge/Discord-join%20the%20server-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
+  <a href="https://github.com/ClawProject/El-Repositorio-de-Claw/stargazers"><img src="https://img.shields.io/github/stars/ClawProject/El-Repositorio-de-Claw" alt="GitHub stars"></a>
+</p>
+
+<p align="center"><strong>A self-hosted WhatsApp bot powered by local AI.</strong><br>
+It keeps track of homework, exams and school announcements in a class group chat, and answers when someone asks.</p>
 
 > 🌍 **Read this in your language:** [English](README.md) · [Español](README.es.md) · [Català](README.ca.md) · [Français](README.fr.md) · [Português](README.pt.md) · [Deutsch](README.de.md) · [Italiano](README.it.md) · [Русский](README.ru.md) · [العربية](README.ar.md) · [中文](README.zh.md)
 >
 > 📘 **Installation guide:** [English](INSTALL.md) · [Español](INSTALL.es.md) · [Català](INSTALL.ca.md) · [Français](INSTALL.fr.md) · [Português](INSTALL.pt.md) · [Deutsch](INSTALL.de.md) · [Italiano](INSTALL.it.md) · [Русский](INSTALL.ru.md) · [العربية](INSTALL.ar.md) · [中文](INSTALL.zh.md)
 
-**A self-hosted WhatsApp bot powered by local AI.**
-
 Claw is a local AI-powered WhatsApp assistant designed to keep track of homework, exams, school announcements and important information shared in group chats.
 
 It works quietly in the background, understands text messages, voice notes and relevant images, and answers questions whenever someone needs information.
+
+> ⚠️ **Unofficial project.** Claw is not affiliated with, endorsed by or sponsored by WhatsApp or Meta. It connects through [Baileys](https://github.com/WhiskeySockets/Baileys), an unofficial WhatsApp Web library, so using it may violate WhatsApp's terms of service. Run it on a separate number.
 
 > **Installation:** See [INSTALL.md](INSTALL.md) for detailed instructions for Linux, macOS and Windows.
 >
@@ -122,7 +139,7 @@ For complete installation instructions, see **[INSTALL.md](INSTALL.md)**.
 
 | Dependency        | Version / Model                       |
 | ----------------- | ------------------------------------- |
-| Node.js           | 24 LTS                                |
+| Node.js           | 22 or newer (24 LTS recommended)      |
 | Git               | Latest                                |
 | Ollama            | Latest                                |
 | Primary AI model  | `qwen3:4b`                            |
@@ -140,8 +157,8 @@ ollama pull qwen2.5:3b
 ### Clone the repository
 
 ```bash
-git clone <REPOSITORY_URL>
-cd Claw
+git clone https://github.com/ClawProject/El-Repositorio-de-Claw.git
+cd El-Repositorio-de-Claw
 ```
 
 Install dependencies:
@@ -466,6 +483,8 @@ For systems with limited GPU memory, image generation can unload the Ollama mode
 Claw/
 ├── arrancar.bat
 ├── .env.example
+├── assets/
+│   └── logo.svg
 ├── docs/
 │   ├── index.html
 │   └── arquitectura.md
@@ -516,12 +535,6 @@ Yes, as long as the host computer remains powered on and the WhatsApp linked-dev
 
 Claw stops running, but its stored information remains in `data/picklebrain.db`.
 
-@Puraciencia-mp
-
-¿Cómo funciona la Inteligencia Artificial (IA)?  Parte 2
-
-¿Cómo Funciona Realmente la Inteligencia Artificial?
-
 **Can WhatsApp ban my number?**
 
 There is a real risk. Claw uses Baileys, an unofficial WhatsApp Web library. WhatsApp's terms restrict unauthorized automation. Using a separate number is recommended.
@@ -562,6 +575,7 @@ Check that the Python service is running or install FFmpeg for the legacy Node.j
 - [Technical Architecture](docs/arquitectura.md)
 - [Python Service Documentation](python/README.md)
 - [Environment Configuration](.env.example)
+- [Discord community](https://discord.gg/DwbMbEqQ6E)
 
 ---
 

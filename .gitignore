@@ -17,3 +17,6 @@ __pycache__/
 # Datos locales: sesión de WhatsApp, base de datos, fotos y modelos.
 # Nunca deben subirse a Git.
 data/
+
+# Metadatos locales de la app de escritorio Freebuff. NUNCA subir a Git.
+.freebuff/

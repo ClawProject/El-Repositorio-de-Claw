@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512" role="img" aria-label="Claw">
+  <rect width="64" height="64" fill="#000000"/>
+  <g transform="translate(7.4 3.8) scale(0.895)">
+    <path fill="#2f6bff" d="M31.5 6C44 25 46 42 43 55 38 39 33.5 22 31.5 6Z"/>
+    <path fill="#ffffff" d="M9 4C22 24 24 44 21 60 16 42 11 24 9 4Z"/>
+    <path fill="#ffffff" d="M19 3C32 23 34 42 31 56 26 40 21 22 19 3Z"/>
+    <path fill="#ffffff" d="M29 5C42 24 44 41 41 54 36 38 31 21 29 5Z"/>
+  </g>
+</svg>
