@@ -17,6 +17,7 @@ import { detectSubject } from './subjects.js';
 import * as ajustes from './settings.js';
 import * as admins from './admins.js';
 import { resumenDeDias } from './summary.js';
+import { resolverComando, valorSiNo, diasDeResumen } from './commands.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { contarPalabrotas } from './swears.js';
@@ -797,7 +798,7 @@ async function handleCommand({ comando, input, out, listModels }) {
   } = input;
 
   const palabras = comando.resto.split(/\s+/).filter(Boolean);
-  const sub = sinAcentos(palabras[0] || '');
+  const sub = resolverComando(sinAcentos(palabras[0] || ''));
   const cola = comando.resto.slice(palabras[0]?.length || 0).trim();
   const esAdmin = admins.esAdmin(senderJid, senderJidAlt);
   const esDueno = admins.esDueno(senderJid, senderJidAlt);
@@ -1068,7 +1069,8 @@ async function handleCommand({ comando, input, out, listModels }) {
       ];
       return out;
     }
-    const r = ajustes.setDesdeTexto('mantenimiento', cola);
+    const siNo = valorSiNo(cola);
+    const r = ajustes.setDesdeTexto('mantenimiento', siNo === null ? cola : siNo ? 'si' : 'no');
     out.action = r.ok && r.valor ? 'mantenimiento-on' : 'mantenimiento-off';
     out.replies = [
       r.ok
@@ -1255,7 +1257,7 @@ async function handleCommand({ comando, input, out, listModels }) {
 
   // --- Resumen de lo que se ha hablado ---
   if (sub === 'resumen' || sub === 'resumenes') {
-    const dias = /hoy/.test(cola) ? 1 : /semana|7/.test(cola) ? 7 : 3;
+    const dias = diasDeResumen(cola);
     const texto = await resumenDeDias(chatJid, dias);
     out.action = 'comando-resumen';
     out.replies = [texto || '🤔 Aún no tengo suficiente de qué hablar para hacer un resumen.'];

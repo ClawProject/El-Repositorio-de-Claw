@@ -7,6 +7,7 @@
 import { config, listaDeJids } from './config.js';
 import * as memory from './memory.js';
 import * as power from './power.js';
+import { valorSiNo } from './commands.js';
 
 const PREFIJO = 'cfg:';
 
@@ -228,6 +229,8 @@ export function setDesdeTexto(clave, texto) {
   const t = String(texto ?? '').trim();
 
   if (def.tipo === 'bool') {
+    const siNo = valorSiNo(t);
+    if (siNo !== null) return guardar(clave, siNo);
     if (/^(si|sí|s|true|1|on|activar|activado|activo)$/i.test(t)) return guardar(clave, true);
     if (/^(no|n|false|0|off|desactivar|desactivado|apagado)$/i.test(t)) return guardar(clave, false);
     return { ok: false, error: `*${clave}* es de sí o no. Ejemplo:  !claw ajustes ${clave} no` };
