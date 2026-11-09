@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg" width="128" height="128" alt="Claw logo">
+  <img src="assets/logo.png" width="128" height="128" alt="Claw logo">
 </p>
 
 <h1 align="center">Claw — WhatsApp assistant with local AI for your class group</h1>
@@ -484,7 +484,7 @@ Claw/
 ├── arrancar.bat
 ├── .env.example
 ├── assets/
-│   └── logo.svg
+│   └── logo.png
 ├── docs/
 │   ├── index.html
 │   └── arquitectura.md
