@@ -1,8 +1,22 @@
-# 🪝 Claw
+<p align="center">
+  <img src="assets/logo.png" width="128" height="128" alt="Claw logo">
+</p>
 
-[English](README.md) · [Español](README.es.md) · [Català](README.ca.md) · [Français](README.fr.md) · [Português](README.pt.md) · [Deutsch](README.de.md) · [Italiano](README.it.md) · [Русский](README.ru.md) · [العربية](README.ar.md) · **中文**
+<h1 align="center">Claw</h1>
 
-**一个自托管的 WhatsApp 机器人，使用本地 AI。**
+<p align="center">
+  <a href="https://github.com/ClawProject/TheClawRepo/releases"><img src="https://img.shields.io/github/v/tag/ClawProject/TheClawRepo?label=release&color=f59e0b" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/Node.js-22%2B-339933?logo=node.js&logoColor=white" alt="Node.js 22 or newer">
+  <img src="https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-4B5563" alt="Windows, Linux and macOS">
+  <img src="https://img.shields.io/badge/AI-local%20with%20Ollama-111827" alt="Local AI with Ollama">
+  <img src="https://img.shields.io/badge/voice-Whisper-7c3aed" alt="Voice with Whisper">
+  <a href="https://discord.gg/DwbMbEqQ6E"><img src="https://img.shields.io/badge/Discord-join%20the%20server-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
+  <a href="https://github.com/ClawProject/TheClawRepo/stargazers"><img src="https://img.shields.io/github/stars/ClawProject/TheClawRepo" alt="GitHub stars"></a>
+</p>
+
+<p align="center"><strong>一个自托管的 WhatsApp 机器人，使用本地 AI。</strong></p>
+
+<p align="center">[English](README.md) · [Español](README.es.md) · [Català](README.ca.md) · [Français](README.fr.md) · [Português](README.pt.md) · [Deutsch](README.de.md) · [Italiano](README.it.md) · [Русский](README.ru.md) · [العربية](README.ar.md) · **中文**</p>
 
 Claw 是一个本地 AI 的 WhatsApp 助手，负责跟进作业、考试、学校通知以及群聊中分享的重要信息。
 
@@ -554,6 +568,7 @@ Claw 会停止，但已保存的信息仍留在 `data/picklebrain.db` 中。
 - [技术架构](docs/arquitectura.md)
 - [Python 服务](python/README.md)
 - [环境配置](.env.example)
+- [Discord 社区](https://discord.gg/DwbMbEqQ6E)
 
 ---
 

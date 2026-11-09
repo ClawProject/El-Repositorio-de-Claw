@@ -34,15 +34,15 @@ laufen `qwen3:4b` und `qwen2.5:3b`; mit mehr Speicher sind größere Modelle mö
 ### Linux und macOS
 
 ```bash
-git clone https://github.com/ClawProject/El-Repositorio-de-Claw.git
-cd El-Repositorio-de-Claw
+git clone https://github.com/ClawProject/TheClawRepo.git
+cd TheClawRepo
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-git clone https://github.com/ClawProject/El-Repositorio-de-Claw.git
-cd El-Repositorio-de-Claw
+git clone https://github.com/ClawProject/TheClawRepo.git
+cd TheClawRepo
 ```
 
 > Wenn du das Projekt schon hast, aktualisiere es mit `git pull` im Ordner.
@@ -446,7 +446,7 @@ Test mit `npm run smtp -- deine-mail@alu.edu.gva.es`.
 ## 13. Minimale installierte Struktur
 
 ```
-El-Repositorio-de-Claw/
+TheClawRepo/
 ├─ src/                 Bot-Code (Node)
 ├─ python/              Sprach- und Bilddienst
 ├─ docs/                statische Website und Dokumentation

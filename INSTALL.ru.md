@@ -34,15 +34,15 @@ Claw состоит из двух процессов:
 ### Linux и macOS
 
 ```bash
-git clone https://github.com/ClawProject/El-Repositorio-de-Claw.git
-cd El-Repositorio-de-Claw
+git clone https://github.com/ClawProject/TheClawRepo.git
+cd TheClawRepo
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-git clone https://github.com/ClawProject/El-Repositorio-de-Claw.git
-cd El-Repositorio-de-Claw
+git clone https://github.com/ClawProject/TheClawRepo.git
+cd TheClawRepo
 ```
 
 > Если проект уже загружен, обновите его командой `git pull` в папке.
@@ -447,7 +447,7 @@ CUDA-рантайм и версию torch с CUDA. До этого речь ра
 ## 13. Минимальная структура установки
 
 ```
-El-Repositorio-de-Claw/
+TheClawRepo/
 ├─ src/                 код бота (Node)
 ├─ python/              служба речи и изображений
 ├─ docs/                статический сайт и документация

@@ -1,8 +1,22 @@
-# 🪝 Claw
+<p align="center">
+  <img src="assets/logo.png" width="128" height="128" alt="Claw logo">
+</p>
 
-[English](README.md) · [Español](README.es.md) · [Català](README.ca.md) · [Français](README.fr.md) · **Português** · [Deutsch](README.de.md) · [Italiano](README.it.md) · [Русский](README.ru.md) · [العربية](README.ar.md) · [中文](README.zh.md)
+<h1 align="center">Claw</h1>
 
-**Um bot de WhatsApp autoalojado com IA local.**
+<p align="center">
+  <a href="https://github.com/ClawProject/TheClawRepo/releases"><img src="https://img.shields.io/github/v/tag/ClawProject/TheClawRepo?label=release&color=f59e0b" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/Node.js-22%2B-339933?logo=node.js&logoColor=white" alt="Node.js 22 or newer">
+  <img src="https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-4B5563" alt="Windows, Linux and macOS">
+  <img src="https://img.shields.io/badge/AI-local%20with%20Ollama-111827" alt="Local AI with Ollama">
+  <img src="https://img.shields.io/badge/voice-Whisper-7c3aed" alt="Voice with Whisper">
+  <a href="https://discord.gg/DwbMbEqQ6E"><img src="https://img.shields.io/badge/Discord-join%20the%20server-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
+  <a href="https://github.com/ClawProject/TheClawRepo/stargazers"><img src="https://img.shields.io/github/stars/ClawProject/TheClawRepo" alt="GitHub stars"></a>
+</p>
+
+<p align="center"><strong>Um bot de WhatsApp autoalojado com IA local.</strong></p>
+
+<p align="center">[English](README.md) · [Español](README.es.md) · [Català](README.ca.md) · [Français](README.fr.md) · **Português** · [Deutsch](README.de.md) · [Italiano](README.it.md) · [Русский](README.ru.md) · [العربية](README.ar.md) · [中文](README.zh.md)</p>
 
 O Claw é um assistente de WhatsApp com IA local pensado para acompanhar os trabalhos de casa, os testes, os avisos da escola e a informação importante partilhada nos grupos.
 
@@ -554,6 +568,7 @@ Verifica se o serviço de Python está a correr ou instala o FFmpeg para o motor
 - [Arquitetura técnica](docs/arquitectura.md)
 - [Documentação do serviço de Python](python/README.md)
 - [Configuração de ambiente](.env.example)
+- [Comunidade do Discord](https://discord.gg/DwbMbEqQ6E)
 
 ---
 

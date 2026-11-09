@@ -34,15 +34,15 @@ La IA de text necessita descarregar models d'Ollama. Amb una GTX 1650 de 4 GB,
 ### Linux i macOS
 
 ```bash
-git clone https://github.com/ClawProject/El-Repositorio-de-Claw.git
-cd El-Repositorio-de-Claw
+git clone https://github.com/ClawProject/TheClawRepo.git
+cd TheClawRepo
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-git clone https://github.com/ClawProject/El-Repositorio-de-Claw.git
-cd El-Repositorio-de-Claw
+git clone https://github.com/ClawProject/TheClawRepo.git
+cd TheClawRepo
 ```
 
 > Si ja l'has descarregat, actualitza'l amb `git pull` dins la carpeta. No descarreguis
@@ -447,7 +447,7 @@ Fes servir `npm.cmd` o executa
 ## 13. Estructura mínima instal·lada
 
 ```
-El-Repositorio-de-Claw/
+TheClawRepo/
 ├─ src/                 codi del bot (Node)
 ├─ python/              servei de veu i imatges
 ├─ docs/                web estàtica i documentació

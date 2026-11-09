@@ -34,15 +34,15 @@ The text AI needs to download Ollama models. With a 4 GB GTX 1650,
 ### Linux and macOS
 
 ```bash
-git clone https://github.com/ClawProject/El-Repositorio-de-Claw.git
-cd El-Repositorio-de-Claw
+git clone https://github.com/ClawProject/TheClawRepo.git
+cd TheClawRepo
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-git clone https://github.com/ClawProject/El-Repositorio-de-Claw.git
-cd El-Repositorio-de-Claw
+git clone https://github.com/ClawProject/TheClawRepo.git
+cd TheClawRepo
 ```
 
 > If you have already downloaded the project, update it by running `git pull` inside the
@@ -447,7 +447,7 @@ Use `npm.cmd` or run
 ## 13. Minimal installed structure
 
 ```
-El-Repositorio-de-Claw/
+TheClawRepo/
 ├─ src/                 bot code (Node)
 ├─ python/              voice and image service
 ├─ docs/                static website and documentation

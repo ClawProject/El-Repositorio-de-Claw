@@ -34,15 +34,15 @@ Claw 由两个进程组成：
 ### Linux 和 macOS
 
 ```bash
-git clone https://github.com/ClawProject/El-Repositorio-de-Claw.git
-cd El-Repositorio-de-Claw
+git clone https://github.com/ClawProject/TheClawRepo.git
+cd TheClawRepo
 ```
 
 ### Windows（PowerShell）
 
 ```powershell
-git clone https://github.com/ClawProject/El-Repositorio-de-Claw.git
-cd El-Repositorio-de-Claw
+git clone https://github.com/ClawProject/TheClawRepo.git
+cd TheClawRepo
 ```
 
 > 如果已经下载过，请在文件夹中运行 `git pull` 更新。
@@ -447,7 +447,7 @@ CUDA 运行时和支持 CUDA 的 torch 版本。在此之前语音由 CPU 处理
 ## 13. 最小安装结构
 
 ```
-El-Repositorio-de-Claw/
+TheClawRepo/
 ├─ src/                 机器人代码（Node）
 ├─ python/              语音与图片服务
 ├─ docs/                静态站点和文档

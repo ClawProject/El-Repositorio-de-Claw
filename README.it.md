@@ -1,8 +1,22 @@
-# 🪝 Claw
+<p align="center">
+  <img src="assets/logo.png" width="128" height="128" alt="Claw logo">
+</p>
 
-[English](README.md) · [Español](README.es.md) · [Català](README.ca.md) · [Français](README.fr.md) · [Português](README.pt.md) · [Deutsch](README.de.md) · **Italiano** · [Русский](README.ru.md) · [العربية](README.ar.md) · [中文](README.zh.md)
+<h1 align="center">Claw</h1>
 
-**Un bot WhatsApp autoospitato con IA locale.**
+<p align="center">
+  <a href="https://github.com/ClawProject/TheClawRepo/releases"><img src="https://img.shields.io/github/v/tag/ClawProject/TheClawRepo?label=release&color=f59e0b" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/Node.js-22%2B-339933?logo=node.js&logoColor=white" alt="Node.js 22 or newer">
+  <img src="https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-4B5563" alt="Windows, Linux and macOS">
+  <img src="https://img.shields.io/badge/AI-local%20with%20Ollama-111827" alt="Local AI with Ollama">
+  <img src="https://img.shields.io/badge/voice-Whisper-7c3aed" alt="Voice with Whisper">
+  <a href="https://discord.gg/DwbMbEqQ6E"><img src="https://img.shields.io/badge/Discord-join%20the%20server-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
+  <a href="https://github.com/ClawProject/TheClawRepo/stargazers"><img src="https://img.shields.io/github/stars/ClawProject/TheClawRepo" alt="GitHub stars"></a>
+</p>
+
+<p align="center"><strong>Un bot WhatsApp autoospitato con IA locale.</strong></p>
+
+<p align="center">[English](README.md) · [Español](README.es.md) · [Català](README.ca.md) · [Français](README.fr.md) · [Português](README.pt.md) · [Deutsch](README.de.md) · **Italiano** · [Русский](README.ru.md) · [العربية](README.ar.md) · [中文](README.zh.md)</p>
 
 Claw è un assistente WhatsApp con IA locale pensato per tenere traccia dei compiti, delle verifiche, degli avvisi scolastici e delle informazioni importanti condivise nei gruppi.
 
@@ -554,6 +568,7 @@ Controlla che il servizio Python sia attivo o installa FFmpeg per il vecchio mot
 - [Architettura tecnica](docs/arquitectura.md)
 - [Servizio Python](python/README.md)
 - [Configurazione d'ambiente](.env.example)
+- [Community Discord](https://discord.gg/DwbMbEqQ6E)
 
 ---
 

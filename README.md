@@ -5,13 +5,13 @@
 <h1 align="center">Claw — WhatsApp assistant with local AI for your class group</h1>
 
 <p align="center">
-  <a href="https://github.com/ClawProject/El-Repositorio-de-Claw/releases"><img src="https://img.shields.io/github/v/tag/ClawProject/El-Repositorio-de-Claw?label=release&color=f59e0b" alt="Latest release"></a>
+  <a href="https://github.com/ClawProject/TheClawRepo/releases"><img src="https://img.shields.io/github/v/tag/ClawProject/TheClawRepo?label=release&color=f59e0b" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/Node.js-22%2B-339933?logo=node.js&logoColor=white" alt="Node.js 22 or newer">
   <img src="https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-4B5563" alt="Windows, Linux and macOS">
   <img src="https://img.shields.io/badge/AI-local%20with%20Ollama-111827" alt="Local AI with Ollama">
   <img src="https://img.shields.io/badge/voice-Whisper-7c3aed" alt="Voice with Whisper">
   <a href="https://discord.gg/DwbMbEqQ6E"><img src="https://img.shields.io/badge/Discord-join%20the%20server-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
-  <a href="https://github.com/ClawProject/El-Repositorio-de-Claw/stargazers"><img src="https://img.shields.io/github/stars/ClawProject/El-Repositorio-de-Claw" alt="GitHub stars"></a>
+  <a href="https://github.com/ClawProject/TheClawRepo/stargazers"><img src="https://img.shields.io/github/stars/ClawProject/TheClawRepo" alt="GitHub stars"></a>
 </p>
 
 <p align="center"><strong>A self-hosted WhatsApp bot powered by local AI.</strong><br>
@@ -157,8 +157,8 @@ ollama pull qwen2.5:3b
 ### Clone the repository
 
 ```bash
-git clone https://github.com/ClawProject/El-Repositorio-de-Claw.git
-cd El-Repositorio-de-Claw
+git clone https://github.com/ClawProject/TheClawRepo.git
+cd TheClawRepo
 ```
 
 Install dependencies:

@@ -34,15 +34,15 @@
 ### Linux وmacOS
 
 ```bash
-git clone https://github.com/ClawProject/El-Repositorio-de-Claw.git
-cd El-Repositorio-de-Claw
+git clone https://github.com/ClawProject/TheClawRepo.git
+cd TheClawRepo
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-git clone https://github.com/ClawProject/El-Repositorio-de-Claw.git
-cd El-Repositorio-de-Claw
+git clone https://github.com/ClawProject/TheClawRepo.git
+cd TheClawRepo
 ```
 
 > إذا كان المشروع موجودًا لديك بالفعل، حدّثه بالأمر `git pull` داخل المجلد.
@@ -447,7 +447,7 @@ ffmpeg وأعد فتح الطرفية.
 ## 13. البنية الدنيا بعد التثبيت
 
 ```
-El-Repositorio-de-Claw/
+TheClawRepo/
 ├─ src/                 كود البوت (Node)
 ├─ python/              خدمة الصوت والصور
 ├─ docs/                الموقع الثابت والتوثيق
