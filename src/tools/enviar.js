@@ -60,7 +60,7 @@ async function main() {
 
   const mod = await import('@whiskeysockets/baileys');
   const makeWASocket = mod.default ?? mod.makeWASocket;
-  const { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, makeCacheableSignalKeyStore } =
+  const { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, Browsers } =
     mod;
 
   const { state, saveCreds } = await useMultiFileAuthState(config.authDir);
@@ -84,7 +84,7 @@ async function main() {
     version,
     logger: silence,
     printQRInTerminal: false,
-    browser: ['PickleBrain', 'Chrome', '1.0.0'],
+    browser: Browsers.ubuntu('Chrome'),
     auth: { creds: state.creds, keys: makeCacheableSignalKeyStore(state.keys, silence) },
     markOnlineOnConnect: false,
     syncFullHistory: false,

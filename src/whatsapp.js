@@ -92,7 +92,8 @@ async function loadBaileys() {
     DisconnectReason: mod.DisconnectReason,
     fetchLatestBaileysVersion: mod.fetchLatestBaileysVersion,
     makeCacheableSignalKeyStore: mod.makeCacheableSignalKeyStore,
-    downloadMediaMessage: mod.downloadMediaMessage
+    downloadMediaMessage: mod.downloadMediaMessage,
+    Browsers: mod.Browsers
   };
   if (!baileys.makeWASocket || !baileys.useMultiFileAuthState) {
     throw new Error('Baileys no se ha cargado correctamente. Prueba a borrar node_modules y ejecutar npm install.');
@@ -449,7 +450,8 @@ export async function start() {
     useMultiFileAuthState,
     DisconnectReason,
     fetchLatestBaileysVersion,
-    makeCacheableSignalKeyStore
+    makeCacheableSignalKeyStore,
+    Browsers
   } = await loadBaileys();
 
   if (stopping) return;
@@ -473,7 +475,8 @@ export async function start() {
     version,
     logger: silence,
     printQRInTerminal: false,
-    browser: ['PickleBrain', 'Chrome', '1.0.0'],
+    // Real WhatsApp Web signature instead of an invented one: less suspicious.
+    browser: Browsers.ubuntu('Chrome'),
     auth: {
       creds: state.creds,
       keys: makeCacheableSignalKeyStore(state.keys, silence)
