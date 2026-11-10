@@ -293,6 +293,9 @@ export const config = {
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean),
+  ngrokEnabled: bool(process.env.NGROK_ENABLED, true),
+  // Dominio fijo del túnel de PickleBrain / Claw. Se puede cambiar con NGROK_DOMAIN.
+  ngrokDomain: String(process.env.NGROK_DOMAIN || 'dawn-greeter-grazing.ngrok-free.dev').trim(),
   // Código corto de depuración para el dueño: abre una sesión con acceso total
   // desde la pantalla de acceso. Vacío = desactivado.
   // Vacío = acceso de depuración desactivado. Hay que definirlo a propósito:

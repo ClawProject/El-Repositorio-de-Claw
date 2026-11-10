@@ -13,6 +13,7 @@ import { textoNovedades, marcadorNovedades } from './changelog.js';
 import { start, stop, sendReplies, estaConectado, cuandoConecte } from './whatsapp.js';
 import * as power from './power.js';
 import { startServer } from './server.js';
+import { prepararIdioma } from './setup.js';
 
 let cleanupTimer = null;
 let avisosTimer = null;
@@ -121,6 +122,8 @@ async function main() {
   resetTransientState(); // no arrastrar preguntas abiertas de la ejecucion anterior
   media.ensureDirs();
   startServer();
+  // First start: the bot does not connect to WhatsApp until a language is chosen.
+  await prepararIdioma();
   log.info(
     `Ajustes cargados. Claw: ${config.ollamaModel} | Apuntes: ${config.ollamaBrainModel} | Zona horaria: ${config.timezone}`
   );

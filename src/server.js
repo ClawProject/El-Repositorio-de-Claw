@@ -13,6 +13,8 @@ import { generarImagen, esPedidoDeImagen } from './imagegen.js';
 import { isValidISO } from './dates.js';
 import { AuthError, createWebAuth } from './web-auth.js';
 import * as settings from './settings.js';
+import * as i18n from './i18n.js';
+import { setupPage } from './setup-page.js';
 
 const PORT = Number(process.env.PORT || 3000);
 const ANDROID_RELEASE_APK_URL =
@@ -79,8 +81,17 @@ const LOCAL_WEB_ORIGINS = new Set([
   `http://127.0.0.1:${PORT}`
 ]);
 
+// ngrok serves the web itself, so the browser sends its domain as Origin.
+// Without this, any request from the tunnel would end up as a 403.
+const NGROK_ORIGIN = /^https:\/\/[a-z0-9-]+\.ngrok(?:-free)?\.(?:app|dev|io)$/i;
+
 function isAllowedOrigin(origin) {
-  return LOCAL_WEB_ORIGINS.has(origin) || config.webAllowedOrigins.includes(origin);
+  return (
+    LOCAL_WEB_ORIGINS.has(origin) ||
+    config.webAllowedOrigins.includes(origin) ||
+    NGROK_ORIGIN.test(origin) ||
+    (config.ngrokDomain && origin === `https://${config.ngrokDomain}`)
+  );
 }
 
 async function parseJsonBody(req) {
@@ -196,6 +207,37 @@ export function startServer({ auth = webAuth } = {}) {
         return sendJson(res, 200, auth.loginDebug(code, clientAddressOf(req)));
       }
 
+      // ------------------------------------------------ initial setup
+      // These routes work without a session: they are the ones that allow
+      // choosing a language the first time. Once saved, changing the language
+      // from outside is only allowed locally (or with an admin session).
+      if (pathname === '/api/setup/status' && req.method === 'GET') {
+        return sendJson(res, 200, {
+          needed: i18n.necesitaSetup(),
+          language: i18n.idioma(),
+          name: i18n.infoIdioma().name,
+          languages: i18n.LANGUAGES
+        });
+      }
+
+      if (pathname === '/api/setup/language' && req.method === 'POST') {
+        const body = await parseJsonBody(req);
+        const remoto = String(req.socket.remoteAddress || '');
+        const esLocal = remoto === '127.0.0.1' || remoto === '::1' || remoto === '::ffff:127.0.0.1';
+        if (!i18n.necesitaSetup() && !esLocal) {
+          return sendJson(res, 403, { error: 'El idioma ya está configurado.' });
+        }
+        const codigo = body.language ?? body.idioma ?? body.code;
+        if (!i18n.guardarIdioma(codigo)) {
+          return sendJson(res, 400, { ok: false, error: 'Idioma no válido.' });
+        }
+        return sendJson(res, 200, {
+          ok: true,
+          language: i18n.idioma(),
+          name: i18n.infoIdioma().name
+        });
+      }
+
       const session = pathname.startsWith('/api/')
         ? auth.authenticate(req.headers.authorization)
         : null;
@@ -236,6 +278,7 @@ export function startServer({ auth = webAuth } = {}) {
             node: process.version,
             platform: process.platform
           },
+          ngrok: config.ngrokDomain,
           model: config.ollamaModel
         });
       }
@@ -270,8 +313,24 @@ export function startServer({ auth = webAuth } = {}) {
         });
       }
 
+      // Initial setup (choosing a language). It opens by itself on first start.
+      if ((pathname === '/setup' || pathname === '/setup/') && req.method === 'GET') {
+        return sendHtml(
+          res,
+          setupPage({
+            actual: i18n.idioma(),
+            sugerido: i18n.idiomaDeCabecera(req.headers['accept-language'])
+          })
+        );
+      }
+
       // Servir la Web App en la raíz (GET /)
       if (pathname === '/' && req.method === 'GET') {
+        // First start: before anything else, choose a language.
+        if (i18n.necesitaSetup()) {
+          res.writeHead(302, { Location: '/setup' });
+          return res.end();
+        }
         const page = await fs.promises.readFile(path.join(config.rootDir, 'docs', 'index.html'), 'utf8');
         return sendHtml(res, page);
       }
