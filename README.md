@@ -12,6 +12,7 @@
   <img src="https://img.shields.io/badge/voice-Whisper-7c3aed" alt="Voice with Whisper">
   <a href="https://discord.gg/DwbMbEqQ6E"><img src="https://img.shields.io/badge/Discord-join%20the%20server-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
   <a href="https://github.com/ClawProject/TheClawRepo/stargazers"><img src="https://img.shields.io/github/stars/ClawProject/TheClawRepo" alt="GitHub stars"></a>
+  <a href="https://hub.xerj.org/contributors/ClawProject"><img src="https://hub.xerj.org/contributors/ClawProject/badge.svg" alt="XERJ Corpus Hub contributor"></a>
 </p>
 
 
