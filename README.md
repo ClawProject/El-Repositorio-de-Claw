@@ -13,7 +13,7 @@
   <a href="https://discord.gg/DwbMbEqQ6E"><img src="https://img.shields.io/badge/Discord-join%20the%20server-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
   <a href="https://github.com/ClawProject/TheClawRepo/stargazers"><img src="https://img.shields.io/github/stars/ClawProject/TheClawRepo" alt="GitHub stars"></a>
 </p>
-[![XERJ Corpus Hub contributor](https://hub.xerj.org/contributors/ClawProject/badge.svg)](https://hub.xerj.org/contributors/ClawProject)
+
 
 <p align="center"><strong>A self-hosted WhatsApp bot powered by local AI.</strong><br>
 It keeps track of homework, exams and school announcements in a class group chat, and answers when someone asks.</p>
