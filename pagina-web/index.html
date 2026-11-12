@@ -940,9 +940,6 @@
     .rm h3 { margin: 0 0 6px; font-size: 1.05rem; }
     .rm p { margin: 0; color: var(--muted); font-size: .92rem; line-height: 1.55; }
     @media (max-width: 760px) { .roadmap { grid-template-columns: 1fr; } }
-    .roadmap-soon { grid-template-columns: minmax(0, 560px); justify-content: center; }
-    .rm-soon { text-align: center; }
-    .rm-soon::after { inset-inline-end: 16px; }
   </style>
   </head>
 <body>
@@ -1385,12 +1382,28 @@
           <p data-i18n="rP">Claw ya funciona en grupos reales. Esto es lo que estamos construyendo a continuación, por orden.</p>
         </div>
 
-        <div class="roadmap roadmap-soon">
-          <div class="rm rm-soon reveal">
+        <ol class="roadmap">
+          <li class="rm reveal">
             <span class="rm-status next" data-i18n="sNext">Próximo</span>
-            <h3 data-i18n="rUp">Próximamente.</h3>
-          </div>
-        </div>
+            <h3 data-i18n="rd1t">Personalidades</h3>
+            <p data-i18n="rd1d">Elige cómo habla Claw: distintos tonos y formas de responder para cada grupo.</p>
+          </li>
+          <li class="rm reveal">
+            <span class="rm-status next" data-i18n="sNext">Próximo</span>
+            <h3 data-i18n="rd2t">Claw en Telegram</h3>
+            <p data-i18n="rd2d">El mismo asistente, en tus grupos de Telegram además de WhatsApp.</p>
+          </li>
+          <li class="rm reveal">
+            <span class="rm-status next" data-i18n="sNext">Próximo</span>
+            <h3 data-i18n="rd3t">Claw App</h3>
+            <p data-i18n="rd3d">La memoria de tus grupos en una aplicación para el móvil, siempre contigo.</p>
+          </li>
+          <li class="rm reveal">
+            <span class="rm-status next" data-i18n="sNext">Próximo</span>
+            <h3 data-i18n="rd4t">Y más por venir</h3>
+            <p data-i18n="rd4d">Esto no se acaba aquí: seguiremos sumando formas de usar Claw.</p>
+          </li>
+        </ol>
       </div>
     </section>
 
@@ -1682,11 +1695,18 @@
         nRoad: 'Roadmap',
         rK: 'Roadmap',
         rH: 'What comes next.',
-        rP: 'We are preparing the public roadmap for the project.',
+        rP: 'This is what we are building next, in order.',
+        rd1t: 'Personalities',
+        rd1d: 'Choose how Claw talks: different tones and ways of answering for each group.',
+        rd2t: 'Claw on Telegram',
+        rd2d: 'The same assistant, in your Telegram groups as well as WhatsApp.',
+        rd3t: 'Claw App',
+        rd3d: 'The memory of your groups in a mobile app, always in your pocket.',
+        rd4t: 'And more to come',
+        rd4d: 'This doesn’t end here: we keep adding new ways to use Claw.',
         sDone: 'Done',
         sDoing: 'In progress',
         sNext: 'Next',
-        rUp: 'Coming soon.',
       },
       es: {
         x2: '!claw deberes [subject]',
@@ -1903,11 +1923,18 @@
         nRoad: 'Hoja de ruta',
         rK: 'Hoja de ruta',
         rH: 'Lo que viene después.',
-        rP: 'Estamos preparando la hoja de ruta pública del proyecto.',
+        rP: 'Esto es lo que estamos construyendo a continuación, por orden.',
+        rd1t: 'Personalidades',
+        rd1d: 'Elige cómo habla Claw: distintos tonos y formas de responder para cada grupo.',
+        rd2t: 'Claw en Telegram',
+        rd2d: 'El mismo asistente, en tus grupos de Telegram además de WhatsApp.',
+        rd3t: 'Claw App',
+        rd3d: 'La memoria de tus grupos en una aplicación para el móvil, siempre contigo.',
+        rd4t: 'Y más por venir',
+        rd4d: 'Esto no se acaba aquí: seguiremos sumando formas de usar Claw.',
         sDone: 'Hecho',
         sDoing: 'En curso',
         sNext: 'Próximo',
-        rUp: 'Próximamente.',
       },
       ca: {
         x2: '!claw deures [subject]',
@@ -2124,11 +2151,18 @@
         nRoad: 'Full de ruta',
         rK: 'Full de ruta',
         rH: 'El que ve després.',
-        rP: 'Estem preparant el full de ruta públic del projecte.',
+        rP: 'Això és el que estem construint a continuació, per ordre.',
+        rd1t: 'Personalitats',
+        rd1d: 'Tria com parla Claw: tons i maneres de respondre diferents per a cada grup.',
+        rd2t: 'Claw a Telegram',
+        rd2d: 'El mateix assistent, als teus grups de Telegram a més de WhatsApp.',
+        rd3t: 'Claw App',
+        rd3d: 'La memòria dels teus grups en una aplicació per al mòbil, sempre amb tu.',
+        rd4t: 'I més per venir',
+        rd4d: 'Això no s’acaba aquí: seguirem sumant maneres d’usar Claw.',
         sDone: 'Fet',
         sDoing: 'En curs',
         sNext: 'Proper',
-        rUp: 'Properament.',
       },
       fr: {
         x2: '!claw devoirs [subject]',
@@ -2345,11 +2379,18 @@
         nRoad: 'Feuille de route',
         rK: 'Feuille de route',
         rH: 'La suite.',
-        rP: 'Nous préparons la feuille de route publique du projet.',
+        rP: 'Voici ce que nous construisons ensuite, dans l’ordre.',
+        rd1t: 'Personnalités',
+        rd1d: 'Choisis comment Claw parle : des tons et des façons de répondre différents pour chaque groupe.',
+        rd2t: 'Claw sur Telegram',
+        rd2d: 'Le même assistant, dans tes groupes Telegram en plus de WhatsApp.',
+        rd3t: 'Appli Claw',
+        rd3d: 'La mémoire de tes groupes dans une appli mobile, toujours avec toi.',
+        rd4t: 'Et encore plus à venir',
+        rd4d: 'Ça ne s’arrête pas là : nous continuerons d’ajouter des façons d’utiliser Claw.',
         sDone: 'Terminé',
         sDoing: 'En cours',
         sNext: 'À venir',
-        rUp: 'Prochainement.',
       },
       pt: {
         x2: '!claw deveres [subject]',
@@ -2566,11 +2607,18 @@
         nRoad: 'Roteiro',
         rK: 'Roteiro',
         rH: 'O que vem a seguir.',
-        rP: 'Estamos a preparar o roteiro público do projeto.',
+        rP: 'Isto é o que estamos a construir a seguir, por ordem.',
+        rd1t: 'Personalidades',
+        rd1d: 'Escolhe como o Claw fala: tons e formas de responder diferentes para cada grupo.',
+        rd2t: 'Claw no Telegram',
+        rd2d: 'O mesmo assistente, nos teus grupos do Telegram além do WhatsApp.',
+        rd3t: 'Claw App',
+        rd3d: 'A memória dos teus grupos numa aplicação de telemóvel, sempre contigo.',
+        rd4t: 'E mais por vir',
+        rd4d: 'Isto não acaba aqui: vamos continuar a somar formas de usar o Claw.',
         sDone: 'Feito',
         sDoing: 'Em curso',
         sNext: 'A seguir',
-        rUp: 'Brevemente.',
       },
       de: {
         x2: '!claw hausaufgaben [subject]',
@@ -2787,11 +2835,18 @@
         nRoad: 'Fahrplan',
         rK: 'Fahrplan',
         rH: 'Was als Nächstes kommt.',
-        rP: 'Wir bereiten die öffentliche Roadmap des Projekts vor.',
+        rP: 'Das bauen wir als Nächstes, der Reihe nach.',
+        rd1t: 'Persönlichkeiten',
+        rd1d: 'Wähle, wie Claw spricht: verschiedene Töne und Antwortarten für jede Gruppe.',
+        rd2t: 'Claw auf Telegram',
+        rd2d: 'Derselbe Assistent – in deinen Telegram-Gruppen genauso wie auf WhatsApp.',
+        rd3t: 'Claw App',
+        rd3d: 'Das Gedächtnis deiner Gruppen als mobile App – immer dabei.',
+        rd4t: 'Und noch mehr folgt',
+        rd4d: 'Hier endet es nicht: Wir fügen laufend neue Möglichkeiten hinzu, Claw zu nutzen.',
         sDone: 'Fertig',
         sDoing: 'Läuft',
         sNext: 'Als Nächstes',
-        rUp: 'Demnächst.',
       },
       it: {
         x2: '!claw compiti [subject]',
@@ -3008,11 +3063,18 @@
         nRoad: 'Tabella di marcia',
         rK: 'Tabella di marcia',
         rH: 'Cosa viene dopo.',
-        rP: 'Stiamo preparando la tabella di marcia pubblica del progetto.',
+        rP: 'Ecco cosa stiamo costruendo dopo, in ordine.',
+        rd1t: 'Personalità',
+        rd1d: 'Scegli come parla Claw: toni e modi di rispondere diversi per ogni gruppo.',
+        rd2t: 'Claw su Telegram',
+        rd2d: 'Lo stesso assistente, nei tuoi gruppi Telegram oltre a WhatsApp.',
+        rd3t: 'Claw App',
+        rd3d: 'La memoria dei tuoi gruppi in un’app per il telefono, sempre con te.',
+        rd4t: 'E altro in arrivo',
+        rd4d: 'Non finisce qui: continueremo ad aggiungere modi per usare Claw.',
         sDone: 'Fatto',
         sDoing: 'In corso',
         sNext: 'Prossimo',
-        rUp: 'Prossimamente.',
       },
       ru: {
         x2: '!claw домашние [subject]',
@@ -3229,11 +3291,18 @@
         nRoad: 'Дорожная карта',
         rK: 'Дорожная карта',
         rH: 'Что дальше.',
-        rP: 'Мы готовим публичную дорожную карту проекта.',
+        rP: 'Вот что мы делаем дальше, по порядку.',
+        rd1t: 'Характеры',
+        rd1d: 'Выбирай, как говорит Claw: разные тоны и манеры отвечать для каждой группы.',
+        rd2t: 'Claw в Telegram',
+        rd2d: 'Тот же ассистент — в твоих группах Telegram наряду с WhatsApp.',
+        rd3t: 'Приложение Claw',
+        rd3d: 'Память твоих групп в мобильном приложении — всегда под рукой.',
+        rd4t: 'И это ещё не всё',
+        rd4d: 'На этом не останавливаемся: будем добавлять новые способы использовать Claw.',
         sDone: 'Готово',
         sDoing: 'В работе',
         sNext: 'Далее',
-        rUp: 'Скоро.',
       },
       ar: {
         x2: '!claw واجبات [subject]',
@@ -3450,11 +3519,18 @@
         nRoad: 'خارطة الطريق',
         rK: 'خارطة الطريق',
         rH: 'ما القادم.',
-        rP: 'نُعدّ خارطة الطريق العامة للمشروع.',
+        rP: 'هذا ما نبنيه تاليًا، بالترتيب.',
+        rd1t: 'شخصيات',
+        rd1d: 'اختر كيف يتحدث Claw: نبرات وطرق رد مختلفة لكل مجموعة.',
+        rd2t: 'Claw على تيليغرام',
+        rd2d: 'المساعد نفسه، في مجموعات تيليغرام أيضًا إلى جانب واتساب.',
+        rd3t: 'تطبيق Claw',
+        rd3d: 'ذاكرة مجموعاتك في تطبيق للجوال، معك دائمًا.',
+        rd4t: 'والمزيد قادم',
+        rd4d: 'الأمر لا ينتهي هنا: سنواصل إضافة طرق جديدة لاستخدام Claw.',
         sDone: 'تم',
         sDoing: 'قيد التنفيذ',
         sNext: 'التالي',
-        rUp: 'قريبًا.',
       },
       zh: {
         x2: '!claw 作业 [subject]',
@@ -3671,11 +3747,18 @@
         nRoad: '路线图',
         rK: '路线图',
         rH: '下一步计划。',
-        rP: '我们正在准备该项目的公开路线图。',
+        rP: '这是我们接下来要按顺序构建的内容。',
+        rd1t: '个性',
+        rd1d: '选择 Claw 的说话方式：每个群组可用不同的语气和回复风格。',
+        rd2t: 'Telegram 版 Claw',
+        rd2d: '同一个助手，也会来到你的 Telegram 群组，而不仅是 WhatsApp。',
+        rd3t: 'Claw App',
+        rd3d: '把群组记忆装进手机应用，随身携带。',
+        rd4t: '更多即将到来',
+        rd4d: '这还没有结束：我们会不断增加使用 Claw 的新方式。',
         sDone: '已完成',
         sDoing: '进行中',
         sNext: '下一步',
-        rUp: '即将到来。',
       },
       /* -- more locales -- */
     };
