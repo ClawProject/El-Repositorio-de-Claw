@@ -2,268 +2,219 @@
 
 [English](INSTALL.md) · [Español](INSTALL.es.md) · [Català](INSTALL.ca.md) · [Français](INSTALL.fr.md) · [Português](INSTALL.pt.md) · [Deutsch](INSTALL.de.md) · [Italiano](INSTALL.it.md) · [Русский](INSTALL.ru.md) · **العربية** · [中文](INSTALL.zh.md)
 
-يتكوّن Claw من عمليتين:
+Claw روبوت واتساب يعمل على حاسوبك أنت. يحتاج إلى شيئين: **Node.js** (الروبوت ولوحة الويب
+وقاعدة البيانات) و**Ollama** (الذكاء الاصطناعي المحلي). الرسائل الصوتية وتوليد الصور
+**اختيارية** وتحتاج خدمة صغيرة بلغة Python.
 
-1. **Node.js** (إلزامي): بوت واتساب، والواجهة الويب، وقاعدة البيانات، والمنطق.
-2. **Python** (اختياري، مُستحسن): يفرّغ الرسائل الصوتية باستخدام faster-whisper و
-   يولّد الصور باستخدام diffusers. وإذا لم يكن يعمل، يستخدم Node
-   المحرّكات السابقة.
-
-يشمل هذا الدليل Linux وmacOS وWindows. للمعلومات العامة عن البوت
-راجع [README](README.ar.md)، ولخدمة Python راجع [`python/README.md`](python/README.md).
+كل خطوة تنتهي بـ **تحقّق**: إن رأيت ما هو مكتوب، فالخطوة تمّت ويمكنك المتابعة. وإن لم
+يتطابق شيء، فانتقل إلى [المشاكل والحلول](#المشاكل-والحلول).
 
 ---
 
-## 1. المتطلبات
+## ما تحتاج إليه
 
-| المكوّن | الإصدار | الغرض |
-|---|---|---|
-| Git | أي إصدار حديث | تنزيل المشروع وتحديثه |
-| Node.js | 22 أو أحدث (يُستحسن 24 LTS) | البوت والواجهة الويب وقاعدة البيانات |
-| Ollama | إصدار حديث | الذكاء الاصطناعي النصّي المحلي |
-| Python | 3.11 أو 3.12 | خدمة الصوت والصور (اختياري) |
-| ffmpeg | إصدار حديث | بديل للصوت بدون Python (اختياري) |
+| إجباري | الإصدار | لماذا |
+| --- | --- | --- |
+| [Node.js](https://nodejs.org) | 22 أو أحدث | الروبوت ولوحة الويب وقاعدة البيانات |
+| [Ollama](https://ollama.com) | الإصدار الحالي | الذكاء الاصطناعي النصي المحلي |
+| [Git](https://git-scm.com) | أي إصدار | التنزيل والتحديث |
+| مساحة حرة | نحو 6 غيغابايت | نموذجا Ollama |
 
-يحتاج الذكاء الاصطناعي النصّي إلى تنزيل نماذج Ollama. مع بطاقة GTX 1650 بسعة 4 غيغابايت
-يعمل `qwen3:4b` و`qwen2.5:3b`؛ ومع ذاكرة أكبر يمكن استخدام نماذج أكبر.
+| اختياري | الإصدار | لماذا |
+| --- | --- | --- |
+| Python | 3.11 أو 3.12 | تحويل الصوت إلى نص وتوليد الصور |
+| ffmpeg | الإصدار الحالي | الصوت دون Python |
+| كرت NVIDIA | 4 غيغابايت من الذاكرة | ذكاء أسرع؛ ويعمل أيضًا على المعالج |
 
----
-
-## 2. تنزيل المشروع (`git clone`)
-
-### Linux وmacOS
-
-```bash
-git clone https://github.com/ClawProject/TheClawRepo.git
-cd TheClawRepo
-```
-
-### Windows (PowerShell)
-
-```powershell
-git clone https://github.com/ClawProject/TheClawRepo.git
-cd TheClawRepo
-```
-
-> إذا كان المشروع موجودًا لديك بالفعل، حدّثه بالأمر `git pull` داخل المجلد.
-> لا تنزّل ملف ZIP: بذلك تفقد السجل وإمكانية التحديث.
+يعمل على Linux وmacOS وWindows، ويحتاج نحو 8 غيغابايت من الذاكرة. مع كرت بـ 4 غيغابايت
+يدخل `qwen3:4b` و`qwen2.5:3b` بارتياح؛ ومع ذاكرة أكبر يمكنك استخدام نماذج أكبر.
 
 ---
 
-## 3. تثبيت Node.js
+## الطريق السريع (نحو 10 دقائق)
 
-### Linux وmacOS باستخدام nvm (مُستحسن)
+### 1. تثبيت Node.js
+
+**Linux وmacOS** (باستخدام nvm، وهو المُفضّل):
 
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-# أغلق الطرفية وأعد فتحها، أو نفّذ:
-export NVM_DIR="$HOME/.nvm"
-. "$NVM_DIR/nvm.sh"
-
+# أغلق الطرفية وافتحها من جديد، ثم:
 nvm install 22
 nvm alias default 22
-node --version       # يجب أن يظهر v22.x أو أحدث
-npm --version
 ```
 
-### macOS باستخدام Homebrew
+**macOS** مع Homebrew: `brew install node`
 
-```bash
-brew install node
-```
-
-### Windows
-
-نزّل مثبّت LTS من [nodejs.org](https://nodejs.org/) أو استخدم:
+**Windows**، في PowerShell:
 
 ```powershell
 winget install OpenJS.NodeJS.LTS
 ```
 
-أغلق PowerShell وأعد فتحها لتحديث `PATH`.
+أغلق الطرفية وافتحها من جديد حتى يتحدّث `PATH`.
 
----
+**تحقّق:** الأمر `node --version` يطبع `v22.` أو أعلى.
 
-## 4. تثبيت Ollama والنماذج
-
-### Linux وmacOS
+### 2. تثبيت Ollama والنماذج
 
 ```bash
+# Linux وmacOS
 curl -fsSL https://ollama.com/install.sh | sh
-```
 
-أو باستخدام Homebrew:
+# macOS مع Homebrew
+brew install ollama && brew services start ollama
 
-```bash
-brew install ollama
-brew services start ollama
-```
-
-### Windows
-
-```powershell
+# Windows (PowerShell)
 winget install Ollama.Ollama
 ```
 
-ثم في أي طرفية:
+ثم نزّل النموذجين (نحو 5 غيغابايت، مرة واحدة فقط):
 
 ```bash
 ollama pull qwen3:4b
 ollama pull qwen2.5:3b
 ```
 
-تحقّق من أنه يستجيب:
+**تحقّق:** الأمر `ollama list` يُظهر النموذجين، وهذا يرد بصيغة JSON:
 
 ```bash
-ollama list
 curl http://127.0.0.1:11434/api/tags
 ```
 
----
+في Windows، إن لم يعمل، افتح تطبيق Ollama من قائمة ابدأ.
 
-## 5. تثبيت تبعيات Node
+### 3. تنزيل المشروع
 
-من جذر المشروع:
+```bash
+git clone https://github.com/ClawProject/TheClawRepo.git
+cd TheClawRepo
+```
+
+**تحقّق:** الأمر `ls` (أو `dir` في Windows) يُظهر `package.json`.
+
+> نزّل ملف ZIP فقط إن لم تكن تريد التحديثات: ستفقد السجل والأمر `git pull`.
+
+### 4. تثبيت الاعتماديات
 
 ```bash
 npm install
 ```
 
-إذا اشتكى PowerShell في Windows من `npm.ps1`، استخدم `npm.cmd install`.
+في Windows، إن اعترض PowerShell على `npm.ps1`، استخدم `npm.cmd install`.
 
-في Windows يمكنك أيضًا النقر المزدوج على **`arrancar.bat`**: يثبّت التبعيات
-الناقصة، ويُنشئ `.env` عند الحاجة، ويشغّل البوت.
+يمكنك أيضًا النقر مرتين على **`arrancar.bat`** (Windows): يثبّت ما ينقص، وينشئ `.env` إن
+لم يكن موجودًا، ويشغّل الروبوت.
+
+**تحقّق:** ينتهي دون أخطاء.
+
+### 5. إعداد `.env`
+
+```bash
+cp .env.example .env          # Linux وmacOS
+Copy-Item .env.example .env   # Windows (PowerShell)
+```
+
+القالب يصلح كما هو: يشير إلى Ollama على هذا الحاسوب وإلى النموذجين الذين نزّلتهما للتوّ.
+لا تحتاج إلى تعديله إلا إذا كان Ollama في مكان آخر، أو كنت تستخدم نموذجًا آخر، أو
+لإضافة بريد أكواد الدخول.
+
+أمران يجدر معرفتهما:
+
+- **لا ترفع `.env` إلى Git.** فيه رقمك وبريدك وكلمات المرور. وهو مضاف أصلًا إلى
+  `.gitignore`.
+- إن استخدمت `PICKLEBRAIN_DATA_DIR`، يمكن أن يكون `.env` داخل مجلد البيانات ذاك.
+
+**تحقّق:** ملف `.env` موجود بجانب `package.json`.
+
+### 6. التشغيل لأول مرة
+
+```bash
+npm start
+```
+
+في المرة الأولى يفتح المتصفح `http://localhost:3000/setup` لاختيار اللغة (هناك 100 لغة).
+يُحفظ الاختيار في قاعدة البيانات، ولا يتصل الروبوت بواتساب حتى تختار واحدة.
+
+بعد ذلك يظهر **رمز QR** في الطرفية. امسحه من
+**واتساب ← الإعدادات ← الأجهزة المرتبطة ← ربط جهاز**.
+
+تُحفظ الجلسة في `data/auth/` (أو في `PICKLEBRAIN_DATA_DIR/auth`). لا تشارك هذا المجلد:
+فهو الوصول إلى حسابك.
+
+**تحقّق:** الطرفية تقول إنه متصل، والهاتف يُظهر الجهاز المرتبط. اكتب `!claw` في
+المجموعة، فيجيب بحالته.
+
+طرق أخرى للتشغيل:
+
+| الأمر | ما يشغّله |
+| --- | --- |
+| `npm start` | كل شيء: واتساب ولوحة الويب والتذكيرات |
+| `npm run web` | لوحة الويب وواجهة API فقط، دون واتساب |
+| `npm run sim` | محاكي في الطرفية، دون واتساب أو QR |
 
 ---
 
-## 6. إعداد `.env`
+## ربط مجموعتك
 
-انسخ النموذج وعدّله:
+داخل المجموعة، اكتب:
 
-```bash
-cp .env.example .env
+```
+!claw aqui
 ```
 
-في Windows:
+بهذا يُحفظ **مُعرّف** المجموعة (وليس الاسم أبدًا، لأنه يتكرر ويمكن لأي شخص تغييره).
+ويمكنك أيضًا ضبط `WHATSAPP_GROUP_JID` في `.env`.
 
-```powershell
-Copy-Item .env.example .env
-notepad .env
-```
-
-إعداد أدنى للبدء:
-
-```dotenv
-OLLAMA_MODEL=qwen3:4b
-OLLAMA_MODEL_BRAIN=qwen2.5:3b
-# معرّف المجموعة (أو اكتب "!claw aqui" في المجموعة)
-WHATSAPP_GROUP_JID=120363000000000000@g.us
-```
-
-- يمكنك ربط المجموعة لاحقًا بكتابة `!claw aqui` في واتساب؛ يُحفظ
-  المعرّف فقط، ولا يُحفظ اسم المجموعة أبدًا.
-- إذا ضبطت `PICKLEBRAIN_DATA_DIR`، يمكن أن يكون ملف `.env` في مجلد
-  البيانات هذا.
-- يمكن تغيير معظم الإعدادات والبوت يعمل عبر `!claw ajustes`؛
-  أعد التشغيل بعد تعديل `.env` يدويًا.
-- **لا ترفع `.env` إلى Git**: فهو يحتوي عناوين بريد وكلمات مرور ورقم هاتفك.
-  وهو مُدرج أصلًا في `.gitignore`.
-
-كل المتغيرات موثّقة في [`.env.example`](.env.example) وفي
-[README](README.ar.md).
+إن بقي الروبوت صامتًا، فغالبًا هذا هو الصحيح: لا يتكلم إلا عندما يسأل أحد عن الواجبات أو
+الامتحانات، أو عندما يُكتب `Claw` مع سؤال.
 
 ---
 
-## 7. خدمة الصوت والصور بلغة Python (اختيارية، مُستحسنة)
+## اختياري: الصوت والصور (خدمة Python)
 
-بدون هذه الخدمة يعمل Claw أيضًا: يستخدم الصوت ffmpeg + Whisper في Node،
-وتستخدم الصور `sd-cli` أو خادم HTTP. ومع Python تحصل على
-`faster-whisper` (أسرع) و`diffusers`.
+بدون هذه الخدمة يبقى الروبوت يعمل: الصوت يستخدم ffmpeg وWhisper داخل Node، والصور تستخدم
+`sd-cli`. ومعها تحصل على `faster-whisper` (أسرع) و`diffusers` (صور أفضل). **إن كنت تريد
+فقط إجابات الواجبات، فانتقل إلى
+[التأكد من أن كل شيء يعمل](#التأكد-من-أن-كل-شيء-يعمل).**
 
-### 7.1 إنشاء بيئة افتراضية
-
-من جذر المشروع:
-
-```bash
-python3.12 -m venv .venv
-```
-
-إذا لم يكن `python3.12` موجودًا في النظام:
+**1. إنشاء البيئة الافتراضية** (من جذر المشروع):
 
 ```bash
-# Debian/Ubuntu
-sudo apt install python3.12 python3.12-venv
-
-# macOS مع Homebrew
-brew install python@3.12
+python3.12 -m venv .venv      # Linux وmacOS
+py -3.12 -m venv .venv        # Windows
 ```
 
-في Windows:
+إن لم يكن لديك Python 3.12: `sudo apt install python3.12 python3.12-venv` (Debian وUbuntu)
+أو `brew install python@3.12` (macOS).
 
-```powershell
-py -3.12 -m venv .venv
-```
-
-### 7.2 تثبيت التبعيات
+**2. تثبيت الاعتماديات:**
 
 ```bash
-# Linux/macOS
-.venv/bin/pip install -r python/requirements.txt
-
-# Windows
-.venv\Scripts\pip.exe install -r python/requirements.txt
+.venv/bin/pip install -r python/requirements.txt                  # Linux وmacOS
+.venv\Scripts\pip.exe install -r python\requirements.txt          # Windows
 ```
 
-فقط إذا أردت توليد الصور عبر diffusers:
+**3. تشغيلها في طرفية أخرى** وتَركها مفتوحة ما دام الروبوت يعمل:
 
 ```bash
-.venv/bin/pip install -r python/requirements-images.txt
+.venv/bin/python python/server.py                 # Linux وmacOS
+.venv\Scripts\python.exe python\server.py         # Windows
 ```
 
-> بدون بطاقة NVIDIA، ثبّت أولًا نسخة torch الخاصة بالمعالج:
->
-> ```bash
-> .venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
-> ```
->
-> مع بطاقة NVIDIA يجب أن تكون torch نسخة CUDA. وإذا اكتشف Whisper CUDA
-> لكن تفتقد `libcublas`/cuDNN، تنتقل الخدمة تلقائيًا إلى المعالج.
+اختصارات، إن كان `python` في `PATH`: `npm run ia` (Windows وmacOS) أو `npm run ia:linux`.
 
-### 7.3 تشغيل الخدمة
-
-في **طرفية أخرى**، من جذر المشروع:
-
-```bash
-# Linux/macOS
-.venv/bin/python python/server.py
-
-# Windows
-.venv\Scripts\python.exe python\server.py
-```
-
-يمكنك أيضًا استخدام:
-
-```bash
-npm run ia          # Windows/macOS إذا كان "python" في PATH
-npm run ia:linux    # Linux
-```
-
-تحقّق من أنها تستجيب:
+**تحقّق:** هذا يُعيد `"ok": true` مع حالة `voice` و`images`:
 
 ```bash
 curl http://127.0.0.1:5050/health
 ```
 
-يجب أن يعيد `"ok": true` مع حالة `voice` و`images`. يكتشفها البوت
-تلقائيًا عند بدء التشغيل ويعرض محرّك الصوت المستخدم.
+يكتشف الروبوت الخدمة تلقائيًا عند التشغيل ويخبرك بمحرّك الصوت الذي يستخدمه. تُنزَّل
+النماذج عند أول استخدام: نحو 150 ميغابايت لنموذج Whisper ونحو 4 غيغابايت للصور، وتُحفظ في
+`data/models/`.
 
-### 7.4 النماذج
-
-أول تفريغ ينزّل نموذج Whisper (نحو 150 ميغابايت مع `base`). وأول صورة
-تنزّل نموذج diffusers (نحو 4 غيغابايت مع SD 1.5). تُحفظ في
-`data/models/`، وهو مجلد يتجاهله Git.
-
-متغيرات مفيدة:
+متغيّرات مفيدة:
 
 ```dotenv
 PYTHON_AI_URL=http://127.0.0.1:5050
@@ -273,79 +224,75 @@ PYTHON_IMAGE_MODEL=stable-diffusion-v1-5/stable-diffusion-v1-5
 PYTHON_IMAGE_UNLOAD=true
 ```
 
-مع بطاقة بسعة 4 غيغابايت اترك `PYTHON_IMAGE_UNLOAD=true` كي يستعيد Ollama
-ذاكرة VRAM بعد كل صورة.
+مع كرت بـ 4 غيغابايت، اترك `PYTHON_IMAGE_UNLOAD=true` كي يستعيد Ollama الذاكرة بعد كل صورة.
 
 ---
 
-## 8. تشغيل Claw
+## اختياري: توليد الصور
 
-```bash
-npm start       # البوت الكامل: واتساب + الويب + التذكيرات
-npm run web     # الويب/API فقط، بدون واتساب
-npm run sim     # محاكي في الطرفية، بدون واتساب
+الصور مطفأة افتراضيًا لأنها بطيئة على الكروت الصغيرة. لتفعيلها، ضع في `.env`:
+
+```dotenv
+IMAGE_GEN_ENABLED=true
 ```
 
-في المرة الأولى يفتح Claw المتصفح على `http://localhost:3000/setup` لاختيار
-اللغة (100 لغة). يُحفظ الاختيار في قاعدة البيانات، ولا يتصل البوت
-بواتساب قبل ذلك. يمكن تغييره لاحقًا من واتساب بالأمر `!claw language en`
-(المالك/المشرفون) أو بالعودة إلى `/setup`.
+وثبّت الاعتماديات الإضافية في البيئة نفسها:
 
-بعد ذلك يعرض `npm start` **رمز QR**. امسحه في واتساب:
+```bash
+.venv/bin/pip install -r python/requirements-images.txt
+```
 
-**الإعدادات → الأجهزة المرتبطة → ربط جهاز**
+بدون كرت NVIDIA، ثبّت أولًا نسخة torch للمعالج:
 
-تُحفظ الجلسة في `data/auth/` (أو `PICKLEBRAIN_DATA_DIR/auth`). لا
-تشارك ذلك المجلد: فهو يمنح الوصول إلى حسابك.
+```bash
+.venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
+```
+
+تُطلب الصور يدويًا بالأمر `!claw imagen <ما تريد>`.
 
 ---
 
-## 9. التحقق من التثبيت
+## التأكد من أن كل شيء يعمل
 
-```bash
-npm run doctor      # Ollama والنماذج وقاعدة البيانات والصوت وغيرها
-npm run test:python # عقد Node <-> خدمة Python (بدون نماذج)
-npm run test:web    # المصادقة وAPI
-npm run test:subjects
-npm run test:vetados # الحظر بالرقم وبـ @lid (بدون Ollama)
-```
+| الأمر | ما يتحقق منه | يحتاج Ollama؟ |
+| --- | --- | --- |
+| `npm run doctor` | Ollama والنماذج وقاعدة البيانات والصوت والقرص | نعم |
+| `npm test` | كل مجموعة الاختبارات | نعم |
+| `npm run test:python` | عقد الاتصال بين Node وخدمة Python | لا |
+| `npm run test:web` | الدخول وواجهة API | لا |
+| `npm run test:subjects` | تمييز المواد | لا |
+| `npm run test:vetados` | الحجب بالرقم وبـ `@lid` | لا |
+| `npm run test:i18n` | اللغات المئة | لا |
 
-يشغّل `npm test` كل المجموعة و**يحتاج إلى Ollama يعمل**.
-
-اختبار سريع في المحاكي:
+إن ظهر `doctor` بالأخضر، فقد انتهيت. لتجربته دون واتساب:
 
 ```bash
 npm run sim
 ```
 
 ```
-شباب، ما واجب الرياضيات؟
-Ana: علينا عمل الصفحات من 30 إلى 32
-ما واجب الرياضيات؟
-امتحان التاريخ يوم 20 أكتوبر
+ما واجبات الرياضيات؟
+Ana: الصفحات من 30 إلى 32
+ما واجبات الرياضيات؟
+امتحان التاريخ في 20 أكتوبر
 Claw، كم يساوي 2+2؟
 ```
 
 ---
 
-## 10. التثبيت عبر Homebrew (macOS وLinux)
+## التثبيت باستخدام Homebrew (macOS وLinux)
 
-يوجد tap فيه صيغة لتثبيت الأمرين `claw` و`claw-ia`:
+هناك tap فيه وصفة تثبّت الأمرين `claw` و`claw-ia`:
 
 ```bash
 brew tap Uyruw3/claw
 brew trust Uyruw3/claw   # Homebrew 7 وما بعده
 brew install claw
-```
-
-أول تشغيل ينزّل تبعيات Node في
-`~/.local/share/claw` ويحفظ البيانات في `~/.local/share/claw/data`.
-
-```bash
 claw
 ```
 
-إذا أردت إدارة المجلد بنفسك:
+عند أول تشغيل تُنزَّل اعتماديات Node إلى `~/.local/share/claw` وتُحفظ البيانات في
+`~/.local/share/claw/data`. وإن أردت مجلدك الخاص:
 
 ```bash
 export CLAW_HOME="$HOME/Claw"
@@ -353,107 +300,73 @@ export PICKLEBRAIN_DATA_DIR="$CLAW_HOME/data"
 claw
 ```
 
-لخدمة الصوت والصور بلغة Python:
+لخدمة الصوت والصور:
 
 ```bash
 CLAW_HOME="$HOME/.local/share/claw"
 PYTHON="$(brew --prefix python@3.12)/bin/python3.12"
 "$PYTHON" -m venv "$CLAW_HOME/.venv"
 "$CLAW_HOME/.venv/bin/pip" install -r "$(brew --prefix claw)/libexec/python/requirements.txt"
-
-# فقط لتوليد الصور:
-"$CLAW_HOME/.venv/bin/pip" install -r "$(brew --prefix claw)/libexec/python/requirements-images.txt"
-
+"$CLAW_HOME/.venv/bin/pip" install -r "$(brew --prefix claw)/libexec/python/requirements-images.txt"  # الصور فقط
 claw-ia
 ```
 
-للتحديث:
-
-```bash
-brew update
-brew upgrade claw
-```
-
-> الـ tap موجود في `Uyruw3/homebrew-claw` لأن منظمة المشروع
-> لا تسمح بإنشاء مستودعات من هذا الحساب. يمكن نقله لاحقًا إلى
-> `ClawProject`، وسيكون الأمر حينها `brew tap ClawProject/claw`.
->
-> تثبّت الصيغة آخر إصدار مستقر منشور. وعند صدور إصدار جديد
-> يُحدَّث الـ tap بالأمر `brew update && brew upgrade claw`.
+> الـ tap موجود في `Uyruw3/homebrew-claw` لأن منظمة المشروع لا تسمح بإنشاء مستودعات من
+> ذلك الحساب. وإن انتقل إلى `ClawProject` سيصبح الأمر `brew tap ClawProject/claw`.
 
 ---
 
-## 11. تحديث المشروع
-
-إذا ثبّتته بـ `git clone`:
+## التحديث
 
 ```bash
 git pull
 npm install
 ```
 
-وإذا تغيّرت ملفات `python/requirements*.txt`:
+وإن تغيّرت أيضًا ملفات `python/requirements*.txt`:
 
 ```bash
 .venv/bin/pip install -r python/requirements.txt
 .venv/bin/pip install -r python/requirements-images.txt
 ```
 
-أعد تشغيل Node وخدمة Python بعد التحديث.
+أعد تشغيل Node وخدمة Python. مع Homebrew: `brew update && brew upgrade claw`.
 
 ---
 
-## 12. مشاكل شائعة
+## المشاكل والحلول
 
-**`npm start` لا يجد Ollama.**
-افتح تطبيق Ollama أو نفّذ `ollama serve`. تحقّق بالأمر
-`curl http://127.0.0.1:11434/api/tags`.
+| ما تراه | ما تفعله |
+| --- | --- |
+| `npm start` لا يجد Ollama | افتح تطبيق Ollama أو نفّذ `ollama serve`، ثم تحقّق من `curl http://127.0.0.1:11434/api/tags` |
+| لا يظهر رمز QR | اختر اللغة أولًا في `http://localhost:3000/setup` |
+| الروبوت لا يقول شيئًا في المجموعة | `!claw aqui` داخل المجموعة ثم `!claw`؛ ومع `LOG_LEVEL=debug` ترى سبب تجاهل كل رسالة |
+| الرسائل الصوتية لا تعمل | شغّل `python/server.py` ونفّذ `npm run doctor`؛ وبدون Python ثبّت ffmpeg وأعد فتح الطرفية |
+| `faster-whisper` يفشل بـ `metadata_errors` | `.venv/bin/pip install 'av<19'` |
+| CUDA لا يُحمّل (`libcublas.so.12`) | ينتقل Whisper إلى المعالج تلقائيًا؛ ولاستخدام الكرت ثبّت CUDA runtime ونسخة torch مع CUDA |
+| أول صورة تستغرق وقتًا طويلًا | إنه ينزّل نموذج diffusers (نحو 4 غيغابايت)؛ وما بعده يكون سريعًا |
+| الموقع لا يرسل أكواد الدخول | املأ `SMTP_HOST` و`SMTP_PORT` و`SMTP_USER` و`SMTP_PASSWORD`؛ واختبر بـ `npm run smtp -- بريدك@alu.edu.gva.es` |
+| PowerShell يحجب `npm.ps1` | استخدم `npm.cmd`، أو `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` في طرفية جديدة |
+| `ollama pull` ينفد منه المكان | النموذجان يحتاجان نحو 5 غيغابايت؛ فرّغ مساحة أو استخدم نموذجًا أصغر |
 
-**البوت لا يقول شيئًا في المجموعة.**
-1. تحقّق من أنها مرتبطة: اكتب `!claw aqui` في المجموعة أو اضبط
-   `WHATSAPP_GROUP_JID`.
-2. اكتب `!claw` لمعرفة الحالة.
-3. شغّله مع `LOG_LEVEL=debug` لترى لماذا تُستبعد الرسائل.
-
-**الرسائل الصوتية لا تعمل.**
-شغّل `python/server.py` وتحقّق بـ `npm run doctor`. وبدون Python ثبّت
-ffmpeg وأعد فتح الطرفية.
-
-**يفشل `faster-whisper` مع `metadata_errors`.**
-لديك `av` 19. ثبّت إصدارًا محددًا:
+إن بقيت عالقًا، نفّذ `npm run doctor` وألصق الناتج:
 
 ```bash
-.venv/bin/pip install 'av<19'
+npm run doctor > doctor.txt
 ```
-
-**CUDA لا يُحمَّل (`libcublas.so.12`).**
-ينتقل Whisper تلقائيًا إلى المعالج. لاستخدام البطاقة ثبّت
-وقت تشغيل CUDA ونسخة torch المتوافقة مع CUDA. وحتى ذلك الحين يعمل الصوت على المعالج.
-
-**أول صورة تستغرق وقتًا طويلًا.**
-يجري تنزيل نموذج diffusers (نحو 4 غيغابايت). وما بعدها يحتاج وقت
-التوليد فقط.
-
-**الموقع لا يرسل رموز الدخول.**
-اضبط `SMTP_HOST` و`SMTP_PORT` و`SMTP_USER` و`SMTP_PASSWORD` في `.env`.
-اختبر بالأمر `npm run smtp -- بريدك@alu.edu.gva.es`.
-
-**PowerShell يمنع `npm.ps1`.**
-استخدم `npm.cmd` أو نفّذ
-`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` وافتح طرفية أخرى.
 
 ---
 
-## 13. البنية الدنيا بعد التثبيت
+## شكل المجلد
 
 ```
 TheClawRepo/
-├─ src/                 كود البوت (Node)
+├─ src/                 كود الروبوت (Node)
 ├─ python/              خدمة الصوت والصور
-├─ docs/                الموقع الثابت والتوثيق
-├─ sdserver/            محرّك stable-diffusion.cpp اختياري
+├─ docs/                الموقع والتوثيق
+├─ sdserver/            محرك stable-diffusion.cpp الاختياري
 ├─ data/                الجلسة وقاعدة البيانات والصور والنماذج (خارج Git)
 ├─ .env                 إعداداتك (خارج Git)
 ├─ package.json
-└─ arrancar.bat         سكربت التشغيل في Windows
+└─ arrancar.bat         التشغيل بنقرتين في Windows
 ```

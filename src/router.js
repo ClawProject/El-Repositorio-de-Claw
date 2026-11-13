@@ -22,7 +22,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { contarPalabrotas } from './swears.js';
 import { transcribeFile } from './transcribe.js';
-import { clawAnswer, clawGreeting } from './claw.js';
+import { clawAnswer, clawGreeting, PERSONALIDADES, personalidadActiva } from './claw.js';
 import { buscarWeb } from './search.js';
 import { generarImagen, esPedidoDeImagen } from './imagegen.js';
 import * as presence from './presence.js';
@@ -730,7 +730,8 @@ async function handleClaw({ chatJid, senderName, text, mentionedBot, out }) {
 
   log.info(`Modo Claw de ${senderName}: "${question}"`);
   const history = clawHistory.get(chatJid) || [];
-  const persona = config.chessEnabled && ajedrez.mencionaAjedrez(question) ? 'ajedrez' : 'normal';
+  const configurada = personalidadActiva();
+  const persona = config.chessEnabled && ajedrez.mencionaAjedrez(question) ? 'ajedrez' : configurada;
   const answer = await clawAnswer({ question, history, persona, chatJid });
 
   history.push({ role: 'user', content: question });
@@ -1293,7 +1294,7 @@ async function handleCommand({ comando, input, out, listModels }) {
       return out;
     }
     log.info(`Búsqueda en internet de ${senderName}: "${cola}" -> ${resultados.length} resultados`);
-    const respuesta = await clawAnswer({ question: cola, history: [], persona: 'normal', chatJid, internet: resultados });
+    const respuesta = await clawAnswer({ question: cola, history: [], persona: personalidadActiva(), chatJid, internet: resultados });
     const fuentes = resultados
       .map((r) => r.url)
       .filter(Boolean)
@@ -1345,6 +1346,29 @@ async function handleCommand({ comando, input, out, listModels }) {
     const filePath = r.filePath || media.saveTempImage(r.buffer, r.mime);
     out.media.push(media.asOutgoing({ filePath, mime: r.mime }, `🎨 ${cola}`));
     log.info(`Imagen generada para ${senderName}: "${cola}" (${r.mime})`);
+    return out;
+  }
+
+  // --- Personalidad: cómo habla Claw ---
+  if (sub === 'personalidad') {
+    const actual = personalidadActiva();
+    if (!cola) {
+      out.action = 'comando-personalidad';
+      const lineas = Object.values(PERSONALIDADES).map((p) => `• *${p.nombre}* — ${p.descripcion}`);
+      out.replies = [
+        `🎭 Personalidad actual: *${actual}*.\n\n${lineas.join('\n')}\n\nCambiar (solo admins): _!claw personalidad pirata_`
+      ];
+      return out;
+    }
+    if (!esAdmin) {
+      out.replies = [replies.noPermitido()];
+      return out;
+    }
+    const id = sinAcentos(cola).split(/\s+/)[0];
+    const r = ajustes.setDesdeTexto('personalidad', id);
+    out.action = 'comando-personalidad';
+    out.replies = [r.ok ? `🎭 Claw ahora habla como *${r.valor}*.` : `⚠️ ${r.error}`];
+    if (r.ok) log.info(`Personalidad cambiada por ${senderName}: ${r.valor}`);
     return out;
   }
 

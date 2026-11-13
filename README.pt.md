@@ -307,6 +307,7 @@ Todos os comandos começam por `!claw`. Também é aceite o alias antigo `!pickl
 | `!claw busca ...`            | Pesquisa na web.                              |
 | `!claw imagen ...`           | Gera uma imagem (experimental).               |
 | `!claw ajedrez [jogada]`     | Joga xadrez contra o Claw.                    |
+| `!claw personalidad`         | Ver ou mudar a personalidade do Claw.         |
 | `!claw analiza [FEN]`        | Analisa uma posição de xadrez.                |
 | `!claw novedades`            | Mostra as alterações recentes.                |
 

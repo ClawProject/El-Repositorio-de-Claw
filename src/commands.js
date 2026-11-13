@@ -55,7 +55,11 @@ const ALIAS = {
   novedades: ['news', 'changelog', 'neuigkeiten', 'nouveautés', 'novità', 'новости', 'جديد', '更新'],
   busca: ['search', 'cerca', 'cherche', 'suche', 'поиск', 'ابحث', '搜索'],
   ajedrez: ['chess', 'escacs', 'echecs', 'échecs', 'xadrez', 'schach', 'scacchi', 'шахматы', 'شطرنج', '国际象棋'],
-  analiza: ['analyze', 'analyse', 'analitza', 'analisa', 'analysiere', 'analizza', 'анализ', 'تحليل', '分析']
+  analiza: ['analyze', 'analyse', 'analitza', 'analisa', 'analysiere', 'analizza', 'анализ', 'تحليل', '分析'],
+  personalidad: [
+    'personality', 'personalitat', 'personnalite', 'personalidade', 'persoenlichkeit',
+    'personalita', 'личность', 'شخصية', '个性'
+  ]
 };
 
 /** Minúsculas y sin acentos, igual que `sinAcentos` del router. */

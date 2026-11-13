@@ -312,6 +312,7 @@ All commands start with `!claw`. The legacy `!pickle` alias is also supported.
 | `!claw busca ...`            | Search the web.                            |
 | `!claw imagen ...`           | Generate an image (experimental).          |
 | `!claw ajedrez [move]`       | Play chess against Claw.                   |
+| `!claw personalidad`         | See or change Claw's personality.          |
 | `!claw analiza [FEN]`        | Analyze a chess position.                  |
 | `!claw novedades`            | Show recent changes.                       |
 

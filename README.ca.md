@@ -307,6 +307,7 @@ Totes les comandes comencen per `!claw`. També s'admet l'àlies antic `!pickle`
 | `!claw busca ...`            | Cerca a la web.                                |
 | `!claw imagen ...`           | Genera una imatge (experimental).              |
 | `!claw ajedrez [jugada]`     | Juga als escacs contra Claw.                   |
+| `!claw personalidad`         | Veure o canviar la personalitat de Claw.       |
 | `!claw analiza [FEN]`        | Analitza una posició d'escacs.                 |
 | `!claw novedades`            | Mostra els canvis recents.                     |
 

@@ -19,7 +19,8 @@ import { recordarAlias } from '../identities.js';
 import { sendReplies, estaConectado, cuandoConecte } from '../whatsapp.js';
 import { liberarVram } from '../ollama.js';
 import { necesitaBuscar, parsearResultadosDDG } from '../search.js';
-import { conFuenteWeb } from '../claw.js';
+import { conFuenteWeb, PERSONALIDADES } from '../claw.js';
+import { resolverComando } from '../commands.js';
 import { contarPalabrotas } from '../swears.js';
 import { esPedidoDeImagen, parsearImagen, sniffMime, argsCli, generarImagen, pistaDeError } from '../imagegen.js';
 import { novedades, textoNovedades, hashNovedades, marcadorNovedades } from '../changelog.js';
@@ -1881,6 +1882,69 @@ async function main() {
     '"!claw olvida todo" vacía los apuntes del grupo',
     antesTodo > 0 && despuesTodo === 0 && /todos|🧹/i.test(texto(borraTodo)),
     `antes=${antesTodo} despues=${despuesTodo} dice=${texto(borraTodo).slice(0, 80)}`
+  );
+
+  // ---- Personalidades ----------------------------------------------
+  console.log('\n\x1b[1m--- Personalidades: cómo habla Claw ---\x1b[0m');
+
+  check(
+    'Hay 4 personalidades con nombre y descripción',
+    Object.keys(PERSONALIDADES).length === 4 &&
+      Object.values(PERSONALIDADES).every((p) => p.nombre && p.descripcion && p.prompt),
+    Object.keys(PERSONALIDADES).join(',')
+  );
+  check(
+    'Todas mantienen la regla de respeto y se presentan como Claw',
+    Object.values(PERSONALIDADES).every((p) => /Nunca insultes/i.test(p.prompt) && p.prompt.includes('Eres "Claw"')),
+    'revisar los prompts de src/claw.js'
+  );
+  check('"personality" resuelve al comando personalidad', resolverComando('personality') === 'personalidad');
+  check('"persönlichkeit" resuelve al comando personalidad', resolverComando('persönlichkeit') === 'personalidad');
+
+  const ver = await dice('!claw personalidad', 'Ana');
+  check(
+    '"!claw personalidad" enseña la actual y la lista',
+    /Personalidad actual: \*normal\*/i.test(texto(ver)) && /pirata/.test(texto(ver)),
+    `dice=${texto(ver).slice(0, 90)}`
+  );
+  const alias = await dice('!claw personality', 'Ana');
+  check(
+    'El alias inglés "!claw personality" también enseña la lista',
+    /Personalidad actual/i.test(texto(alias)),
+    `dice=${texto(alias).slice(0, 80)}`
+  );
+  const intrusoP = await dice('!claw personalidad pirata', 'Bea');
+  check(
+    'Sin ser admin no se puede cambiar',
+    /solo lo puede hacer el dueño/i.test(texto(intrusoP)),
+    `dice=${texto(intrusoP).slice(0, 80)}`
+  );
+  const cambio = await dice('!claw personalidad pirata', 'Dueno', { senderJid: duenoJid, fromMe: true });
+  check(
+    'El dueño cambia a pirata',
+    /ahora habla como \*pirata\*/i.test(texto(cambio)) && config.clawPersonality === 'pirata',
+    `dice=${texto(cambio).slice(0, 80)}`
+  );
+  const mala = await dice('!claw personalidad ninja', 'Dueno', { senderJid: duenoJid, fromMe: true });
+  check(
+    'Un nombre inventado se rechaza con la lista y no cambia nada',
+    /solo puede ser/i.test(texto(mala)) && config.clawPersonality === 'pirata',
+    `dice=${texto(mala).slice(0, 80)}`
+  );
+  const viaAjustes = await dice('!claw ajustes personalidad gracioso', 'Dueno', {
+    senderJid: duenoJid,
+    fromMe: true
+  });
+  check(
+    '"!claw ajustes personalidad gracioso" también funciona',
+    /gracioso/.test(texto(viaAjustes)) && config.clawPersonality === 'gracioso',
+    `dice=${texto(viaAjustes).slice(0, 80)}`
+  );
+  const resetP = await dice('!claw ajustes reset personalidad', 'Dueno', { senderJid: duenoJid, fromMe: true });
+  check(
+    'El reset devuelve a normal',
+    /normal/.test(texto(resetP)) && config.clawPersonality === 'normal',
+    `dice=${texto(resetP).slice(0, 80)}`
   );
 
   // ---- Resumen -----------------------------------------------------

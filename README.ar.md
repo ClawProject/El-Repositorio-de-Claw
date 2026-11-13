@@ -307,6 +307,7 @@ WHATSAPP_GROUP_JID=your-group-id@g.us
 | `!claw busca ...`            | يبحث في الويب.                              |
 | `!claw imagen ...`           | يولّد صورة (تجريبي).                        |
 | `!claw ajedrez [حركة]`       | يلعب الشطرنج ضد Claw.                       |
+| `!claw personalidad`         | عرض شخصية Claw أو تغييرها.                  |
 | `!claw analiza [FEN]`        | يحلّل وضعًا في الشطرنج.                     |
 | `!claw novedades`            | يعرض آخر التغييرات.                         |
 

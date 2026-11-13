@@ -307,6 +307,7 @@ Toutes les commandes commencent par `!claw`. L'ancien alias `!pickle` est aussi 
 | `!claw busca ...`            | Cherche sur le web.                      |
 | `!claw imagen ...`           | Génère une image (expérimental).         |
 | `!claw ajedrez [coup]`       | Joue aux échecs contre Claw.             |
+| `!claw personalidad`         | Voir ou changer la personnalité de Claw. |
 | `!claw analiza [FEN]`        | Analyse une position d'échecs.           |
 | `!claw novedades`            | Affiche les changements récents.         |
 

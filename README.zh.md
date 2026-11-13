@@ -307,6 +307,7 @@ Claw 通过内部标识识别群组，而不是群名。
 | `!claw busca ...`            | 联网搜索。                         |
 | `!claw imagen ...`           | 生成图片（实验性）。               |
 | `!claw ajedrez [走法]`       | 与 Claw 下国际象棋。               |
+| `!claw personalidad`       | 查看或更改 Claw 的个性。             |
 | `!claw analiza [FEN]`        | 分析棋局局面。                     |
 | `!claw novedades`            | 显示最近的变更。                   |
 

@@ -2,266 +2,219 @@
 
 [English](INSTALL.md) · [Español](INSTALL.es.md) · [Català](INSTALL.ca.md) · [Français](INSTALL.fr.md) · [Português](INSTALL.pt.md) · [Deutsch](INSTALL.de.md) · [Italiano](INSTALL.it.md) · **Русский** · [العربية](INSTALL.ar.md) · [中文](INSTALL.zh.md)
 
-Claw состоит из двух процессов:
+Claw — это бот для WhatsApp, который работает на твоём компьютере. Ему нужны две вещи:
+**Node.js** (бот, веб-панель и база данных) и **Ollama** (локальный ИИ). Голосовые
+сообщения и генерация картинок **необязательны** и требуют небольшого сервиса на Python.
 
-1. **Node.js** (обязательно): бот WhatsApp, веб-интерфейс, база данных и логика.
-2. **Python** (необязательно, рекомендуется): расшифровывает голосовые сообщения через faster-whisper и
-   генерирует изображения через diffusers. Если он не запущен, Node использует
-   прежние движки.
-
-Инструкция подходит для Linux, macOS и Windows. Общая информация о боте —
-в [README](README.ru.md), о службе Python — в [`python/README.md`](python/README.md).
+Каждый шаг заканчивается **Проверкой**: если видишь то, что там написано, шаг готов и
+можно идти дальше. Если что-то не сходится, переходи к
+[Проблемы и решения](#проблемы-и-решения).
 
 ---
 
-## 1. Требования
+## Что нужно
 
-| Компонент | Версия | Назначение |
-|---|---|---|
-| Git | Любая актуальная версия | Загрузка и обновление проекта |
-| Node.js | 22 или новее (рекомендуется 24 LTS) | Бот, веб-интерфейс и база данных |
-| Ollama | Актуальная версия | Локальный текстовый ИИ |
-| Python | 3.11 или 3.12 | Служба речи и изображений (необязательно) |
-| ffmpeg | Актуальная версия | Речь без Python (необязательно) |
+| Обязательно | Версия | Зачем |
+| --- | --- | --- |
+| [Node.js](https://nodejs.org) | 22 или новее | Бот, веб-панель, база данных |
+| [Ollama](https://ollama.com) | актуальная версия | Локальный текстовый ИИ |
+| [Git](https://git-scm.com) | любая | Скачать и обновлять |
+| Свободное место | ~6 ГБ | Две модели Ollama |
 
-Текстовому ИИ нужно загрузить модели Ollama. На GTX 1650 с 4 ГБ
-работают `qwen3:4b` и `qwen2.5:3b`; при большем объёме памяти можно использовать крупнее модели.
+| Необязательно | Версия | Зачем |
+| --- | --- | --- |
+| Python | 3.11 или 3.12 | Расшифровка голоса и генерация картинок |
+| ffmpeg | актуальная версия | Голос без Python |
+| Видеокарта NVIDIA | 4 ГБ видеопамяти | ИИ быстрее; на процессоре тоже работает |
 
----
-
-## 2. Загрузка проекта (`git clone`)
-
-### Linux и macOS
-
-```bash
-git clone https://github.com/ClawProject/TheClawRepo.git
-cd TheClawRepo
-```
-
-### Windows (PowerShell)
-
-```powershell
-git clone https://github.com/ClawProject/TheClawRepo.git
-cd TheClawRepo
-```
-
-> Если проект уже загружен, обновите его командой `git pull` в папке.
-> Не скачивайте ZIP: так вы потеряете историю и возможность обновления.
+Работает на Linux, macOS и Windows, нужно около 8 ГБ оперативной памяти. С картой на
+4 ГБ `qwen3:4b` и `qwen2.5:3b` помещаются свободно; с большей памятью можно взять модели
+покрупнее.
 
 ---
 
-## 3. Установка Node.js
+## Быстрый путь (около 10 минут)
 
-### Linux и macOS через nvm (рекомендуется)
+### 1. Установить Node.js
+
+**Linux и macOS** (nvm, рекомендуется):
 
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-# закройте и снова откройте терминал, либо выполните:
-export NVM_DIR="$HOME/.nvm"
-. "$NVM_DIR/nvm.sh"
-
+# закрой и снова открой терминал, затем:
 nvm install 22
 nvm alias default 22
-node --version       # должно быть v22.x или новее
-npm --version
 ```
 
-### macOS через Homebrew
+**macOS** с Homebrew: `brew install node`
 
-```bash
-brew install node
-```
-
-### Windows
-
-Скачайте установщик LTS с [nodejs.org](https://nodejs.org/) или выполните:
+**Windows**, в PowerShell:
 
 ```powershell
 winget install OpenJS.NodeJS.LTS
 ```
 
-Закройте и снова откройте PowerShell, чтобы обновился `PATH`.
+Закрой и снова открой терминал, чтобы обновился `PATH`.
 
----
+**Проверка:** `node --version` выводит `v22.` или новее.
 
-## 4. Установка Ollama и моделей
-
-### Linux и macOS
+### 2. Установить Ollama и модели
 
 ```bash
+# Linux и macOS
 curl -fsSL https://ollama.com/install.sh | sh
-```
 
-Или через Homebrew:
+# macOS с Homebrew
+brew install ollama && brew services start ollama
 
-```bash
-brew install ollama
-brew services start ollama
-```
-
-### Windows
-
-```powershell
+# Windows (PowerShell)
 winget install Ollama.Ollama
 ```
 
-Затем в любом терминале:
+Затем скачай две модели (около 5 ГБ, один раз):
 
 ```bash
 ollama pull qwen3:4b
 ollama pull qwen2.5:3b
 ```
 
-Проверьте, что он отвечает:
+**Проверка:** `ollama list` показывает обе модели, а это отвечает в JSON:
 
 ```bash
-ollama list
 curl http://127.0.0.1:11434/api/tags
 ```
 
----
+В Windows, если не отвечает, открой приложение Ollama из меню «Пуск».
 
-## 5. Установка зависимостей Node
+### 3. Скачать проект
 
-Из корня проекта:
+```bash
+git clone https://github.com/ClawProject/TheClawRepo.git
+cd TheClawRepo
+```
+
+**Проверка:** `ls` (в Windows `dir`) показывает `package.json`.
+
+> Скачивай ZIP только если не нужны обновления: теряешь историю и `git pull`.
+
+### 4. Установить зависимости
 
 ```bash
 npm install
 ```
 
-Если в Windows PowerShell ругается на `npm.ps1`, используйте `npm.cmd install`.
+В Windows, если PowerShell ругается на `npm.ps1`, используй `npm.cmd install`.
 
-В Windows можно дважды щёлкнуть **`arrancar.bat`**: он установит недостающие
-зависимости, создаст `.env` при необходимости и запустит бота.
+Можно также дважды щёлкнуть по **`arrancar.bat`** (Windows): он доустановит нужное,
+создаст `.env`, если его нет, и запустит бота.
+
+**Проверка:** завершается без ошибок.
+
+### 5. Настроить `.env`
+
+```bash
+cp .env.example .env          # Linux и macOS
+Copy-Item .env.example .env   # Windows (PowerShell)
+```
+
+Шаблон уже подходит: он указывает на Ollama на этом компьютере и на две только что
+скачанные модели. Править нужно, только если Ollama на другом компьютере, если берёшь
+другую модель, или чтобы прописать почту для кодов доступа.
+
+Два важных момента:
+
+- **Не выкладывай `.env` в Git.** Там твой номер, почта и пароли. Он уже в `.gitignore`.
+- Если используешь `PICKLEBRAIN_DATA_DIR`, файл `.env` может лежать в этой папке данных.
+
+**Проверка:** `.env` лежит рядом с `package.json`.
+
+### 6. Первый запуск
+
+```bash
+npm start
+```
+
+В первый раз браузер откроет `http://localhost:3000/setup`, чтобы выбрать язык (их 100).
+Выбор сохраняется в базе данных, и бот не подключится к WhatsApp, пока язык не выбран.
+
+Затем в терминале появится **QR-код**. Отсканируй его в
+**WhatsApp → Настройки → Связанные устройства → Привязать устройство**.
+
+Сессия хранится в `data/auth/` (или в `PICKLEBRAIN_DATA_DIR/auth`). Не передавай эту
+папку никому: это доступ к твоему аккаунту.
+
+**Проверка:** терминал пишет, что подключился, а в телефоне видно привязанное
+устройство. Напиши `!claw` в группе — он ответит своим состоянием.
+
+Другие способы запуска:
+
+| Команда | Что запускает |
+| --- | --- |
+| `npm start` | Всё: WhatsApp, веб-панель и напоминания |
+| `npm run web` | Только веб-панель и API, без WhatsApp |
+| `npm run sim` | Симулятор в терминале, без WhatsApp и QR |
 
 ---
 
-## 6. Настройка `.env`
+## Привязать группу
 
-Скопируйте шаблон и отредактируйте его:
+В группе напиши:
 
-```bash
-cp .env.example .env
+```
+!claw aqui
 ```
 
-В Windows:
+Так сохраняется **идентификатор** группы (никогда не название: оно повторяется, и его
+может поменять кто угодно). Можно также указать `WHATSAPP_GROUP_JID` в `.env`.
 
-```powershell
-Copy-Item .env.example .env
-notepad .env
-```
-
-Минимальная конфигурация для начала:
-
-```dotenv
-OLLAMA_MODEL=qwen3:4b
-OLLAMA_MODEL_BRAIN=qwen2.5:3b
-# Идентификатор группы (или напишите "!claw aqui" в группе)
-WHATSAPP_GROUP_JID=120363000000000000@g.us
-```
-
-- Группу можно подключить позже, написав `!claw aqui` в WhatsApp; сохраняется
-  только идентификатор, никогда название группы.
-- Если задан `PICKLEBRAIN_DATA_DIR`, файл `.env` может находиться в этой
-  папке данных.
-- Почти всё можно менять на работающем боте командой `!claw ajustes`;
-  после ручного изменения `.env` перезапустите бота.
-- **Не загружайте `.env` в Git**: в нём адреса почты, пароли и ваш номер телефона.
-  Он уже указан в `.gitignore`.
-
-Все переменные описаны в [`.env.example`](.env.example) и в
-[README](README.ru.md).
+Если бот молчит — почти всегда так и должно быть: он говорит, только когда спрашивают
+про домашку или экзамены, либо когда пишут `Claw` и вопрос.
 
 ---
 
-## 7. Служба речи и изображений на Python (необязательно, рекомендуется)
+## Необязательно: голос и картинки (сервис Python)
 
-Без этой службы Claw тоже работает: речь использует ffmpeg + Whisper в Node, а
-изображения — `sd-cli` или HTTP-сервер. С Python вы получаете
-`faster-whisper` (быстрее) и `diffusers`.
+Без этого сервиса бот работает: голос — через ffmpeg и Whisper внутри Node, картинки —
+через `sd-cli`. С ним получаешь `faster-whisper` (быстрее) и `diffusers` (картинки
+лучше). **Если нужны только ответы про домашку, переходи к
+[Проверить, что всё работает](#проверить-что-всё-работает).**
 
-### 7.1 Создание виртуального окружения
-
-Из корня проекта:
-
-```bash
-python3.12 -m venv .venv
-```
-
-Если `python3.12` нет в системе:
+**1. Создать виртуальное окружение** (из папки проекта):
 
 ```bash
-# Debian/Ubuntu
-sudo apt install python3.12 python3.12-venv
-
-# macOS с Homebrew
-brew install python@3.12
+python3.12 -m venv .venv      # Linux и macOS
+py -3.12 -m venv .venv        # Windows
 ```
 
-В Windows:
+Если нет Python 3.12: `sudo apt install python3.12 python3.12-venv` (Debian и Ubuntu) или
+`brew install python@3.12` (macOS).
 
-```powershell
-py -3.12 -m venv .venv
-```
-
-### 7.2 Установка зависимостей
+**2. Установить зависимости:**
 
 ```bash
-# Linux/macOS
-.venv/bin/pip install -r python/requirements.txt
-
-# Windows
-.venv\Scripts\pip.exe install -r python/requirements.txt
+.venv/bin/pip install -r python/requirements.txt                  # Linux и macOS
+.venv\Scripts\pip.exe install -r python\requirements.txt          # Windows
 ```
 
-Только если нужна генерация изображений через diffusers:
+**3. Запустить в другом терминале** и оставить открытым, пока работает бот:
 
 ```bash
-.venv/bin/pip install -r python/requirements-images.txt
+.venv/bin/python python/server.py                 # Linux и macOS
+.venv\Scripts\python.exe python\server.py         # Windows
 ```
 
-> Без GPU NVIDIA сначала установите версию torch для CPU:
->
-> ```bash
-> .venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
-> ```
->
-> С GPU NVIDIA torch должен быть версией с CUDA. Если Whisper обнаруживает CUDA, но
-> нет `libcublas`/cuDNN, служба автоматически переключается на CPU.
+Короткие команды, если `python` есть в `PATH`: `npm run ia` (Windows и macOS) или
+`npm run ia:linux`.
 
-### 7.3 Запуск службы
-
-В **другом терминале**, из корня проекта:
-
-```bash
-# Linux/macOS
-.venv/bin/python python/server.py
-
-# Windows
-.venv\Scripts\python.exe python\server.py
-```
-
-Также можно использовать:
-
-```bash
-npm run ia          # Windows/macOS, если "python" есть в PATH
-npm run ia:linux    # Linux
-```
-
-Проверьте, что она отвечает:
+**Проверка:** это вернёт `"ok": true` и состояние `voice` и `images`:
 
 ```bash
 curl http://127.0.0.1:5050/health
 ```
 
-Должно вернуться `"ok": true` и состояние `voice` и `images`. Бот обнаруживает
-её автоматически при запуске и показывает, какой движок речи используется.
-
-### 7.4 Модели
-
-При первой расшифровке загружается модель Whisper (~150 МБ с `base`). Первое
-изображение загружает модель diffusers (около 4 ГБ с SD 1.5). Они хранятся
-в `data/models/`, которую Git игнорирует.
+Бот сам находит сервис при запуске и пишет, какой движок голоса использует. Модели
+скачиваются при первом использовании: около 150 МБ для Whisper и около 4 ГБ для
+картинок, хранятся в `data/models/`.
 
 Полезные переменные:
 
@@ -273,79 +226,77 @@ PYTHON_IMAGE_MODEL=stable-diffusion-v1-5/stable-diffusion-v1-5
 PYTHON_IMAGE_UNLOAD=true
 ```
 
-На GPU с 4 ГБ оставьте `PYTHON_IMAGE_UNLOAD=true`, чтобы Ollama возвращала
-VRAM после каждого изображения.
+С картой на 4 ГБ оставь `PYTHON_IMAGE_UNLOAD=true`, чтобы Ollama забирал видеопамять
+после каждой картинки.
 
 ---
 
-## 8. Запуск Claw
+## Необязательно: генерация картинок
 
-```bash
-npm start       # полный бот: WhatsApp + веб + напоминания
-npm run web     # только веб/API, без WhatsApp
-npm run sim     # консольный симулятор, без WhatsApp
+Картинки выключены по умолчанию, потому что на слабых видеокартах это медленно. Чтобы
+включить, добавь в `.env`:
+
+```dotenv
+IMAGE_GEN_ENABLED=true
 ```
 
-При первом запуске Claw открывает браузер на `http://localhost:3000/setup` для
-выбора языка (100 вариантов). Выбор сохраняется в базе данных, и бот
-подключается к WhatsApp только после него. Позже язык меняется из WhatsApp
-командой `!claw language en` (владелец/администраторы) или снова через `/setup`.
+и поставь дополнительные зависимости в то же окружение:
 
-После этого `npm start` показывает **QR-код**. Отсканируйте его в WhatsApp:
+```bash
+.venv/bin/pip install -r python/requirements-images.txt
+```
 
-**Настройки → Связанные устройства → Привязка устройства**
+Без видеокарты NVIDIA сначала поставь версию torch для процессора:
 
-Сессия сохраняется в `data/auth/` (или `PICKLEBRAIN_DATA_DIR/auth`). Не
-передавайте эту папку: она даёт доступ к аккаунту.
+```bash
+.venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
+```
+
+Картинки заказываются вручную: `!claw imagen <что нужно>`.
 
 ---
 
-## 9. Проверка установки
+## Проверить, что всё работает
 
-```bash
-npm run doctor      # Ollama, модели, база, речь и т. д.
-npm run test:python # контракт Node <-> служба Python (без моделей)
-npm run test:web    # авторизация и API
-npm run test:subjects
-npm run test:vetados # блокировка по номеру и по @lid (без Ollama)
-```
+| Команда | Что проверяет | Нужна Ollama? |
+| --- | --- | --- |
+| `npm run doctor` | Ollama, модели, база, голос, диск | Да |
+| `npm test` | Весь набор тестов | Да |
+| `npm run test:python` | Связку Node ↔ сервис Python | Нет |
+| `npm run test:web` | Входы и API | Нет |
+| `npm run test:subjects` | Определение предметов | Нет |
+| `npm run test:vetados` | Блокировку по номеру и по `@lid` | Нет |
+| `npm run test:i18n` | 100 языков | Нет |
 
-`npm test` запускает весь набор и **требует запущенный Ollama**.
-
-Быстрая проверка в симуляторе:
+Если `doctor` зелёный, всё готово. Попробовать без WhatsApp:
 
 ```bash
 npm run sim
 ```
 
 ```
-ребята, какое домашнее задание по математике?
-Ана: надо сделать страницы с 30 по 32
-какое домашнее задание по математике?
+какая домашка по математике?
+Аня: страницы с 30 по 32
+какая домашка по математике?
 контрольная по истории 20 октября
 Claw, сколько будет 2+2?
 ```
 
 ---
 
-## 10. Установка через Homebrew (macOS и Linux)
+## Установка через Homebrew (macOS и Linux)
 
-Есть tap с формулой для установки команд `claw` и `claw-ia`:
+Есть tap с формулой, которая ставит команды `claw` и `claw-ia`:
 
 ```bash
 brew tap Uyruw3/claw
 brew trust Uyruw3/claw   # Homebrew 7 и новее
 brew install claw
-```
-
-При первом запуске зависимости Node загружаются в
-`~/.local/share/claw`, а данные сохраняются в `~/.local/share/claw/data`.
-
-```bash
 claw
 ```
 
-Если хотите управлять папкой сами:
+При первом запуске зависимости Node скачиваются в `~/.local/share/claw`, а данные
+хранятся в `~/.local/share/claw/data`. Если хочешь свою папку:
 
 ```bash
 export CLAW_HOME="$HOME/Claw"
@@ -353,107 +304,74 @@ export PICKLEBRAIN_DATA_DIR="$CLAW_HOME/data"
 claw
 ```
 
-Для службы речи и изображений на Python:
+Для сервиса голоса и картинок:
 
 ```bash
 CLAW_HOME="$HOME/.local/share/claw"
 PYTHON="$(brew --prefix python@3.12)/bin/python3.12"
 "$PYTHON" -m venv "$CLAW_HOME/.venv"
 "$CLAW_HOME/.venv/bin/pip" install -r "$(brew --prefix claw)/libexec/python/requirements.txt"
-
-# Только для генерации изображений:
-"$CLAW_HOME/.venv/bin/pip" install -r "$(brew --prefix claw)/libexec/python/requirements-images.txt"
-
+"$CLAW_HOME/.venv/bin/pip" install -r "$(brew --prefix claw)/libexec/python/requirements-images.txt"  # только картинки
 claw-ia
 ```
 
-Обновление:
-
-```bash
-brew update
-brew upgrade claw
-```
-
-> Tap находится на `Uyruw3/homebrew-claw`, потому что организация проекта
-> не позволяет создавать репозитории с этого аккаунта. Позже его можно перенести в
-> `ClawProject`; тогда команда будет `brew tap ClawProject/claw`.
->
-> Формула устанавливает последнюю опубликованную стабильную версию. При выходе новой
-> версии tap обновляется командой `brew update && brew upgrade claw`.
+> Tap живёт на `Uyruw3/homebrew-claw`, потому что организация проекта не разрешает
+> создавать репозитории из того аккаунта. Если переедет в `ClawProject`, команда будет
+> `brew tap ClawProject/claw`.
 
 ---
 
-## 11. Обновление проекта
-
-Если проект установлен через `git clone`:
+## Обновление
 
 ```bash
 git pull
 npm install
 ```
 
-Если изменились `python/requirements*.txt`:
+Если ещё и поменялись `python/requirements*.txt`:
 
 ```bash
 .venv/bin/pip install -r python/requirements.txt
 .venv/bin/pip install -r python/requirements-images.txt
 ```
 
-После обновления перезапустите Node и службу Python.
+Перезапусти Node и сервис Python. С Homebrew: `brew update && brew upgrade claw`.
 
 ---
 
-## 12. Частые проблемы
+## Проблемы и решения
 
-**`npm start` не находит Ollama.**
-Откройте приложение Ollama или выполните `ollama serve`. Проверьте командой
-`curl http://127.0.0.1:11434/api/tags`.
+| Что видишь | Что делать |
+| --- | --- |
+| `npm start` не находит Ollama | Открой приложение Ollama или запусти `ollama serve`, затем проверь `curl http://127.0.0.1:11434/api/tags` |
+| QR-код не появляется | Сначала выбери язык на `http://localhost:3000/setup` |
+| Бот молчит в группе | `!claw aqui` в группе, затем `!claw`; с `LOG_LEVEL=debug` видно, почему отброшено каждое сообщение |
+| Голосовые не работают | Запусти `python/server.py` и `npm run doctor`; без Python поставь ffmpeg и открой терминал заново |
+| `faster-whisper` падает с `metadata_errors` | `.venv/bin/pip install 'av<19'` |
+| CUDA не грузится (`libcublas.so.12`) | Whisper сам переходит на процессор; для видеокарты поставь CUDA runtime и torch с CUDA |
+| Первая картинка очень долгая | Скачивается модель diffusers (~4 ГБ); следующие будут быстрыми |
+| Сайт не присылает коды доступа | Заполни `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` и `SMTP_PASSWORD`; проверь `npm run smtp -- твоя-почта@alu.edu.gva.es` |
+| PowerShell блокирует `npm.ps1` | Используй `npm.cmd` или `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` в новом терминале |
+| `ollama pull` упирается в место | Моделям нужно ~5 ГБ; освободи место или возьми модель меньше |
 
-**Бот ничего не пишет в группе.**
-1. Проверьте, что группа подключена: напишите `!claw aqui` в группе или задайте
-   `WHATSAPP_GROUP_JID`.
-2. Введите `!claw`, чтобы увидеть состояние.
-3. Запустите с `LOG_LEVEL=debug`, чтобы понять, почему сообщения отбрасываются.
-
-**Голосовые сообщения не работают.**
-Запустите `python/server.py` и проверьте `npm run doctor`. Без Python установите
-ffmpeg и откройте терминал заново.
-
-**`faster-whisper` падает с `metadata_errors`.**
-Установлен `av` 19. Зафиксируйте версию:
+Совсем застрял? Запусти `npm run doctor` и покажи вывод:
 
 ```bash
-.venv/bin/pip install 'av<19'
+npm run doctor > doctor.txt
 ```
-
-**CUDA не загружается (`libcublas.so.12`).**
-Whisper автоматически переходит на CPU. Чтобы использовать GPU, установите
-CUDA-рантайм и версию torch с CUDA. До этого речь работает на CPU.
-
-**Первое изображение занимает много времени.**
-Загружается модель diffusers (~4 ГБ). Последующие требуют только времени
-генерации.
-
-**Сайт не отправляет коды доступа.**
-Настройте `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` и `SMTP_PASSWORD` в `.env`.
-Проверьте командой `npm run smtp -- ваша-почта@alu.edu.gva.es`.
-
-**PowerShell блокирует `npm.ps1`.**
-Используйте `npm.cmd` или выполните
-`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` и откройте другой терминал.
 
 ---
 
-## 13. Минимальная структура установки
+## Как выглядит папка
 
 ```
 TheClawRepo/
 ├─ src/                 код бота (Node)
-├─ python/              служба речи и изображений
-├─ docs/                статический сайт и документация
+├─ python/              сервис голоса и картинок
+├─ docs/                сайт и документация
 ├─ sdserver/            необязательный движок stable-diffusion.cpp
-├─ data/                сессия, база, фото и модели (не в Git)
-├─ .env                 ваша конфигурация (не в Git)
+├─ data/                сессия, база, фото и модели (вне Git)
+├─ .env                 твоя настройка (вне Git)
 ├─ package.json
-└─ arrancar.bat         скрипт запуска для Windows
+└─ arrancar.bat         запуск двойным щелчком в Windows
 ```

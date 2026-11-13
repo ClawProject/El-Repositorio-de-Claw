@@ -31,6 +31,7 @@ const EN_CONFIG = {
   resumen_dia: 'summaryDay',
   resumen_hora: 'summaryHour',
   ajedrez: 'chessEnabled',
+  personalidad: 'clawPersonality',
   mantenimiento: 'maintenance',
   buscar: 'webSearchEnabled',
   apunta: 'apuntaLibre',
@@ -75,6 +76,11 @@ export const CATALOGO = {
   resumen_dia: { etiqueta: 'dia del resumen (0=domingo ... 6=sabado)', tipo: 'num', min: 0, max: 6 },
   resumen_hora: { etiqueta: 'hora del resumen (0-23)', tipo: 'num', min: 0, max: 23 },
   ajedrez: { etiqueta: 'modo ajedrez (jugar y analizar partidas)', tipo: 'bool' },
+  personalidad: {
+    etiqueta: 'cómo habla Claw: normal | profesor | gracioso | pirata',
+    tipo: 'opciones',
+    opciones: ['normal', 'profesor', 'gracioso', 'pirata']
+  },
   mantenimiento: { etiqueta: 'modo mantenimiento: el bot se queda callado', tipo: 'bool' },
   buscar: { etiqueta: 'buscar en internet (DuckDuckGo) cuando haga falta', tipo: 'bool' },
   apunta: { etiqueta: 'dejar que CUALQUIERA use "!claw apunta" (si) o solo dueño/admins (no)', tipo: 'bool' },

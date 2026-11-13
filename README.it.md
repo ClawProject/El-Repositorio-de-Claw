@@ -307,6 +307,7 @@ Tutti i comandi iniziano con `!claw`. È supportato anche il vecchio alias `!pic
 | `!claw busca ...`            | Cerca sul web.                             |
 | `!claw imagen ...`           | Genera un'immagine (sperimentale).         |
 | `!claw ajedrez [mossa]`      | Gioca a scacchi contro Claw.               |
+| `!claw personalidad`         | Vedere o cambiare la personalità di Claw.  |
 | `!claw analiza [FEN]`        | Analizza una posizione di scacchi.         |
 | `!claw novedades`            | Mostra le modifiche recenti.               |
 

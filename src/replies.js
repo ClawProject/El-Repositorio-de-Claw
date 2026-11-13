@@ -421,6 +421,7 @@ export function ayudita() {
     '• _!claw ajedrez_ — jugar una partida contra Claw',
     '• _!claw ajedrez e4_ — mover (también vale _Nf3_, _O-O_ o _e2e4_)',
     '• _!claw analiza <FEN>_ — analizar una posición',
+    '• _!claw personalidad_ — ver o cambiar cómo habla Claw (normal, profesor, gracioso, pirata)',
     '',
     '*Solo el dueño y administradores:*',
     '• _!claw ajustes_ — ver y cambiar los ajustes',

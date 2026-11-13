@@ -35,6 +35,11 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 
 ### Añadido
 
+- **Personalidades de Claw.** `!claw personalidad` enseña cómo habla Claw y
+  permite cambiarlo (solo admins): `normal` (amable y directo, como siempre),
+  `profesor` (explica paso a paso), `gracioso` (de buen humor) y `pirata`
+  (como un pirata de buen corazón). También vale `!claw ajustes personalidad
+  <nombre>` y `CLAW_PERSONALITY` en el `.env`.
 - **Guía de instalación y plantilla de configuración.** Nuevo `INSTALL.md` con
   los pasos para Linux, macOS y Windows, `git clone`, Node, Ollama, servicio
   Python, Homebrew y resolución de problemas. Se añade `.env.example` y `.env`

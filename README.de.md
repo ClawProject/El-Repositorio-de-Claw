@@ -307,6 +307,7 @@ Alle Befehle beginnen mit `!claw`. Der alte Alias `!pickle` funktioniert weiterh
 | `!claw busca ...`            | Sucht im Web.                             |
 | `!claw imagen ...`           | Erzeugt ein Bild (experimentell).         |
 | `!claw ajedrez [Zug]`        | Spielt Schach gegen Claw.                 |
+| `!claw personalidad`         | Persönlichkeit von Claw ansehen oder ändern. |
 | `!claw analiza [FEN]`        | Analysiert eine Schachstellung.           |
 | `!claw novedades`            | Zeigt die letzten Änderungen.             |
 

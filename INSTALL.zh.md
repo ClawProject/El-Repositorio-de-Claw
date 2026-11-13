@@ -2,266 +2,215 @@
 
 [English](INSTALL.md) · [Español](INSTALL.es.md) · [Català](INSTALL.ca.md) · [Français](INSTALL.fr.md) · [Português](INSTALL.pt.md) · [Deutsch](INSTALL.de.md) · [Italiano](INSTALL.it.md) · [Русский](INSTALL.ru.md) · [العربية](INSTALL.ar.md) · **中文**
 
-Claw 由两个进程组成：
+Claw 是一个运行在你自己电脑上的 WhatsApp 机器人。它需要两样东西：**Node.js**（机器人、
+网页面板和数据库）和 **Ollama**（本地 AI）。语音消息和图片生成是**可选的**，需要一个
+小的 Python 服务。
 
-1. **Node.js**（必需）：WhatsApp 机器人、网页界面、数据库和逻辑。
-2. **Python**（可选，推荐）：使用 faster-whisper 转写语音消息，并使用 diffusers
-   生成图片。若未运行，Node 会使用
-   原有的引擎。
-
-本指南适用于 Linux、macOS 和 Windows。关于机器人的总体说明见
-[README](README.zh.md)；关于 Python 服务见 [`python/README.md`](python/README.md)。
+每一步都以**检查**结尾：如果看到上面写的内容，这一步就完成了，可以继续。如果不一致，
+请查看[问题与解决办法](#问题与解决办法)。
 
 ---
 
-## 1. 依赖要求
+## 需要什么
 
-| 组件 | 版本 | 用途 |
-|---|---|---|
-| Git | 任意较新版本 | 下载和更新项目 |
-| Node.js | 22 或更高（推荐 24 LTS） | 机器人、网页界面和数据库 |
-| Ollama | 较新版本 | 本地文本 AI |
-| Python | 3.11 或 3.12 | 语音和图片服务（可选） |
-| ffmpeg | 较新版本 | 不使用 Python 时的语音方案（可选） |
+| 必需 | 版本 | 用途 |
+| --- | --- | --- |
+| [Node.js](https://nodejs.org) | 22 或更高 | 机器人、网页面板、数据库 |
+| [Ollama](https://ollama.com) | 当前版本 | 本地文本 AI |
+| [Git](https://git-scm.com) | 任意 | 下载和更新 |
+| 可用空间 | 约 6 GB | 两个 Ollama 模型 |
 
-文本 AI 需要下载 Ollama 模型。在 4 GB 的 GTX 1650 上，
-`qwen3:4b` 和 `qwen2.5:3b` 可以运行；内存更大时可用更大的模型。
+| 可选 | 版本 | 用途 |
+| --- | --- | --- |
+| Python | 3.11 或 3.12 | 语音转文字、生成图片 |
+| ffmpeg | 当前版本 | 不用 Python 时的语音 |
+| NVIDIA 显卡 | 4 GB 显存 | AI 更快；用 CPU 也能跑 |
 
----
-
-## 2. 下载项目（`git clone`）
-
-### Linux 和 macOS
-
-```bash
-git clone https://github.com/ClawProject/TheClawRepo.git
-cd TheClawRepo
-```
-
-### Windows（PowerShell）
-
-```powershell
-git clone https://github.com/ClawProject/TheClawRepo.git
-cd TheClawRepo
-```
-
-> 如果已经下载过，请在文件夹中运行 `git pull` 更新。
-> 不要下载 ZIP：那样会失去提交历史和更新能力。
+支持 Linux、macOS 和 Windows，需要约 8 GB 内存。4 GB 显存的显卡跑 `qwen3:4b` 和
+`qwen2.5:3b` 很轻松；内存更大可以用更大的模型。
 
 ---
 
-## 3. 安装 Node.js
+## 快速流程（约 10 分钟）
 
-### Linux 和 macOS 使用 nvm（推荐）
+### 1. 安装 Node.js
+
+**Linux 和 macOS**（nvm，推荐）：
 
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-# 关闭并重新打开终端，或者执行：
-export NVM_DIR="$HOME/.nvm"
-. "$NVM_DIR/nvm.sh"
-
+# 关闭并重新打开终端，然后：
 nvm install 22
 nvm alias default 22
-node --version       # 应显示 v22.x 或更高
-npm --version
 ```
 
-### macOS 使用 Homebrew
+**macOS** 用 Homebrew：`brew install node`
 
-```bash
-brew install node
-```
-
-### Windows
-
-从 [nodejs.org](https://nodejs.org/) 下载 LTS 安装包，或者使用：
+**Windows**，在 PowerShell 中：
 
 ```powershell
 winget install OpenJS.NodeJS.LTS
 ```
 
-关闭并重新打开 PowerShell 以更新 `PATH`。
+关闭并重新打开终端，让 `PATH` 生效。
 
----
+**检查：** `node --version` 显示 `v22.` 或更高。
 
-## 4. 安装 Ollama 和模型
-
-### Linux 和 macOS
+### 2. 安装 Ollama 和模型
 
 ```bash
+# Linux 和 macOS
 curl -fsSL https://ollama.com/install.sh | sh
-```
 
-或使用 Homebrew：
+# macOS 用 Homebrew
+brew install ollama && brew services start ollama
 
-```bash
-brew install ollama
-brew services start ollama
-```
-
-### Windows
-
-```powershell
+# Windows（PowerShell）
 winget install Ollama.Ollama
 ```
 
-然后在任意终端中：
+然后下载两个模型（约 5 GB，只需一次）：
 
 ```bash
 ollama pull qwen3:4b
 ollama pull qwen2.5:3b
 ```
 
-确认它能响应：
+**检查：** `ollama list` 列出两个模型，下面这条命令返回 JSON：
 
 ```bash
-ollama list
 curl http://127.0.0.1:11434/api/tags
 ```
 
----
+在 Windows 上如果不通，从开始菜单打开 Ollama 应用。
 
-## 5. 安装 Node 依赖
+### 3. 下载项目
 
-在项目根目录：
+```bash
+git clone https://github.com/ClawProject/TheClawRepo.git
+cd TheClawRepo
+```
+
+**检查：** `ls`（Windows 用 `dir`）能看到 `package.json`。
+
+> 只有在不打算更新时才下载 ZIP：会失去历史记录和 `git pull`。
+
+### 4. 安装依赖
 
 ```bash
 npm install
 ```
 
-在 Windows 上，如果 PowerShell 报 `npm.ps1` 错误，请使用 `npm.cmd install`。
+Windows 上如果 PowerShell 报 `npm.ps1` 的错误，改用 `npm.cmd install`。
 
-在 Windows 上也可以双击 **`arrancar.bat`**：它会安装缺少的
-依赖、必要时创建 `.env` 并启动机器人。
+也可以双击 **`arrancar.bat`**（Windows）：它会补装缺少的依赖，必要时创建 `.env`，然后
+启动机器人。
+
+**检查：** 结束时没有报错。
+
+### 5. 配置 `.env`
+
+```bash
+cp .env.example .env          # Linux 和 macOS
+Copy-Item .env.example .env   # Windows（PowerShell）
+```
+
+模板直接可用：它指向本机的 Ollama 和你刚下载的两个模型。只有在 Ollama 在别处、使用别的
+模型，或要填写学生登录验证码的邮箱时才需要修改。
+
+有两点值得知道：
+
+- **不要把 `.env` 上传到 Git。** 里面有你的手机号、邮箱和密码。它已经在 `.gitignore`
+  里了。
+- 如果使用 `PICKLEBRAIN_DATA_DIR`，`.env` 可以放在那个数据文件夹里。
+
+**检查：** `.env` 和 `package.json` 在同一目录。
+
+### 6. 第一次启动
+
+```bash
+npm start
+```
+
+第一次运行时浏览器会打开 `http://localhost:3000/setup` 选择语言（共 100 种）。选择会保存
+在数据库里，没选之前机器人不会连接 WhatsApp。
+
+然后终端会出现**二维码**。用
+**WhatsApp → 设置 → 已关联的设备 → 关联设备**扫描它。
+
+会话保存在 `data/auth/`（或 `PICKLEBRAIN_DATA_DIR/auth`）。不要分享这个文件夹：它等于
+你账号的访问权。
+
+**检查：** 终端显示已连接，手机上也出现已关联的设备。在群里发送 `!claw`，它会回复自己的
+状态。
+
+其他启动方式：
+
+| 命令 | 启动什么 |
+| --- | --- |
+| `npm start` | 全部：WhatsApp、网页面板和提醒 |
+| `npm run web` | 只有网页面板和 API，不连接 WhatsApp |
+| `npm run sim` | 终端模拟器，不需要 WhatsApp 和二维码 |
 
 ---
 
-## 6. 配置 `.env`
+## 关联群组
 
-复制模板并编辑：
+在群里发送：
 
-```bash
-cp .env.example .env
+```
+!claw aqui
 ```
 
-在 Windows 上：
+这样会保存群组的**标识符**（永远不保存名字，因为名字会重复，谁都能改）。也可以在 `.env`
+里设置 `WHATSAPP_GROUP_JID`。
 
-```powershell
-Copy-Item .env.example .env
-notepad .env
-```
-
-最小可用配置：
-
-```dotenv
-OLLAMA_MODEL=qwen3:4b
-OLLAMA_MODEL_BRAIN=qwen2.5:3b
-# 群组标识（或在群里发送 "!claw aqui"）
-WHATSAPP_GROUP_JID=120363000000000000@g.us
-```
-
-- 之后可以在 WhatsApp 中发送 `!claw aqui` 来连接群组；只保存
-  标识，从不保存群名。
-- 如果设置了 `PICKLEBRAIN_DATA_DIR`，`.env` 可以放在该数据
-  目录中。
-- 几乎所有设置都能在机器人运行时用 `!claw ajustes` 修改；
-  手动修改 `.env` 后需要重启。
-- **不要把 `.env` 上传到 Git**：它包含邮箱、密码和你的手机号。
-  它已在 `.gitignore` 中。
-
-所有变量都在 [`.env.example`](.env.example) 和
-[README](README.zh.md) 中有说明。
+如果机器人一直不说话，大多数时候这是正常的：只有当有人问作业或考试，或者写到 `Claw`
+再加一个问题时，它才开口。
 
 ---
 
-## 7. Python 语音与图片服务（可选，推荐）
+## 可选：语音和图片（Python 服务）
 
-没有这个服务 Claw 仍能运行：语音使用 Node 中的 ffmpeg + Whisper，
-图片使用 `sd-cli` 或 HTTP 服务器。使用 Python 可以获得
-`faster-whisper`（更快）和 `diffusers`。
+没有这个服务机器人照样能用：语音走 Node 里的 ffmpeg 和 Whisper，图片用 `sd-cli`。装上之后
+可以用 `faster-whisper`（更快）和 `diffusers`（图片更好）。**如果你只想要作业回答，可以直接
+跳到[检查一切正常](#检查一切正常)。**
 
-### 7.1 创建虚拟环境
-
-在项目根目录：
+**1. 创建虚拟环境**（在项目根目录）：
 
 ```bash
-python3.12 -m venv .venv
+python3.12 -m venv .venv      # Linux 和 macOS
+py -3.12 -m venv .venv        # Windows
 ```
 
-如果系统没有 `python3.12`：
+如果没有 Python 3.12：`sudo apt install python3.12 python3.12-venv`（Debian 和 Ubuntu）或
+`brew install python@3.12`（macOS）。
+
+**2. 安装依赖：**
 
 ```bash
-# Debian/Ubuntu
-sudo apt install python3.12 python3.12-venv
-
-# macOS 使用 Homebrew
-brew install python@3.12
+.venv/bin/pip install -r python/requirements.txt                  # Linux 和 macOS
+.venv\Scripts\pip.exe install -r python\requirements.txt          # Windows
 ```
 
-在 Windows 上：
-
-```powershell
-py -3.12 -m venv .venv
-```
-
-### 7.2 安装依赖
+**3. 在另一个终端里启动**，机器人运行时让它一直开着：
 
 ```bash
-# Linux/macOS
-.venv/bin/pip install -r python/requirements.txt
-
-# Windows
-.venv\Scripts\pip.exe install -r python/requirements.txt
+.venv/bin/python python/server.py                 # Linux 和 macOS
+.venv\Scripts\python.exe python\server.py         # Windows
 ```
 
-仅在需要 diffusers 生成图片时：
+如果 `python` 在 `PATH` 里，可以用快捷命令：`npm run ia`（Windows 和 macOS）或
+`npm run ia:linux`。
 
-```bash
-.venv/bin/pip install -r python/requirements-images.txt
-```
-
-> 没有 NVIDIA 显卡时，先安装 CPU 版 torch：
->
-> ```bash
-> .venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
-> ```
->
-> 有 NVIDIA 显卡时，torch 必须是 CUDA 版本。如果 Whisper 检测到 CUDA
-> 但缺少 `libcublas`/cuDNN，服务会自动改用 CPU。
-
-### 7.3 启动服务
-
-在**另一个终端**中，从项目根目录：
-
-```bash
-# Linux/macOS
-.venv/bin/python python/server.py
-
-# Windows
-.venv\Scripts\python.exe python\server.py
-```
-
-也可以使用：
-
-```bash
-npm run ia          # Windows/macOS，前提是 "python" 在 PATH 中
-npm run ia:linux    # Linux
-```
-
-确认它能响应：
+**检查：** 这条命令返回 `"ok": true` 以及 `voice` 和 `images` 的状态：
 
 ```bash
 curl http://127.0.0.1:5050/health
 ```
 
-应返回 `"ok": true` 以及 `voice` 和 `images` 的状态。机器人会在启动时
-自动检测它，并显示正在使用的语音引擎。
-
-### 7.4 模型
-
-首次转写会下载 Whisper 模型（使用 `base` 时约 150 MB）。首张图片会
-下载 diffusers 模型（使用 SD 1.5 时约 4 GB）。它们保存在
-`data/models/` 中，该目录被 Git 忽略。
+机器人启动时会自己发现这个服务，并告诉你用的是哪个语音引擎。模型在第一次使用时下载：
+Whisper 约 150 MB，图片约 4 GB，保存在 `data/models/`。
 
 常用变量：
 
@@ -273,79 +222,75 @@ PYTHON_IMAGE_MODEL=stable-diffusion-v1-5/stable-diffusion-v1-5
 PYTHON_IMAGE_UNLOAD=true
 ```
 
-在 4 GB 显存的显卡上，保留 `PYTHON_IMAGE_UNLOAD=true`，以便 Ollama
-在每张图片后收回显存。
+4 GB 显存时保留 `PYTHON_IMAGE_UNLOAD=true`，这样每张图之后 Ollama 能把显存收回去。
 
 ---
 
-## 8. 启动 Claw
+## 可选：生成图片
 
-```bash
-npm start       # 完整机器人：WhatsApp + 网页 + 提醒
-npm run web     # 仅网页/API，不使用 WhatsApp
-npm run sim     # 控制台模拟器，不使用 WhatsApp
+图片默认关闭，因为在小显存上很慢。要开启，在 `.env` 里加：
+
+```dotenv
+IMAGE_GEN_ENABLED=true
 ```
 
-首次启动时 Claw 会打开浏览器到 `http://localhost:3000/setup` 选择
-语言（100 种）。选择会保存在数据库中，机器人只有在选定后
-才会连接 WhatsApp。之后可通过 WhatsApp 的 `!claw language en`（所有者/管理员）
-或再次访问 `/setup` 修改。
+并在同一个环境里安装额外依赖：
 
-随后 `npm start` 会显示**二维码**。在 WhatsApp 中扫描：
+```bash
+.venv/bin/pip install -r python/requirements-images.txt
+```
 
-**设置 → 已关联的设备 → 关联设备**
+没有 NVIDIA 显卡时，先安装 CPU 版 torch：
 
-会话保存在 `data/auth/`（或 `PICKLEBRAIN_DATA_DIR/auth`）。不要
-分享该文件夹：它会让你账号被人访问。
+```bash
+.venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
+```
+
+图片需要手动请求：`!claw imagen <你想要的内容>`。
 
 ---
 
-## 9. 验证安装
+## 检查一切正常
 
-```bash
-npm run doctor      # Ollama、模型、数据库、语音等
-npm run test:python # Node 与 Python 服务之间的约定（不需要模型）
-npm run test:web    # 身份验证和 API
-npm run test:subjects
-npm run test:vetados # 按号码和 @lid 屏蔽（不需要 Ollama）
-```
+| 命令 | 检查什么 | 需要 Ollama？ |
+| --- | --- | --- |
+| `npm run doctor` | Ollama、模型、数据库、语音、磁盘 | 是 |
+| `npm test` | 完整测试套件 | 是 |
+| `npm run test:python` | Node 与 Python 服务之间的契约 | 否 |
+| `npm run test:web` | 登录和 API | 否 |
+| `npm run test:subjects` | 科目识别 | 否 |
+| `npm run test:vetados` | 按号码和按 `@lid` 屏蔽 | 否 |
+| `npm run test:i18n` | 100 种语言 | 否 |
 
-`npm test` 会运行全部测试，且**需要 Ollama 正在运行**。
-
-在模拟器中快速测试：
+`doctor` 全绿就完成了。想在不连 WhatsApp 的情况下试：
 
 ```bash
 npm run sim
 ```
 
 ```
-大家，数学作业是什么？
-Ana: 要做第 30 到 32 页
-数学作业是什么？
+数学有什么作业？
+Ana：第 30 到 32 页
+数学有什么作业？
 历史考试在 10 月 20 日
-Claw，2+2 等于多少？
+Claw，2+2 等于几？
 ```
 
 ---
 
-## 10. 使用 Homebrew 安装（macOS 和 Linux）
+## 用 Homebrew 安装（macOS 和 Linux）
 
-有一个 tap 提供 `claw` 和 `claw-ia` 命令的 formula：
+有一个 tap，其中的 formula 会安装 `claw` 和 `claw-ia` 命令：
 
 ```bash
 brew tap Uyruw3/claw
-brew trust Uyruw3/claw   # Homebrew 7 及更高版本
+brew trust Uyruw3/claw   # Homebrew 7 及更高
 brew install claw
-```
-
-首次运行会把 Node 依赖下载到
-`~/.local/share/claw`，并把数据保存到 `~/.local/share/claw/data`。
-
-```bash
 claw
 ```
 
-如果想自己管理文件夹：
+第一次运行会把 Node 依赖下载到 `~/.local/share/claw`，数据保存在
+`~/.local/share/claw/data`。如果想用自己的文件夹：
 
 ```bash
 export CLAW_HOME="$HOME/Claw"
@@ -353,107 +298,73 @@ export PICKLEBRAIN_DATA_DIR="$CLAW_HOME/data"
 claw
 ```
 
-配置 Python 语音与图片服务：
+语音和图片服务：
 
 ```bash
 CLAW_HOME="$HOME/.local/share/claw"
 PYTHON="$(brew --prefix python@3.12)/bin/python3.12"
 "$PYTHON" -m venv "$CLAW_HOME/.venv"
 "$CLAW_HOME/.venv/bin/pip" install -r "$(brew --prefix claw)/libexec/python/requirements.txt"
-
-# 仅在需要生成图片时：
-"$CLAW_HOME/.venv/bin/pip" install -r "$(brew --prefix claw)/libexec/python/requirements-images.txt"
-
+"$CLAW_HOME/.venv/bin/pip" install -r "$(brew --prefix claw)/libexec/python/requirements-images.txt"  # 只有图片
 claw-ia
 ```
 
-更新：
-
-```bash
-brew update
-brew upgrade claw
-```
-
-> tap 位于 `Uyruw3/homebrew-claw`，因为项目组织不允许
-> 从该账号创建仓库。之后可以迁移到
-> `ClawProject`，那时的命令将是 `brew tap ClawProject/claw`。
->
-> formula 安装最新的已发布稳定版本。发布新版本时，
-> 用 `brew update && brew upgrade claw` 更新 tap。
+> tap 放在 `Uyruw3/homebrew-claw`，因为项目组织不允许从那个账号创建仓库。如果迁到
+> `ClawProject`，命令会变成 `brew tap ClawProject/claw`。
 
 ---
 
-## 11. 更新项目
-
-如果是通过 `git clone` 安装的：
+## 更新
 
 ```bash
 git pull
 npm install
 ```
 
-如果 `python/requirements*.txt` 也有变化：
+如果 `python/requirements*.txt` 也变了：
 
 ```bash
 .venv/bin/pip install -r python/requirements.txt
 .venv/bin/pip install -r python/requirements-images.txt
 ```
 
-更新后重启 Node 和 Python 服务。
+重启 Node 和 Python 服务。用 Homebrew：`brew update && brew upgrade claw`。
 
 ---
 
-## 12. 常见问题
+## 问题与解决办法
 
-**`npm start` 找不到 Ollama。**
-打开 Ollama 应用或运行 `ollama serve`。用
-`curl http://127.0.0.1:11434/api/tags` 检查。
+| 你看到的 | 怎么办 |
+| --- | --- |
+| `npm start` 找不到 Ollama | 打开 Ollama 应用或运行 `ollama serve`，再检查 `curl http://127.0.0.1:11434/api/tags` |
+| 不出现二维码 | 先到 `http://localhost:3000/setup` 选择语言 |
+| 机器人在群里不说话 | 在群里发送 `!claw aqui`，再发 `!claw`；用 `LOG_LEVEL=debug` 能看到每条消息被丢弃的原因 |
+| 语音消息不工作 | 启动 `python/server.py` 并运行 `npm run doctor`；不用 Python 就安装 ffmpeg 后重开终端 |
+| `faster-whisper` 报 `metadata_errors` | `.venv/bin/pip install 'av<19'` |
+| CUDA 加载失败（`libcublas.so.12`） | Whisper 会自动改用 CPU；想用显卡就安装 CUDA runtime 和带 CUDA 的 torch |
+| 第一张图特别慢 | 正在下载 diffusers 模型（约 4 GB）；之后会很快 |
+| 网站不发登录验证码 | 填好 `SMTP_HOST`、`SMTP_PORT`、`SMTP_USER` 和 `SMTP_PASSWORD`；用 `npm run smtp -- 你的邮箱@alu.edu.gva.es` 测试 |
+| PowerShell 阻止 `npm.ps1` | 用 `npm.cmd`，或在新终端里执行 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
+| `ollama pull` 空间不足 | 两个模型约占 5 GB；腾出空间或换更小的模型 |
 
-**机器人在群里不说话。**
-1. 检查群组是否已连接：在群里发送 `!claw aqui` 或设置
-   `WHATSAPP_GROUP_JID`。
-2. 输入 `!claw` 查看状态。
-3. 用 `LOG_LEVEL=debug` 启动，查看消息为何被丢弃。
-
-**语音消息不工作。**
-启动 `python/server.py` 并检查 `npm run doctor`。不使用 Python 时，请安装
-ffmpeg 并重新打开终端。
-
-**`faster-whisper` 报 `metadata_errors` 失败。**
-安装了 `av` 19。请固定版本：
+还是卡住了？运行 `npm run doctor` 并贴出结果：
 
 ```bash
-.venv/bin/pip install 'av<19'
+npm run doctor > doctor.txt
 ```
-
-**CUDA 无法加载（`libcublas.so.12`）。**
-Whisper 会自动改用 CPU。要使用显卡，请安装
-CUDA 运行时和支持 CUDA 的 torch 版本。在此之前语音由 CPU 处理。
-
-**第一张图片耗时很长。**
-正在下载 diffusers 模型（约 4 GB）。之后只需
-生成时间。
-
-**网站没有发送登录验证码。**
-在 `.env` 中配置 `SMTP_HOST`、`SMTP_PORT`、`SMTP_USER` 和 `SMTP_PASSWORD`。
-用 `npm run smtp -- 你的邮箱@alu.edu.gva.es` 测试。
-
-**PowerShell 阻止 `npm.ps1`。**
-使用 `npm.cmd`，或运行
-`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` 后打开另一个终端。
 
 ---
 
-## 13. 最小安装结构
+## 文件夹结构
 
 ```
 TheClawRepo/
 ├─ src/                 机器人代码（Node）
-├─ python/              语音与图片服务
-├─ docs/                静态站点和文档
+├─ python/              语音和图片服务
+├─ docs/                网站和文档
 ├─ sdserver/            可选的 stable-diffusion.cpp 引擎
-├─ data/                会话、数据库、照片和模型（不在 Git 中）
-├─ .env                 你的配置（不在 Git 中）
+├─ data/                会话、数据库、照片和模型（不在 Git 里）
+├─ .env                 你的配置（不在 Git 里）
 ├─ package.json
-└─ arrancar.bat         Windows 启动脚本
+└─ arrancar.bat         Windows 双击启动
 ```
