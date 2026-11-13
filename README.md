@@ -15,6 +15,7 @@
   <a href="https://hub.xerj.org/contributors/ClawProject"><img src="https://hub.xerj.org/contributors/ClawProject/badge.svg" alt="XERJ Corpus Hub contributor"></a>
 </p>
 
+
 <p align="center"><strong>A self-hosted WhatsApp bot powered by local AI.</strong><br>
 It keeps track of homework, exams and school announcements in a class group chat, and answers when someone asks.</p>
 
